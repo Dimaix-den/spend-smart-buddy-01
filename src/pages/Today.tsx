@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from "react";
-import { HelpCircle, Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { HelpCircle, Plus, TrendingDown, TrendingUp, PiggyBank } from "lucide-react";
 import { useFinance } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import AddExpenseModal from "@/components/AddExpenseModal";
+import AddIncomeModal from "@/components/AddIncomeModal";
 import { toast } from "@/hooks/use-toast";
 
 interface TodayProps {
@@ -37,17 +38,19 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
 
   return (
     <span className={`${className} ${flash ? "number-flash" : ""}`}>
-      {formatAmount(display)}
+      {formatAmount(Math.abs(display))}
     </span>
   );
 }
 
-function InfoPanel({ onClose, activeBalance, totalObligations, savingsGoal, daysLeft, safeToSpend }: {
+function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSave, daysLeft, dailyBudget, spentToday, safeToSpend }: {
   onClose: () => void;
   activeBalance: number;
-  totalObligations: number;
-  savingsGoal: number;
+  remainingObligations: number;
+  stillNeedToSave: number;
   daysLeft: number;
+  dailyBudget: number;
+  spentToday: number;
   safeToSpend: number;
 }) {
   return (
@@ -67,22 +70,32 @@ function InfoPanel({ onClose, activeBalance, totalObligations, savingsGoal, days
             <span className="font-tabular font-semibold">{formatAmount(activeBalance)} ₸</span>
           </div>
           <div className="flex justify-between text-alert-orange">
-            <span>− Обязательства</span>
-            <span className="font-tabular font-semibold">−{formatAmount(totalObligations)} ₸</span>
+            <span>− Неоплаченные обязательства</span>
+            <span className="font-tabular font-semibold">−{formatAmount(remainingObligations)} ₸</span>
           </div>
           <div className="flex justify-between text-muted-foreground">
-            <span>− Цель сбережений</span>
-            <span className="font-tabular font-semibold">−{formatAmount(savingsGoal)} ₸</span>
+            <span>− Осталось сберечь</span>
+            <span className="font-tabular font-semibold">−{formatAmount(stillNeedToSave)} ₸</span>
           </div>
           <div className="border-t border-border pt-2 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
-          <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 flex justify-between items-center mt-1">
-            <span className="text-foreground font-medium">= Можно тратить в день</span>
-            <span className="text-safe-green font-bold font-tabular text-lg">
-              {formatAmount(safeToSpend)} ₸
-            </span>
+          <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 mt-1 space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-foreground/80">= Дневной лимит</span>
+              <span className="text-foreground font-semibold font-tabular">{formatAmount(dailyBudget)} ₸</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-foreground/80">− Потрачено сегодня</span>
+              <span className="text-alert-orange font-semibold font-tabular">{formatAmount(spentToday)} ₸</span>
+            </div>
+            <div className="flex justify-between items-center border-t border-border/60 pt-1.5">
+              <span className="text-foreground font-medium">= Можно потратить</span>
+              <span className="text-safe-green font-bold font-tabular text-lg">
+                {safeToSpend >= 0 ? "" : "−"}{formatAmount(Math.abs(safeToSpend))} ₸
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -91,22 +104,37 @@ function InfoPanel({ onClose, activeBalance, totalObligations, savingsGoal, days
 }
 
 export default function Today({ finance }: TodayProps) {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+  const [incomeModalOpen, setIncomeModalOpen] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+
   const {
     state,
     safeToSpend,
     safeToSpendStatus,
     activeBalance,
-    totalObligations,
+    remainingObligations,
+    stillNeedToSave,
     daysLeft,
+    dailyBudget,
+    spentToday,
     monthlyBudget,
     spentThisMonth,
     budgetRemaining,
     budgetStatus,
     monthProgress,
+    alreadySaved,
+    savingsProgress,
     addExpense,
+    addIncome,
   } = finance;
+
+  const safeToSpendColor =
+    safeToSpendStatus === "overspent"
+      ? "text-destructive"
+      : safeToSpendStatus === "warning"
+      ? "text-alert-orange"
+      : "text-safe-green";
 
   const budgetColor =
     budgetStatus === "critical"
@@ -115,28 +143,39 @@ export default function Today({ finance }: TodayProps) {
       ? "text-alert-orange"
       : "text-safe-green";
 
-  const recentExpenses = state.expenses.filter((e) => !e.isObligation).slice(0, 5);
+  const recentExpenses = state.expenses.slice(0, 5);
+
+  const heroLabel =
+    safeToSpendStatus === "overspent"
+      ? "ПРЕВЫШЕН ДНЕВНОЙ ЛИМИТ"
+      : safeToSpendStatus === "warning"
+      ? "ПОЧТИ ИСЧЕРПАН ЛИМИТ"
+      : "МОЖЕШЬ ПОТРАТИТЬ СЕГОДНЯ";
 
   return (
     <div className="flex flex-col min-h-screen pb-24">
       {/* Hero section */}
       <div className="px-5 pt-10 pb-6 text-center">
         <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-3">
-          Можешь потратить сегодня
+          {heroLabel}
         </p>
-        <div className="flex items-end justify-center gap-2 mb-2">
-          <span
-            className={`safe-number font-tabular ${
-              safeToSpendStatus === "deficit" ? "text-destructive" : "text-safe-green"
-            }`}
-          >
-            <AnimatedNumber value={safeToSpend} />
+        <div className="flex items-end justify-center gap-2 mb-1">
+          {safeToSpend < 0 && (
+            <span className={`text-4xl font-bold mb-1 ${safeToSpendColor}`}>−</span>
+          )}
+          <span className={`safe-number font-tabular ${safeToSpendColor}`}>
+            <AnimatedNumber value={Math.abs(safeToSpend)} />
           </span>
-          <span className="text-4xl font-bold text-safe-green mb-1 opacity-80">₸</span>
+          <span className={`text-4xl font-bold mb-1 opacity-80 ${safeToSpendColor}`}>₸</span>
         </div>
-        <p className="text-xs text-muted-foreground font-tabular">
-          ({formatAmount(activeBalance)} − {formatAmount(totalObligations)} − {formatAmount(state.savingsGoal)}) ÷ {daysLeft} дн.
-        </p>
+
+        {/* Daily budget + spent today */}
+        <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
+          <span>Лимит: <span className="text-foreground font-semibold">{formatAmount(dailyBudget)} ₸</span></span>
+          <span className="text-muted-foreground/40">•</span>
+          <span>Потрачено: <span className="text-alert-orange font-semibold">{formatAmount(spentToday)} ₸</span></span>
+        </div>
+
         <button
           onClick={() => setShowInfo(true)}
           className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
@@ -155,7 +194,7 @@ export default function Today({ finance }: TodayProps) {
           </div>
           <div className="h-2.5 bg-muted rounded-full overflow-hidden">
             <div
-              className="h-full rounded-full animate-grow"
+              className="h-full rounded-full animate-grow transition-all duration-500"
               style={{
                 width: `${monthProgress}%`,
                 background: "linear-gradient(90deg, hsl(162 100% 28%), hsl(162 100% 40%))",
@@ -168,23 +207,20 @@ export default function Today({ finance }: TodayProps) {
           </div>
         </div>
 
-        {/* Budget summary card */}
+        {/* Monthly budget card */}
         <div className="bg-card border border-border/60 rounded-2xl p-4 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Бюджет месяца
+            Бюджет на месяц
           </h3>
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-foreground/80">Бюджет на месяц</span>
+              <span className="text-sm text-foreground/80">Выделено</span>
               <span className="font-bold font-tabular text-foreground">{formatAmount(monthlyBudget)} ₸</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground/80">Потрачено</span>
-              <span className="font-semibold font-tabular text-alert-orange">
-                {formatAmount(spentThisMonth)} ₸
-              </span>
+              <span className="font-semibold font-tabular text-alert-orange">{formatAmount(spentThisMonth)} ₸</span>
             </div>
-            {/* Mini progress */}
             {monthlyBudget > 0 && (
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <div
@@ -202,7 +238,7 @@ export default function Today({ finance }: TodayProps) {
               </div>
             )}
             <div className="flex items-center justify-between pt-1 border-t border-border/60">
-              <span className="text-sm font-medium text-foreground">Остаток бюджета</span>
+              <span className="text-sm font-medium text-foreground">Остаток</span>
               <span className={`font-bold font-tabular text-lg ${budgetColor}`}>
                 <AnimatedNumber value={Math.max(0, budgetRemaining)} />
                 {" "}₸
@@ -211,71 +247,141 @@ export default function Today({ finance }: TodayProps) {
           </div>
         </div>
 
-        {/* Quick stats */}
-        <div className="grid grid-cols-2 gap-3 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
-          <div className="bg-card border border-border/60 rounded-2xl p-4">
-            <div className="text-2xl mb-1">💳</div>
-            <p className="text-xs text-muted-foreground mb-1">Обязательства</p>
-            <p className="font-bold font-tabular text-alert-orange text-sm">{formatAmount(totalObligations)} ₸/мес</p>
+        {/* Savings progress card */}
+        {state.savingsGoal > 0 && (
+          <div className="bg-card border border-border/60 rounded-2xl p-4 animate-fade-in-up" style={{ animationDelay: "0.08s" }}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <PiggyBank size={14} className="text-safe-green" />
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Цель сбережений
+                </h3>
+              </div>
+              <span className="text-xs font-bold text-safe-green">{savingsProgress}%</span>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-foreground/80">Уже отложено</span>
+                <span className="font-bold font-tabular text-safe-green">{formatAmount(alreadySaved)} ₸</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${savingsProgress}%`,
+                    background: "linear-gradient(90deg, hsl(162 100% 28%), hsl(162 100% 40%))",
+                  }}
+                />
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-foreground/80">Цель</span>
+                <span className="font-tabular text-muted-foreground">{formatAmount(state.savingsGoal)} ₸</span>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                setExpenseModalOpen(true);
+              }}
+              className="mt-3 w-full py-2.5 rounded-xl border border-safe-green text-safe-green text-sm font-semibold hover:bg-safe-green/10 transition-colors"
+            >
+              Отложить сейчас
+            </button>
           </div>
-          <div className="bg-card border border-border/60 rounded-2xl p-4">
-            <div className="text-2xl mb-1">💰</div>
-            <p className="text-xs text-muted-foreground mb-1">Цель сбережений</p>
-            <p className="font-bold font-tabular text-safe-green text-sm">{formatAmount(state.savingsGoal)} ₸</p>
-          </div>
+        )}
+
+        {/* Action buttons */}
+        <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
+          <button
+            onClick={() => setExpenseModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 bg-alert-orange text-white font-bold text-base py-4 rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-alert-orange/20"
+          >
+            <TrendingDown size={20} strokeWidth={2.5} />
+            + Добавить расход
+          </button>
+          <button
+            onClick={() => setIncomeModalOpen(true)}
+            className="w-full flex items-center justify-center gap-2 font-bold text-base py-4 rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all border border-primary/40 text-primary bg-primary/10"
+          >
+            <TrendingUp size={20} strokeWidth={2.5} />
+            + Добавить доход
+          </button>
         </div>
 
-        {/* Add expense button */}
-        <button
-          onClick={() => setModalOpen(true)}
-          className="w-full flex items-center justify-center gap-2 bg-safe-green text-primary-foreground font-bold text-base py-4 rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all animate-fade-in-up shadow-lg shadow-safe-green/20"
-          style={{ animationDelay: "0.15s" }}
-        >
-          <Plus size={20} strokeWidth={2.5} />
-          Добавить расход
-        </button>
-
-        {/* Recent expenses */}
+        {/* Recent transactions */}
         {recentExpenses.length > 0 && (
-          <div className="animate-fade-in-up" style={{ animationDelay: "0.2s" }}>
+          <div className="animate-fade-in-up" style={{ animationDelay: "0.16s" }}>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-              Последние расходы
+              Последние операции
             </h3>
             <div className="space-y-2">
-              {recentExpenses.map((expense) => (
-                <div
-                  key={expense.id}
-                  className="bg-card border border-border/60 rounded-xl px-4 py-3 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-destructive/10 flex items-center justify-center">
-                      <TrendingDown size={14} className="text-destructive" />
+              {recentExpenses.map((expense) => {
+                const isIncome = expense.type === "income";
+                const isSavings = expense.type === "savings";
+                const isObligation = expense.type === "obligation";
+                const label = isIncome
+                  ? expense.note || "Доход"
+                  : isSavings
+                  ? "Сбережения"
+                  : isObligation
+                  ? (state.obligations.find((o) => o.id === expense.obligationId)?.name ?? "Обязательство")
+                  : expense.account;
+
+                return (
+                  <div
+                    key={expense.id}
+                    className="bg-card border border-border/60 rounded-xl px-4 py-3 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        isIncome ? "bg-income-blue/10" : isSavings ? "bg-safe-green/10" : "bg-destructive/10"
+                      }`}>
+                        {isIncome ? (
+                          <TrendingUp size={14} className="text-income-blue" />
+                        ) : isSavings ? (
+                          <PiggyBank size={14} className="text-safe-green" />
+                        ) : (
+                          <TrendingDown size={14} className="text-destructive" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{label}</p>
+                        <p className="text-xs text-muted-foreground">{expense.account} · {expense.date}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{expense.account}</p>
-                      <p className="text-xs text-muted-foreground">{expense.date}</p>
-                    </div>
+                    <span className={`font-bold font-tabular text-sm ${
+                      isIncome ? "text-income-blue" : isSavings ? "text-safe-green" : "text-alert-orange"
+                    }`}>
+                      {isIncome ? "+" : "−"}{formatAmount(expense.amount)} ₸
+                    </span>
                   </div>
-                  <span className="font-bold font-tabular text-alert-orange text-sm">
-                    −{formatAmount(expense.amount)} ₸
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
       </div>
 
-      {/* Modal */}
+      {/* Expense Modal */}
       <AddExpenseModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSave={(amount, account, isObl, oblName) => {
-          addExpense(amount, account, isObl, oblName);
-          toast({ description: "✅ Расход добавлен", duration: 2000 });
+        open={expenseModalOpen}
+        onClose={() => setExpenseModalOpen(false)}
+        onSave={(amount, account, type, opts) => {
+          addExpense(amount, account, type, opts);
+          toast({ description: `✅ Расход добавлен: ${formatAmount(amount)} ₸`, duration: 2000 });
         }}
         accounts={state.accounts}
         obligations={state.obligations}
+      />
+
+      {/* Income Modal */}
+      <AddIncomeModal
+        open={incomeModalOpen}
+        onClose={() => setIncomeModalOpen(false)}
+        onSave={(amount, account, note) => {
+          addIncome(amount, account, note);
+          toast({ description: `💰 Доход добавлен: +${formatAmount(amount)} ₸`, duration: 2000 });
+        }}
+        accounts={state.accounts}
       />
 
       {/* Info panel */}
@@ -283,9 +389,11 @@ export default function Today({ finance }: TodayProps) {
         <InfoPanel
           onClose={() => setShowInfo(false)}
           activeBalance={activeBalance}
-          totalObligations={totalObligations}
-          savingsGoal={state.savingsGoal}
+          remainingObligations={remainingObligations}
+          stillNeedToSave={stillNeedToSave}
           daysLeft={daysLeft}
+          dailyBudget={dailyBudget}
+          spentToday={spentToday}
           safeToSpend={safeToSpend}
         />
       )}
