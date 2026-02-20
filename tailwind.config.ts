@@ -55,6 +55,7 @@ export default {
         },
         "safe-green": "hsl(var(--safe-green))",
         "alert-orange": "hsl(var(--alert-orange))",
+        "income-blue": "hsl(var(--income-blue))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
