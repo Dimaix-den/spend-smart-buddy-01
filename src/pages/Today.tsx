@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { HelpCircle, Plus, TrendingDown, TrendingUp, PiggyBank } from "lucide-react";
-import { useFinance } from "@/hooks/useFinance";
+import { HelpCircle, Plus, TrendingDown, TrendingUp, PiggyBank, Trash2 } from "lucide-react";
+import { useFinance, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
-import AddExpenseModal from "@/components/AddExpenseModal";
-import AddIncomeModal from "@/components/AddIncomeModal";
+import UnifiedActionSheet from "@/components/UnifiedActionSheet";
+import DailySpendingChart from "@/components/DailySpendingChart";
 import { toast } from "@/hooks/use-toast";
 
 interface TodayProps {
@@ -55,13 +55,13 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
 }) {
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-background/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 glass-overlay" />
       <div
-        className="relative w-full max-w-app bg-card rounded-t-2xl p-5 modal-slide-up border-t border-border/60 mb-20"
+        className="relative w-full max-w-app glass-sheet rounded-t-[24px] p-5 modal-slide-up mb-20"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 bg-muted-foreground/40 rounded-full" />
+          <div className="w-10 h-1 bg-white/20 rounded-full" />
         </div>
         <h3 className="text-sm font-bold text-foreground mb-3">Как рассчитывается?</h3>
         <div className="space-y-2 text-sm">
@@ -77,11 +77,11 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
             <span>− Осталось сберечь</span>
             <span className="font-tabular font-semibold">−{formatAmount(stillNeedToSave)} ₸</span>
           </div>
-          <div className="border-t border-border pt-2 flex justify-between text-foreground">
+          <div className="border-t border-white/10 pt-2 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
-          <div className="bg-primary/10 border border-primary/30 rounded-xl p-3 mt-1 space-y-1.5">
+          <div className="bg-primary/10 border border-primary/20 rounded-[16px] p-3 mt-1 space-y-1.5">
             <div className="flex justify-between">
               <span className="text-foreground/80">= Дневной лимит</span>
               <span className="text-foreground font-semibold font-tabular">{formatAmount(dailyBudget)} ₸</span>
@@ -90,10 +90,10 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
               <span className="text-foreground/80">− Потрачено сегодня</span>
               <span className="text-alert-orange font-semibold font-tabular">{formatAmount(spentToday)} ₸</span>
             </div>
-            <div className="flex justify-between items-center border-t border-border/60 pt-1.5">
+            <div className="flex justify-between items-center border-t border-white/10 pt-1.5">
               <span className="text-foreground font-medium">= Можно потратить</span>
               <span className="text-safe-green font-bold font-tabular text-lg">
-                {safeToSpend >= 0 ? "" : "−"}{formatAmount(Math.abs(safeToSpend))} ₸
+                {formatAmount(Math.max(0, safeToSpend))} ₸
               </span>
             </div>
           </div>
@@ -103,9 +103,85 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
   );
 }
 
+function TransactionRow({
+  expense,
+  label,
+  onDelete,
+  onEdit,
+}: {
+  expense: Expense;
+  label: string;
+  onDelete: (id: string) => void;
+  onEdit: (expense: Expense) => void;
+}) {
+  const [swiped, setSwiped] = useState(false);
+  const touchStartX = useRef(0);
+  const isIncome = expense.type === "income";
+  const isSavings = expense.type === "savings";
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (diff > 60) setSwiped(true);
+    else if (diff < -30) setSwiped(false);
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-[16px]">
+      {/* Delete button behind */}
+      {swiped && (
+        <button
+          onClick={() => onDelete(expense.id)}
+          className="absolute right-0 top-0 bottom-0 w-20 bg-destructive flex items-center justify-center animate-swipe-reveal rounded-r-[16px]"
+        >
+          <Trash2 size={18} className="text-white" />
+        </button>
+      )}
+      <div
+        className={`glass-card px-4 py-3 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 ${
+          swiped ? "-translate-x-20" : "translate-x-0"
+        }`}
+        style={{ borderRadius: 16, transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+        onClick={() => !swiped && onEdit(expense)}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${
+              isIncome ? "bg-income-blue/15" : isSavings ? "bg-safe-green/15" : "bg-destructive/15"
+            }`}
+          >
+            {isIncome ? (
+              <TrendingUp size={14} className="text-income-blue" />
+            ) : isSavings ? (
+              <PiggyBank size={14} className="text-safe-green" />
+            ) : (
+              <TrendingDown size={14} className="text-destructive" />
+            )}
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">{label}</p>
+            <p className="text-xs text-muted-foreground">{expense.account} · {expense.date}</p>
+          </div>
+        </div>
+        <span
+          className={`font-bold font-tabular text-sm ${
+            isIncome ? "text-income-blue" : isSavings ? "text-safe-green" : "text-alert-orange"
+          }`}
+        >
+          {isIncome ? "+" : "−"}{formatAmount(expense.amount)} ₸
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Today({ finance }: TodayProps) {
-  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
-  const [incomeModalOpen, setIncomeModalOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [showInfo, setShowInfo] = useState(false);
 
   const {
@@ -122,11 +198,12 @@ export default function Today({ finance }: TodayProps) {
     spentThisMonth,
     budgetRemaining,
     budgetStatus,
-    monthProgress,
     alreadySaved,
     savingsProgress,
     addExpense,
     addIncome,
+    deleteExpense,
+    updateExpense,
   } = finance;
 
   const safeToSpendColor =
@@ -143,36 +220,45 @@ export default function Today({ finance }: TodayProps) {
       ? "text-alert-orange"
       : "text-safe-green";
 
-  const recentExpenses = state.expenses.slice(0, 5);
+  const recentExpenses = state.expenses.slice(0, 8);
+
+  // Display 0 when negative, show overspend label separately
+  const displayAmount = Math.max(0, safeToSpend);
+  const isOverspent = safeToSpend < 0;
+  const overspendAmount = Math.abs(safeToSpend);
 
   const heroLabel =
-    safeToSpendStatus === "overspent"
-      ? "ПРЕВЫШЕН ДНЕВНОЙ ЛИМИТ"
+    isOverspent
+      ? "ДНЕВНОЙ ЛИМИТ ИСЧЕРПАН"
       : safeToSpendStatus === "warning"
       ? "ПОЧТИ ИСЧЕРПАН ЛИМИТ"
       : "МОЖЕШЬ ПОТРАТИТЬ СЕГОДНЯ";
 
   return (
-    <div className="flex flex-col min-h-screen pb-24">
+    <div className="flex flex-col min-h-screen pb-28">
       {/* Hero section */}
       <div className="px-5 pt-10 pb-6 text-center">
         <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-3">
           {heroLabel}
         </p>
         <div className="flex items-end justify-center gap-2 mb-1">
-          {safeToSpend < 0 && (
-            <span className={`text-4xl font-bold mb-1 ${safeToSpendColor}`}>−</span>
-          )}
-          <span className={`safe-number font-tabular ${safeToSpendColor}`}>
-            <AnimatedNumber value={Math.abs(safeToSpend)} />
+          <span className={`safe-number font-tabular ${isOverspent ? "text-destructive" : safeToSpendColor}`}>
+            <AnimatedNumber value={displayAmount} />
           </span>
-          <span className={`text-4xl font-bold mb-1 opacity-80 ${safeToSpendColor}`}>₸</span>
+          <span className={`text-4xl font-bold mb-1 opacity-80 ${isOverspent ? "text-destructive" : safeToSpendColor}`}>₸</span>
         </div>
+
+        {/* Overspend label */}
+        {isOverspent && (
+          <p className="text-sm font-semibold text-alert-orange mt-1 animate-fade-in-up">
+            Перерасход: {formatAmount(overspendAmount)} ₸
+          </p>
+        )}
 
         {/* Daily budget + spent today */}
         <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
           <span>Лимит: <span className="text-foreground font-semibold">{formatAmount(dailyBudget)} ₸</span></span>
-          <span className="text-muted-foreground/40">•</span>
+          <span className="text-white/20">•</span>
           <span>Потрачено: <span className="text-alert-orange font-semibold">{formatAmount(spentToday)} ₸</span></span>
         </div>
 
@@ -186,29 +272,16 @@ export default function Today({ finance }: TodayProps) {
       </div>
 
       <div className="flex-1 px-4 space-y-3">
-        {/* Month progress */}
-        <div className="bg-card border border-border/60 rounded-2xl p-4 animate-fade-in-up">
-          <div className="flex justify-between items-center mb-2.5">
-            <span className="text-xs font-medium text-muted-foreground">Прогресс месяца</span>
-            <span className="text-xs font-bold text-foreground">{monthProgress}%</span>
-          </div>
-          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full animate-grow transition-all duration-500"
-              style={{
-                width: `${monthProgress}%`,
-                background: "linear-gradient(90deg, hsl(162 100% 28%), hsl(162 100% 40%))",
-              }}
-            />
-          </div>
-          <div className="flex justify-between mt-2">
-            <span className="text-xs text-muted-foreground">{monthProgress}% месяца пройдено</span>
-            <span className="text-xs text-muted-foreground">{daysLeft} дней осталось</span>
-          </div>
-        </div>
+        {/* Daily spending chart (replaces month progress) */}
+        <DailySpendingChart
+          expenses={state.expenses}
+          totalDays={state.budgetPeriod.totalDays}
+          currentDay={state.budgetPeriod.currentDay}
+          dailyBudget={dailyBudget}
+        />
 
         {/* Monthly budget card */}
-        <div className="bg-card border border-border/60 rounded-2xl p-4 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
+        <div className="glass-card p-4 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Бюджет на месяц
           </h3>
@@ -222,7 +295,7 @@ export default function Today({ finance }: TodayProps) {
               <span className="font-semibold font-tabular text-alert-orange">{formatAmount(spentThisMonth)} ₸</span>
             </div>
             {monthlyBudget > 0 && (
-              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -237,11 +310,10 @@ export default function Today({ finance }: TodayProps) {
                 />
               </div>
             )}
-            <div className="flex items-center justify-between pt-1 border-t border-border/60">
+            <div className="flex items-center justify-between pt-1 border-t border-white/8">
               <span className="text-sm font-medium text-foreground">Остаток</span>
               <span className={`font-bold font-tabular text-lg ${budgetColor}`}>
-                <AnimatedNumber value={Math.max(0, budgetRemaining)} />
-                {" "}₸
+                <AnimatedNumber value={Math.max(0, budgetRemaining)} /> ₸
               </span>
             </div>
           </div>
@@ -249,7 +321,7 @@ export default function Today({ finance }: TodayProps) {
 
         {/* Savings progress card */}
         {state.savingsGoal > 0 && (
-          <div className="bg-card border border-border/60 rounded-2xl p-4 animate-fade-in-up" style={{ animationDelay: "0.08s" }}>
+          <div className="glass-card p-4 animate-fade-in-up" style={{ animationDelay: "0.08s" }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <PiggyBank size={14} className="text-safe-green" />
@@ -264,7 +336,7 @@ export default function Today({ finance }: TodayProps) {
                 <span className="text-foreground/80">Уже отложено</span>
                 <span className="font-bold font-tabular text-safe-green">{formatAmount(alreadySaved)} ₸</span>
               </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-2 bg-white/8 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -278,38 +350,12 @@ export default function Today({ finance }: TodayProps) {
                 <span className="font-tabular text-muted-foreground">{formatAmount(state.savingsGoal)} ₸</span>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setExpenseModalOpen(true);
-              }}
-              className="mt-3 w-full py-2.5 rounded-xl border border-safe-green text-safe-green text-sm font-semibold hover:bg-safe-green/10 transition-colors"
-            >
-              Отложить сейчас
-            </button>
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="space-y-2 animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
-          <button
-            onClick={() => setExpenseModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 bg-alert-orange text-white font-bold text-base py-4 rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-alert-orange/20"
-          >
-            <TrendingDown size={20} strokeWidth={2.5} />
-            + Добавить расход
-          </button>
-          <button
-            onClick={() => setIncomeModalOpen(true)}
-            className="w-full flex items-center justify-center gap-2 font-bold text-base py-4 rounded-2xl hover:opacity-90 active:scale-[0.98] transition-all border border-primary/40 text-primary bg-primary/10"
-          >
-            <TrendingUp size={20} strokeWidth={2.5} />
-            + Добавить доход
-          </button>
-        </div>
-
         {/* Recent transactions */}
         {recentExpenses.length > 0 && (
-          <div className="animate-fade-in-up" style={{ animationDelay: "0.16s" }}>
+          <div className="animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
               Последние операции
             </h3>
@@ -324,36 +370,22 @@ export default function Today({ finance }: TodayProps) {
                   ? "Сбережения"
                   : isObligation
                   ? (state.obligations.find((o) => o.id === expense.obligationId)?.name ?? "Обязательство")
-                  : expense.account;
+                  : expense.note || expense.account;
 
                 return (
-                  <div
+                  <TransactionRow
                     key={expense.id}
-                    className="bg-card border border-border/60 rounded-xl px-4 py-3 flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        isIncome ? "bg-income-blue/10" : isSavings ? "bg-safe-green/10" : "bg-destructive/10"
-                      }`}>
-                        {isIncome ? (
-                          <TrendingUp size={14} className="text-income-blue" />
-                        ) : isSavings ? (
-                          <PiggyBank size={14} className="text-safe-green" />
-                        ) : (
-                          <TrendingDown size={14} className="text-destructive" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{label}</p>
-                        <p className="text-xs text-muted-foreground">{expense.account} · {expense.date}</p>
-                      </div>
-                    </div>
-                    <span className={`font-bold font-tabular text-sm ${
-                      isIncome ? "text-income-blue" : isSavings ? "text-safe-green" : "text-alert-orange"
-                    }`}>
-                      {isIncome ? "+" : "−"}{formatAmount(expense.amount)} ₸
-                    </span>
-                  </div>
+                    expense={expense}
+                    label={label}
+                    onDelete={(id) => {
+                      deleteExpense(id);
+                      toast({ description: "🗑 Операция удалена", duration: 2000 });
+                    }}
+                    onEdit={(exp) => {
+                      setEditingExpense(exp);
+                      setSheetOpen(true);
+                    }}
+                  />
                 );
               })}
             </div>
@@ -361,27 +393,48 @@ export default function Today({ finance }: TodayProps) {
         )}
       </div>
 
-      {/* Expense Modal */}
-      <AddExpenseModal
-        open={expenseModalOpen}
-        onClose={() => setExpenseModalOpen(false)}
-        onSave={(amount, account, type, opts) => {
+      {/* FAB */}
+      <button
+        onClick={() => {
+          setEditingExpense(null);
+          setSheetOpen(true);
+        }}
+        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-safe-green/30 active:scale-90 transition-all duration-200"
+        style={{
+          background: "linear-gradient(135deg, hsl(162 100% 38%), hsl(162 100% 28%))",
+        }}
+      >
+        <Plus
+          size={28}
+          strokeWidth={2.5}
+          className="text-white transition-transform duration-300"
+          style={{ transform: sheetOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+        />
+      </button>
+
+      {/* Unified Action Sheet */}
+      <UnifiedActionSheet
+        open={sheetOpen}
+        onClose={() => {
+          setSheetOpen(false);
+          setEditingExpense(null);
+        }}
+        onSaveExpense={(amount, account, type, opts) => {
           addExpense(amount, account, type, opts);
-          toast({ description: `✅ Расход добавлен: ${formatAmount(amount)} ₸`, duration: 2000 });
+          const label = type === "savings" ? "💰 Отложено" : type === "obligation" ? "✅ Платёж" : "✅ Расход";
+          toast({ description: `${label}: ${formatAmount(amount)} ₸`, duration: 2000 });
+        }}
+        onSaveIncome={(amount, account, note) => {
+          addIncome(amount, account, note);
+          toast({ description: `💰 Доход: +${formatAmount(amount)} ₸`, duration: 2000 });
         }}
         accounts={state.accounts}
         obligations={state.obligations}
-      />
-
-      {/* Income Modal */}
-      <AddIncomeModal
-        open={incomeModalOpen}
-        onClose={() => setIncomeModalOpen(false)}
-        onSave={(amount, account, note) => {
-          addIncome(amount, account, note);
-          toast({ description: `💰 Доход добавлен: +${formatAmount(amount)} ₸`, duration: 2000 });
+        editingExpense={editingExpense}
+        onUpdateExpense={(id, amount, account, note) => {
+          updateExpense(id, amount, account, note);
+          toast({ description: "✏️ Операция обновлена", duration: 2000 });
         }}
-        accounts={state.accounts}
       />
 
       {/* Info panel */}
