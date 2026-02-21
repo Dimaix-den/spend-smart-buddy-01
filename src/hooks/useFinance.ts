@@ -70,26 +70,20 @@ function loadState(): FinanceState {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       const parsed = JSON.parse(stored) as FinanceState;
-      // Migrate obligations to include paid field if missing
       if (parsed.obligations && parsed.obligations.length > 0 && !("paid" in parsed.obligations[0])) {
         parsed.obligations = parsed.obligations.map((o) => ({ ...o, paid: false }));
       }
-      // Migrate expenses to new type system if needed
       if (parsed.expenses && parsed.expenses.length > 0 && !("type" in parsed.expenses[0])) {
         parsed.expenses = parsed.expenses.map((e: any) => ({
           ...e,
           type: e.isObligation ? "obligation" : "regular",
-          obligationId: e.obligationName ? null : null,
+          obligationId: null,
           toAccount: null,
           note: "",
         }));
       }
-      if (!parsed.currentDate) {
-        parsed.currentDate = today();
-      }
-      if (!parsed.budgetPeriod.startDate) {
-        parsed.budgetPeriod.startDate = today();
-      }
+      if (!parsed.currentDate) parsed.currentDate = today();
+      if (!parsed.budgetPeriod.startDate) parsed.budgetPeriod.startDate = today();
       return parsed;
     }
   } catch {}
@@ -102,21 +96,16 @@ function saveState(state: FinanceState) {
   } catch {}
 }
 
-/** Check if a new day started since last save and advance the day counter */
 function maybeAdvanceDay(state: FinanceState): FinanceState {
   const nowDate = today();
   if (state.currentDate === nowDate) return state;
-
-  // Count calendar days elapsed between stored date and today
   const storedMs = new Date(state.currentDate).getTime();
   const nowMs = new Date(nowDate).getTime();
   const daysElapsed = Math.round((nowMs - storedMs) / 86400000);
-
   const newCurrentDay = Math.min(
     state.budgetPeriod.currentDay + daysElapsed,
     state.budgetPeriod.totalDays
   );
-
   return {
     ...state,
     currentDate: nowDate,
@@ -154,17 +143,14 @@ export function useFinance() {
 
   const daysLeft = Math.max(1, state.budgetPeriod.totalDays - state.budgetPeriod.currentDay);
 
-  // dailyBudget: how much to spend per day for remaining days
   const available = activeBalance - remainingObligations - stillNeedToSave;
   const dailyBudget = Math.max(0, Math.round(available / daysLeft));
 
-  // spentToday: only regular expenses logged today
   const todayStr = state.currentDate;
   const spentToday = state.expenses
     .filter((e) => e.date === todayStr && e.type === "regular")
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // safeToSpend: real-time remaining for today
   const safeToSpendRaw = dailyBudget - spentToday;
   const safeToSpend = Math.round(safeToSpendRaw);
 
@@ -172,7 +158,6 @@ export function useFinance() {
   const safeToSpendStatus =
     safeToSpend < 0 ? "overspent" : percentSpent >= 80 ? "warning" : "ok";
 
-  // Monthly budget remaining
   const monthlyBudget = Math.max(0, available);
   const spentThisMonth = state.expenses
     .filter((e) => e.type === "regular")
@@ -270,28 +255,21 @@ export function useFinance() {
     ) => {
       setState((s) => {
         const nowDate = s.currentDate;
-
-        // Deduct from source account
         const updatedAccounts = s.accounts.map((a) =>
           a.name === accountName ? { ...a, balance: Math.max(0, a.balance - amount) } : a
         );
-
-        // If savings and transferring to another account, increase that account
         const finalAccounts =
           type === "savings" && opts?.toAccount
             ? updatedAccounts.map((a) =>
                 a.name === opts.toAccount ? { ...a, balance: a.balance + amount } : a
               )
             : updatedAccounts;
-
-        // If obligation payment, mark obligation as paid
         const updatedObligations =
           type === "obligation" && opts?.obligationId
             ? s.obligations.map((o) =>
                 o.id === opts.obligationId ? { ...o, paid: true } : o
               )
             : s.obligations;
-
         const expense: Expense = {
           id: Date.now().toString(),
           date: nowDate,
@@ -302,7 +280,6 @@ export function useFinance() {
           toAccount: opts?.toAccount ?? null,
           note: opts?.note ?? "",
         };
-
         return {
           ...s,
           accounts: finalAccounts,
@@ -333,7 +310,72 @@ export function useFinance() {
   }, []);
 
   const deleteExpense = useCallback((id: string) => {
-    setState((s) => ({ ...s, expenses: s.expenses.filter((e) => e.id !== id) }));
+    setState((s) => {
+      const expense = s.expenses.find((e) => e.id === id);
+      if (!expense) return { ...s, expenses: s.expenses.filter((e) => e.id !== id) };
+
+      // Reverse the balance change
+      let updatedAccounts = s.accounts;
+      if (expense.type === "income") {
+        updatedAccounts = updatedAccounts.map((a) =>
+          a.name === expense.account ? { ...a, balance: a.balance - expense.amount } : a
+        );
+      } else {
+        updatedAccounts = updatedAccounts.map((a) =>
+          a.name === expense.account ? { ...a, balance: a.balance + expense.amount } : a
+        );
+        if (expense.type === "savings" && expense.toAccount) {
+          updatedAccounts = updatedAccounts.map((a) =>
+            a.name === expense.toAccount ? { ...a, balance: a.balance - expense.amount } : a
+          );
+        }
+      }
+
+      // Reverse obligation paid status
+      let updatedObligations = s.obligations;
+      if (expense.type === "obligation" && expense.obligationId) {
+        updatedObligations = updatedObligations.map((o) =>
+          o.id === expense.obligationId ? { ...o, paid: false } : o
+        );
+      }
+
+      return {
+        ...s,
+        accounts: updatedAccounts,
+        obligations: updatedObligations,
+        expenses: s.expenses.filter((e) => e.id !== id),
+      };
+    });
+  }, []);
+
+  const updateExpense = useCallback((id: string, amount: number, accountName: string, note: string) => {
+    setState((s) => {
+      const old = s.expenses.find((e) => e.id === id);
+      if (!old) return s;
+
+      // Reverse old balance
+      let accs = s.accounts;
+      if (old.type === "income") {
+        accs = accs.map((a) => a.name === old.account ? { ...a, balance: a.balance - old.amount } : a);
+      } else {
+        accs = accs.map((a) => a.name === old.account ? { ...a, balance: a.balance + old.amount } : a);
+      }
+
+      // Apply new balance
+      if (old.type === "income") {
+        accs = accs.map((a) => a.name === accountName ? { ...a, balance: a.balance + amount } : a);
+      } else {
+        accs = accs.map((a) => a.name === accountName ? { ...a, balance: Math.max(0, a.balance - amount) } : a);
+      }
+
+      return {
+        ...s,
+        accounts: accs,
+        expenses: s.expenses.map((e) =>
+          e.id === id ? { ...e, amount, account: accountName, note } : e
+        ),
+      };
+    });
   }, []);
 
   // ─── New month ─────────────────────────────────────────────────
@@ -349,7 +391,6 @@ export function useFinance() {
 
   return {
     state,
-    // Calculated values
     activeBalance,
     totalObligations,
     remainingObligations,
@@ -366,7 +407,6 @@ export function useFinance() {
     budgetRemaining,
     budgetStatus,
     monthProgress,
-    // Actions
     toggleAccount,
     updateAccountBalance,
     updateAccountName,
@@ -381,6 +421,7 @@ export function useFinance() {
     addExpense,
     addIncome,
     deleteExpense,
+    updateExpense,
     startNewMonth,
   };
 }

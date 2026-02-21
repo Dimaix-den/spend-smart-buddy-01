@@ -84,11 +84,11 @@ export default function Settings({ finance }: SettingsProps) {
 
         {/* ─── Section 1: Obligations ─────────────────────────────── */}
         <Section title="Обязательства (в месяц)">
-          <div className="bg-card border border-border/60 rounded-2xl overflow-hidden">
+          <div className="glass-card overflow-hidden">
             {state.obligations.map((o, i) => (
               <div
                 key={o.id}
-                className={`px-4 py-3.5 ${i < state.obligations.length - 1 ? "border-b border-border/50" : ""}`}
+                className={`px-4 py-3.5 ${i < state.obligations.length - 1 ? "border-b border-white/6" : ""}`}
               >
                 {editingOblig === o.id ? (
                   <div className="flex gap-2">
@@ -96,14 +96,16 @@ export default function Settings({ finance }: SettingsProps) {
                       autoFocus
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      className="flex-1 bg-surface-raised border border-safe-green rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none"
+                      className="flex-1 glass-input px-2 py-1.5 text-sm text-foreground focus:outline-none"
+                      style={{ borderColor: "hsl(162 100% 33%)" }}
                     />
                     <div className="relative w-28">
                       <input
                         type="number"
                         value={editAmount}
                         onChange={(e) => setEditAmount(e.target.value)}
-                        className="w-full bg-surface-raised border border-safe-green rounded-lg px-2 py-1.5 text-sm text-foreground focus:outline-none pr-5"
+                        className="w-full glass-input px-2 py-1.5 text-sm text-foreground focus:outline-none pr-5"
+                        style={{ borderColor: "hsl(162 100% 33%)" }}
                       />
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸</span>
                     </div>
@@ -115,18 +117,17 @@ export default function Settings({ finance }: SettingsProps) {
                         }
                         setEditingOblig(null);
                       }}
-                      className="px-2 py-1 bg-safe-green text-primary-foreground rounded-lg text-xs font-bold"
+                      className="px-2 py-1 rounded-lg text-xs font-bold text-white"
+                      style={{ background: "hsl(162 100% 33%)" }}
                     >
                       ОК
                     </button>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    {/* Paid toggle */}
                     <button
                       onClick={() => toggleObligationPaid(o.id)}
                       className="mr-2 flex-shrink-0"
-                      title={o.paid ? "Отметить неоплаченным" : "Отметить оплаченным"}
                     >
                       {o.paid
                         ? <CheckCircle2 size={18} className="text-safe-green" />
@@ -156,7 +157,7 @@ export default function Settings({ finance }: SettingsProps) {
             ))}
 
             {/* Total rows */}
-            <div className="px-4 py-3 bg-muted/30 border-t border-border/60 space-y-1">
+            <div className="px-4 py-3 bg-white/3 border-t border-white/6 space-y-1">
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">Всего</span>
                 <span className="font-semibold font-tabular text-foreground text-sm">{formatAmount(totalObligations)} ₸</span>
@@ -168,15 +169,14 @@ export default function Settings({ finance }: SettingsProps) {
             </div>
           </div>
 
-          {/* Add obligation */}
           {showAddOblig ? (
-            <div className="bg-card border border-safe-green/30 rounded-2xl p-4 space-y-3 animate-fade-in-up">
+            <div className="glass-card-raised p-4 space-y-3 animate-fade-in-up">
               <input
                 autoFocus
                 placeholder="Название (напр. Аренда)"
                 value={newObligName}
                 onChange={(e) => setNewObligName(e.target.value)}
-                className="w-full bg-surface-raised border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-safe-green focus:outline-none"
+                className="w-full glass-input px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
               />
               <div className="relative">
                 <input
@@ -185,19 +185,19 @@ export default function Settings({ finance }: SettingsProps) {
                   value={newObligAmount}
                   onChange={(e) => setNewObligAmount(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleAddObligation()}
-                  className="w-full bg-surface-raised border border-border rounded-xl px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-safe-green focus:outline-none pr-8"
+                  className="w-full glass-input px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none pr-8"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setShowAddOblig(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors">Отмена</button>
-                <button onClick={handleAddObligation} className="flex-1 py-2.5 rounded-xl bg-safe-green text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity">Добавить</button>
+                <button onClick={() => setShowAddOblig(false)} className="flex-1 py-2.5 rounded-[14px] border border-white/10 text-sm font-semibold text-foreground hover:bg-white/5 transition-colors">Отмена</button>
+                <button onClick={handleAddObligation} className="flex-1 py-2.5 rounded-[14px] text-sm font-bold hover:opacity-90 transition-opacity text-white" style={{ background: "hsl(162 100% 33%)" }}>Добавить</button>
               </div>
             </div>
           ) : (
             <button
               onClick={() => setShowAddOblig(true)}
-              className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-border text-muted-foreground hover:border-safe-green hover:text-safe-green py-3 rounded-2xl text-sm font-semibold transition-colors"
+              className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-white/10 text-muted-foreground hover:border-safe-green hover:text-safe-green py-3 rounded-[20px] text-sm font-semibold transition-colors"
             >
               <Plus size={16} />
               Добавить обязательство
@@ -207,7 +207,7 @@ export default function Settings({ finance }: SettingsProps) {
 
         {/* ─── Section 2: Savings goal ─────────────────────────────── */}
         <Section title="Цель сбережений">
-          <div className="bg-card border border-border/60 rounded-2xl p-4">
+          <div className="glass-card p-4">
             <label className="text-xs text-muted-foreground mb-2 block">
               Хочу отложить в этом месяце
             </label>
@@ -217,7 +217,7 @@ export default function Settings({ finance }: SettingsProps) {
                 value={state.savingsGoal || ""}
                 onChange={(e) => setSavingsGoal(parseFloat(e.target.value) || 0)}
                 placeholder="0"
-                className="w-full bg-surface-raised border border-border rounded-xl px-4 py-3 text-xl font-bold text-safe-green font-tabular focus:border-safe-green focus:outline-none transition-colors pr-8"
+                className="w-full glass-input px-4 py-3 text-xl font-bold text-safe-green font-tabular focus:outline-none transition-colors pr-8"
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₸</span>
             </div>
@@ -227,10 +227,13 @@ export default function Settings({ finance }: SettingsProps) {
                   <span>Уже отложено: <span className="text-safe-green font-semibold">{formatAmount(alreadySaved)} ₸</span></span>
                   <span>Осталось: <span className="text-foreground font-semibold">{formatAmount(Math.max(0, state.savingsGoal - alreadySaved))} ₸</span></span>
                 </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-safe-green rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(100, (alreadySaved / state.savingsGoal) * 100)}%` }}
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, (alreadySaved / state.savingsGoal) * 100)}%`,
+                      background: "linear-gradient(90deg, hsl(162 100% 28%), hsl(162 100% 40%))",
+                    }}
                   />
                 </div>
               </div>
@@ -243,7 +246,7 @@ export default function Settings({ finance }: SettingsProps) {
 
         {/* ─── Section 3: Budget period ─────────────────────────────── */}
         <Section title="Период бюджета">
-          <div className="bg-card border border-border/60 rounded-2xl p-4 space-y-4">
+          <div className="glass-card p-4 space-y-4">
             <div>
               <label className="text-xs text-muted-foreground mb-2 block">Длительность периода (дни)</label>
               <div className="relative">
@@ -251,7 +254,7 @@ export default function Settings({ finance }: SettingsProps) {
                   type="number"
                   value={state.budgetPeriod.totalDays || ""}
                   onChange={(e) => updateBudgetPeriod({ totalDays: parseInt(e.target.value) || 30 })}
-                  className="w-full bg-surface-raised border border-border rounded-xl px-4 py-3 text-lg font-bold text-foreground font-tabular focus:border-safe-green focus:outline-none pr-16"
+                  className="w-full glass-input px-4 py-3 text-lg font-bold text-foreground font-tabular focus:outline-none pr-16"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">дней</span>
               </div>
@@ -263,7 +266,7 @@ export default function Settings({ finance }: SettingsProps) {
                   type="number"
                   value={state.budgetPeriod.currentDay || ""}
                   onChange={(e) => updateBudgetPeriod({ currentDay: Math.min(parseInt(e.target.value) || 1, state.budgetPeriod.totalDays) })}
-                  className="w-full bg-surface-raised border border-border rounded-xl px-4 py-3 text-lg font-bold text-foreground font-tabular focus:border-safe-green focus:outline-none pr-16"
+                  className="w-full glass-input px-4 py-3 text-lg font-bold text-foreground font-tabular focus:outline-none pr-16"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">/ {state.budgetPeriod.totalDays}</span>
               </div>
@@ -274,7 +277,7 @@ export default function Settings({ finance }: SettingsProps) {
 
         {/* ─── Section 4: Budget tracking ──────────────────────────── */}
         <Section title="Остаток бюджета">
-          <div className="bg-card border border-border/60 rounded-2xl p-4 space-y-3">
+          <div className="glass-card p-4 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-foreground/80">Бюджет на месяц</span>
               <span className="font-bold font-tabular text-foreground">{formatAmount(monthlyBudget)} ₸</span>
@@ -284,7 +287,7 @@ export default function Settings({ finance }: SettingsProps) {
               <span className="font-bold font-tabular text-alert-orange">{formatAmount(spentThisMonth)} ₸</span>
             </div>
             {monthlyBudget > 0 && (
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-2 bg-white/8 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -299,7 +302,7 @@ export default function Settings({ finance }: SettingsProps) {
                 />
               </div>
             )}
-            <div className="border-t border-border/60 pt-3">
+            <div className="border-t border-white/8 pt-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-foreground">Остаток бюджета</span>
                 <span className={`text-2xl font-bold font-tabular ${budgetColor}`}>
@@ -313,7 +316,7 @@ export default function Settings({ finance }: SettingsProps) {
         {/* ─── New month button ─────────────────────────────────────── */}
         <button
           onClick={() => setShowNewMonthDialog(true)}
-          className="w-full flex items-center justify-center gap-2 border border-border text-muted-foreground hover:border-safe-green hover:text-safe-green py-4 rounded-2xl font-semibold text-sm transition-colors"
+          className="w-full flex items-center justify-center gap-2 border border-white/10 text-muted-foreground hover:border-safe-green hover:text-safe-green py-4 rounded-[20px] font-semibold text-sm transition-colors"
         >
           <RefreshCw size={16} />
           Начать новый месяц
@@ -323,17 +326,16 @@ export default function Settings({ finance }: SettingsProps) {
       {/* New Month Confirmation Dialog */}
       {showNewMonthDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowNewMonthDialog(false)} />
-          <div className="relative bg-card border border-border rounded-2xl p-6 w-full max-w-sm animate-fade-in-up">
+          <div className="absolute inset-0 glass-overlay" onClick={() => setShowNewMonthDialog(false)} />
+          <div className="relative glass-card-raised p-6 w-full max-w-sm animate-fade-in-up">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-alert-orange/10 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-alert-orange/15 flex items-center justify-center">
                 <AlertTriangle size={20} className="text-alert-orange" />
               </div>
               <h3 className="text-lg font-bold text-foreground">Начать новый месяц?</h3>
             </div>
 
-            {/* Summary */}
-            <div className="bg-surface-raised rounded-xl p-3 mb-4 space-y-2 text-sm">
+            <div className="bg-white/5 rounded-[14px] p-3 mb-4 space-y-2 text-sm">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Итоги месяца</p>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Отложено в сбережения</span>
@@ -343,7 +345,7 @@ export default function Settings({ finance }: SettingsProps) {
                 <span className="text-muted-foreground">Цель</span>
                 <span className="font-tabular text-foreground">{formatAmount(state.savingsGoal)} ₸</span>
               </div>
-              <div className="flex items-center gap-2 pt-1 border-t border-border/60">
+              <div className="flex items-center gap-2 pt-1 border-t border-white/8">
                 {goalAchieved
                   ? <><CheckCircle2 size={14} className="text-safe-green" /><span className="text-safe-green font-medium">Цель достигнута! 🎉</span></>
                   : <><AlertTriangle size={14} className="text-alert-orange" /><span className="text-alert-orange font-medium">Цель не достигнута</span></>
@@ -357,13 +359,14 @@ export default function Settings({ finance }: SettingsProps) {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowNewMonthDialog(false)}
-                className="flex-1 py-3 rounded-xl border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors"
+                className="flex-1 py-3 rounded-[14px] border border-white/10 text-sm font-semibold text-foreground hover:bg-white/5 transition-colors"
               >
                 Отмена
               </button>
               <button
                 onClick={handleNewMonth}
-                className="flex-1 py-3 rounded-xl bg-safe-green text-primary-foreground text-sm font-bold hover:opacity-90 transition-opacity"
+                className="flex-1 py-3 rounded-[14px] text-sm font-bold hover:opacity-90 transition-opacity text-white"
+                style={{ background: "linear-gradient(135deg, hsl(162 100% 38%), hsl(162 100% 28%))" }}
               >
                 Начать
               </button>
