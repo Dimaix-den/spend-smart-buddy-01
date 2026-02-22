@@ -17,15 +17,12 @@ export default function DailySpendingChart({
 }: DailySpendingChartProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Build daily totals for each day
+  // Build daily totals
   const dailyTotals: number[] = [];
   for (let day = 1; day <= totalDays; day++) {
-    // We map day numbers to spending. Since we don't have exact date mapping,
-    // we approximate by grouping expenses by their date string relative to start.
     dailyTotals.push(0);
   }
 
-  // Group regular expenses by date
   const dateMap = new Map<string, number>();
   expenses
     .filter((e) => e.type === "regular")
@@ -33,25 +30,19 @@ export default function DailySpendingChart({
       dateMap.set(e.date, (dateMap.get(e.date) || 0) + e.amount);
     });
 
-  // Sort dates and assign to days
   const sortedDates = [...dateMap.keys()].sort();
   sortedDates.forEach((date, idx) => {
     if (idx < totalDays) {
-      // Find which day this date corresponds to
-      // Simple: use the order they appear
       const dayIdx = Math.min(idx, totalDays - 1);
       dailyTotals[dayIdx] = dateMap.get(date) || 0;
     }
   });
 
-  // Better approach: use actual date offsets from expenses
-  // Re-calculate using actual dates
   const allDays: { day: number; spent: number; isToday: boolean }[] = [];
   for (let d = 1; d <= Math.min(currentDay, totalDays); d++) {
     allDays.push({ day: d, spent: 0, isToday: d === currentDay });
   }
 
-  // Group by date and assign to days in order
   const dateEntries = [...dateMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   dateEntries.forEach((entry, idx) => {
     if (idx < allDays.length) {
@@ -59,14 +50,8 @@ export default function DailySpendingChart({
     }
   });
 
-  // If no date grouping is meaningful, just put today's spending on current day
-  if (dateEntries.length === 0 && allDays.length > 0) {
-    // nothing to show
-  }
-
   const maxSpent = Math.max(dailyBudget, ...allDays.map((d) => d.spent), 1);
 
-  // Auto-scroll to current day
   useEffect(() => {
     if (scrollRef.current) {
       const el = scrollRef.current;
@@ -103,7 +88,7 @@ export default function DailySpendingChart({
 
       {/* Limit line label */}
       <div className="flex items-center gap-2 mb-1">
-        <div className="flex-1 border-t border-dashed border-muted-foreground/30" />
+        <div className="flex-1 border-t border-dashed border-gray-300" />
         <span className="text-[10px] text-muted-foreground font-tabular">{formatAmount(dailyBudget)} ₸</span>
       </div>
 
@@ -116,10 +101,10 @@ export default function DailySpendingChart({
           return (
             <div key={d.day} className="flex flex-col items-center gap-1 min-w-[28px]">
               {/* Bar */}
-              <div className="relative w-5 h-16 rounded-md bg-white/5 overflow-hidden flex items-end">
+              <div className="relative w-5 h-16 rounded-md bg-gray-100 overflow-hidden flex items-end">
                 {/* Limit marker */}
                 <div
-                  className="absolute w-full border-t border-dashed border-muted-foreground/25"
+                  className="absolute w-full border-t border-dashed border-gray-300"
                   style={{ bottom: `${limitPct}%` }}
                 />
                 {/* Bar fill */}

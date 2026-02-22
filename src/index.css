@@ -4,36 +4,36 @@
 
 @layer base {
   :root {
-    /* SANDA Brand - Dark Theme */
-    --background: 240 60% 4%;        /* #0D0D1A */
-    --foreground: 240 20% 95%;       /* #F0F0F5 */
+    /* SANDA Brand - Light Theme */
+    --background: 0 0% 100%;           /* #FFFFFF */
+    --foreground: 220 13% 18%;          /* #1F2937 */
 
-    --card: 240 30% 12%;             /* #1A1A26 */
-    --card-foreground: 240 20% 95%;
+    --card: 220 14% 96%;               /* #F3F4F6 */
+    --card-foreground: 220 13% 18%;
 
-    --popover: 240 30% 12%;
-    --popover-foreground: 240 20% 95%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 13% 18%;
 
-    --primary: 162 100% 33%;         /* #00A676 teal green */
+    --primary: 162 100% 33%;            /* #00A676 teal green */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 25% 18%;
-    --secondary-foreground: 240 20% 75%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 46%;
 
-    --muted: 240 25% 18%;
-    --muted-foreground: 248 14% 48%; /* #6B6B8A */
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;     /* #6B7280 */
 
-    --accent: 240 25% 20%;
-    --accent-foreground: 240 20% 95%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 13% 18%;
 
-    --destructive: 22 82% 51%;       /* #E8601C orange */
+    --destructive: 0 84% 60%;           /* #EF4444 red */
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 22 82% 51%;           /* #E8601C */
+    --warning: 38 92% 50%;              /* #F59E0B amber */
     --warning-foreground: 0 0% 100%;
 
-    --border: 240 25% 18%;
-    --input: 240 28% 16%;
+    --border: 220 13% 91%;              /* #E5E7EB */
+    --input: 220 14% 96%;              /* #F3F4F6 */
     --ring: 162 100% 33%;
 
     --radius: 0.75rem;
@@ -42,17 +42,17 @@
     --safe-green: 162 100% 33%;
     --alert-orange: 22 82% 51%;
     --income-blue: 217 91% 60%;
-    --surface: 240 30% 12%;
-    --surface-raised: 240 28% 16%;
+    --surface: 220 14% 96%;
+    --surface-raised: 0 0% 100%;
 
     /* Sidebar (not used but required) */
-    --sidebar-background: 240 60% 4%;
-    --sidebar-foreground: 240 20% 95%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 13% 18%;
     --sidebar-primary: 162 100% 33%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 25% 18%;
-    --sidebar-accent-foreground: 240 20% 95%;
-    --sidebar-border: 240 25% 18%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 220 13% 18%;
+    --sidebar-border: 220 13% 91%;
     --sidebar-ring: 162 100% 33%;
   }
 }
@@ -67,6 +67,14 @@
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
+  }
+
+  /* Scroll lock when popup is open */
+  body.popup-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
   }
 }
 
@@ -91,71 +99,50 @@
     display: none;
   }
 
-  /* iOS 26 Liquid Glass */
+  /* iOS 26 Liquid Glass — Light Mode */
   .glass-card {
-    background: linear-gradient(
-      135deg,
-      hsla(240, 30%, 16%, 0.65) 0%,
-      hsla(240, 30%, 12%, 0.55) 100%
-    );
-    backdrop-filter: blur(24px) saturate(1.6);
-    -webkit-backdrop-filter: blur(24px) saturate(1.6);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    box-shadow:
-      0 2px 16px rgba(0, 0, 0, 0.25),
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     border-radius: 20px;
   }
 
   .glass-card-raised {
-    background: linear-gradient(
-      145deg,
-      hsla(240, 28%, 18%, 0.7) 0%,
-      hsla(240, 28%, 14%, 0.6) 100%
-    );
-    backdrop-filter: blur(20px) saturate(1.5);
-    -webkit-backdrop-filter: blur(20px) saturate(1.5);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
     border-radius: 20px;
   }
 
   .glass-nav {
-    background: linear-gradient(
-      180deg,
-      hsla(240, 30%, 12%, 0.75) 0%,
-      hsla(240, 60%, 4%, 0.85) 100%
-    );
-    backdrop-filter: blur(32px) saturate(1.8);
-    -webkit-backdrop-filter: blur(32px) saturate(1.8);
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px) saturate(1.8);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.06);
   }
 
   .glass-overlay {
-    background: hsla(240, 60%, 4%, 0.65);
-    backdrop-filter: blur(20px) saturate(1.4);
-    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 
   .glass-sheet {
-    background: linear-gradient(
-      180deg,
-      hsla(240, 30%, 14%, 0.92) 0%,
-      hsla(240, 30%, 10%, 0.95) 100%
-    );
+    background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(40px) saturate(1.8);
     -webkit-backdrop-filter: blur(40px) saturate(1.8);
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.4);
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15);
   }
 
   .glass-input {
-    background: hsla(240, 28%, 16%, 0.6);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: hsl(220 14% 96%);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: 14px;
   }
 }

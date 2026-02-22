@@ -70,21 +70,31 @@ function AccountCard({
           )}
         </div>
 
-        {/* Toggle — fixed alignment */}
+        {/* Toggle — iOS-style fixed */}
         <button
           onClick={() => onToggle(account.id)}
-          className="relative w-[52px] h-[32px] rounded-full transition-colors duration-300 flex-shrink-0"
+          className="relative flex-shrink-0 overflow-hidden"
           style={{
+            width: 51,
+            height: 31,
+            borderRadius: 31,
             background: account.isActive
               ? "linear-gradient(135deg, hsl(162 100% 38%), hsl(162 100% 28%))"
-              : "hsla(240, 25%, 22%, 0.8)",
+              : "hsl(220 13% 91%)",
+            transition: "background 0.3s ease",
           }}
         >
           <span
-            className="absolute top-[3px] w-[26px] h-[26px] rounded-full shadow-md transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+            className="absolute rounded-full"
             style={{
-              background: "hsl(var(--foreground))",
-              transform: account.isActive ? "translateX(23px)" : "translateX(3px)",
+              top: 2,
+              left: 2,
+              width: 27,
+              height: 27,
+              background: "#FFFFFF",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transform: account.isActive ? "translateX(20px)" : "translateX(0px)",
             }}
           />
         </button>
@@ -165,24 +175,34 @@ function AddAccountForm({ onAdd, onCancel }: { onAdd: (name: string, balance: nu
         <span className="text-sm text-foreground">Активный счёт</span>
         <button
           onClick={() => setIsActive(!isActive)}
-          className="relative w-[52px] h-[32px] rounded-full transition-colors duration-300"
+          className="relative flex-shrink-0 overflow-hidden"
           style={{
+            width: 51,
+            height: 31,
+            borderRadius: 31,
             background: isActive
               ? "linear-gradient(135deg, hsl(162 100% 38%), hsl(162 100% 28%))"
-              : "hsla(240, 25%, 22%, 0.8)",
+              : "hsl(220 13% 91%)",
+            transition: "background 0.3s ease",
           }}
         >
           <span
-            className="absolute top-[3px] w-[26px] h-[26px] rounded-full shadow-md transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+            className="absolute rounded-full"
             style={{
-              background: "hsl(var(--foreground))",
-              transform: isActive ? "translateX(23px)" : "translateX(3px)",
+              top: 2,
+              left: 2,
+              width: 27,
+              height: 27,
+              background: "#FFFFFF",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+              transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+              transform: isActive ? "translateX(20px)" : "translateX(0px)",
             }}
           />
         </button>
       </div>
       <div className="flex gap-2">
-        <button onClick={onCancel} className="flex-1 py-2.5 rounded-[14px] border border-white/10 text-sm font-semibold text-foreground hover:bg-white/5 transition-colors">Отмена</button>
+        <button onClick={onCancel} className="flex-1 py-2.5 rounded-[14px] border border-border text-sm font-semibold text-foreground hover:bg-muted transition-colors">Отмена</button>
         <button onClick={handleSubmit} className="flex-1 py-2.5 rounded-[14px] text-sm font-bold hover:opacity-90 transition-opacity text-white" style={{ background: "linear-gradient(135deg, hsl(162 100% 38%), hsl(162 100% 28%))" }}>Добавить</button>
       </div>
     </div>
@@ -273,7 +293,7 @@ export default function Accounts({ finance }: AccountsProps) {
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-white/10 text-muted-foreground hover:border-safe-green hover:text-safe-green py-4 rounded-[20px] font-semibold text-sm transition-colors"
+            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-border text-muted-foreground hover:border-safe-green hover:text-safe-green py-4 rounded-[20px] font-semibold text-sm transition-colors"
           >
             <Plus size={18} />
             Добавить счёт

@@ -23,29 +23,25 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
             <button
               key={id}
               onClick={() => onChange(id)}
-              className={`flex-1 flex flex-col items-center gap-1 py-3 px-2 transition-all duration-300 relative ${
-                isActive ? "text-safe-green" : "text-muted-foreground"
+              className={`flex-1 flex flex-col items-center gap-1 py-3 px-2 transition-all duration-300 relative active:scale-95 ${
+                isActive ? "text-safe-green" : "text-muted-foreground opacity-60"
               }`}
             >
               <Icon
                 size={22}
                 strokeWidth={isActive ? 2.5 : 1.8}
                 className="transition-all duration-300"
-                style={{
-                  transform: isActive ? "scale(1.1)" : "scale(1)",
-                  filter: isActive ? "drop-shadow(0 0 6px hsl(162 100% 33% / 0.4))" : "none",
-                }}
+                style={{ transform: isActive ? "scale(1.1)" : "scale(1)" }}
               />
               <span
-                className="text-[10px] font-semibold tracking-wider transition-all duration-300"
+                className="font-semibold tracking-wider transition-all duration-300"
                 style={{ fontSize: "9px" }}
               >
                 {label}
               </span>
               {isActive && (
                 <span
-                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                  style={{ background: "linear-gradient(90deg, hsl(162 100% 38%), hsl(162 100% 28%))" }}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-safe-green"
                 />
               )}
             </button>

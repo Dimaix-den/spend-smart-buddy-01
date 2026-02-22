@@ -53,6 +53,11 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
   spentToday: number;
   safeToSpend: number;
 }) {
+  useEffect(() => {
+    document.body.classList.add('popup-open');
+    return () => document.body.classList.remove('popup-open');
+  }, []);
+
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 glass-overlay" />
@@ -61,7 +66,7 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 bg-white/20 rounded-full" />
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
         <h3 className="text-sm font-bold text-foreground mb-3">Как рассчитывается?</h3>
         <div className="space-y-2 text-sm">
@@ -77,7 +82,7 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
             <span>− Осталось сберечь</span>
             <span className="font-tabular font-semibold">−{formatAmount(stillNeedToSave)} ₸</span>
           </div>
-          <div className="border-t border-white/10 pt-2 flex justify-between text-foreground">
+          <div className="border-t border-border pt-2 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
@@ -90,7 +95,7 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
               <span className="text-foreground/80">− Потрачено сегодня</span>
               <span className="text-alert-orange font-semibold font-tabular">{formatAmount(spentToday)} ₸</span>
             </div>
-            <div className="flex justify-between items-center border-t border-white/10 pt-1.5">
+            <div className="flex justify-between items-center border-t border-border pt-1.5">
               <span className="text-foreground font-medium">= Можно потратить</span>
               <span className="text-safe-green font-bold font-tabular text-lg">
                 {formatAmount(Math.max(0, safeToSpend))} ₸
@@ -130,7 +135,6 @@ function TransactionRow({
 
   return (
     <div className="relative overflow-hidden rounded-[16px]">
-      {/* Delete button behind */}
       {swiped && (
         <button
           onClick={() => onDelete(expense.id)}
@@ -222,7 +226,6 @@ export default function Today({ finance }: TodayProps) {
 
   const recentExpenses = state.expenses.slice(0, 8);
 
-  // Display 0 when negative, show overspend label separately
   const displayAmount = Math.max(0, safeToSpend);
   const isOverspent = safeToSpend < 0;
   const overspendAmount = Math.abs(safeToSpend);
@@ -248,17 +251,15 @@ export default function Today({ finance }: TodayProps) {
           <span className={`text-4xl font-bold mb-1 opacity-80 ${isOverspent ? "text-destructive" : safeToSpendColor}`}>₸</span>
         </div>
 
-        {/* Overspend label */}
         {isOverspent && (
           <p className="text-sm font-semibold text-alert-orange mt-1 animate-fade-in-up">
             Перерасход: {formatAmount(overspendAmount)} ₸
           </p>
         )}
 
-        {/* Daily budget + spent today */}
         <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
           <span>Лимит: <span className="text-foreground font-semibold">{formatAmount(dailyBudget)} ₸</span></span>
-          <span className="text-white/20">•</span>
+          <span className="text-gray-300">•</span>
           <span>Потрачено: <span className="text-alert-orange font-semibold">{formatAmount(spentToday)} ₸</span></span>
         </div>
 
@@ -272,7 +273,7 @@ export default function Today({ finance }: TodayProps) {
       </div>
 
       <div className="flex-1 px-4 space-y-3">
-        {/* Daily spending chart (replaces month progress) */}
+        {/* Daily spending chart */}
         <DailySpendingChart
           expenses={state.expenses}
           totalDays={state.budgetPeriod.totalDays}
@@ -295,7 +296,7 @@ export default function Today({ finance }: TodayProps) {
               <span className="font-semibold font-tabular text-alert-orange">{formatAmount(spentThisMonth)} ₸</span>
             </div>
             {monthlyBudget > 0 && (
-              <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -310,7 +311,7 @@ export default function Today({ finance }: TodayProps) {
                 />
               </div>
             )}
-            <div className="flex items-center justify-between pt-1 border-t border-white/8">
+            <div className="flex items-center justify-between pt-1 border-t border-border">
               <span className="text-sm font-medium text-foreground">Остаток</span>
               <span className={`font-bold font-tabular text-lg ${budgetColor}`}>
                 <AnimatedNumber value={Math.max(0, budgetRemaining)} /> ₸
@@ -336,7 +337,7 @@ export default function Today({ finance }: TodayProps) {
                 <span className="text-foreground/80">Уже отложено</span>
                 <span className="font-bold font-tabular text-safe-green">{formatAmount(alreadySaved)} ₸</span>
               </div>
-              <div className="h-2 bg-white/8 rounded-full overflow-hidden">
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -399,9 +400,10 @@ export default function Today({ finance }: TodayProps) {
           setEditingExpense(null);
           setSheetOpen(true);
         }}
-        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-lg shadow-safe-green/30 active:scale-90 transition-all duration-200"
+        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all duration-200"
         style={{
           background: "linear-gradient(135deg, hsl(162 100% 38%), hsl(162 100% 28%))",
+          boxShadow: "0 4px 16px rgba(0, 166, 118, 0.3)",
         }}
       >
         <Plus
