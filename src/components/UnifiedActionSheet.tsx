@@ -54,6 +54,16 @@ export default function UnifiedActionSheet({
   const inactiveAccounts = accounts.filter((a) => !a.isActive);
   const unpaidObligations = obligations.filter((o) => !o.paid);
 
+  // Scroll lock
+  useEffect(() => {
+    if (open) {
+      document.body.classList.add('popup-open');
+    } else {
+      document.body.classList.remove('popup-open');
+    }
+    return () => document.body.classList.remove('popup-open');
+  }, [open]);
+
   useEffect(() => {
     if (open) {
       if (editingExpense) {
@@ -123,7 +133,7 @@ export default function UnifiedActionSheet({
       <div className="relative w-full max-w-app glass-sheet rounded-t-[24px] modal-slide-up pb-8 max-h-[90vh] overflow-y-auto">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-white/20 rounded-full" />
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
         </div>
 
         {/* Header */}
@@ -133,7 +143,7 @@ export default function UnifiedActionSheet({
           </h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-muted-foreground hover:text-foreground transition-colors"
           >
             <X size={16} />
           </button>
@@ -142,14 +152,14 @@ export default function UnifiedActionSheet({
         {/* Segmented control */}
         {!isEditing && (
           <div className="px-5 mb-4">
-            <div className="flex p-1 glass-input rounded-[16px]">
+            <div className="flex p-1 bg-gray-100 rounded-[16px]">
               {tabs.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
                   className={`flex-1 py-2 rounded-[12px] text-sm font-semibold transition-all duration-300 ${
                     tab === t.id
-                      ? "bg-white/15 text-foreground shadow-sm"
+                      ? "bg-white text-foreground shadow-sm"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -172,7 +182,7 @@ export default function UnifiedActionSheet({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0"
-                className="w-full glass-input px-4 py-3.5 text-3xl font-bold text-foreground tabular-nums placeholder:text-muted-foreground/40 focus:outline-none focus:border-white/20 transition-colors"
+                className="w-full glass-input px-4 py-3.5 text-3xl font-bold text-foreground tabular-nums placeholder:text-muted-foreground/40 focus:outline-none transition-colors"
                 style={{ borderColor: amount ? accentColor : undefined }}
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">₸</span>
@@ -190,7 +200,7 @@ export default function UnifiedActionSheet({
                   key={acc.id}
                   onClick={() => setSelectedAccount(acc.name)}
                   className={`w-full flex items-center justify-between px-4 py-3 rounded-[14px] border transition-all duration-200 ${
-                    selectedAccount === acc.name ? borderAccent : "border-white/8 bg-white/5 hover:bg-white/8"
+                    selectedAccount === acc.name ? borderAccent : "border-border bg-gray-50 hover:bg-gray-100"
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
@@ -226,7 +236,7 @@ export default function UnifiedActionSheet({
                     className={`flex-1 py-2.5 rounded-[12px] text-sm font-semibold transition-all duration-200 ${
                       expenseType === opt.value
                         ? "bg-alert-orange/15 border border-alert-orange/40 text-alert-orange"
-                        : "border border-white/8 text-muted-foreground hover:text-foreground"
+                        : "border border-border text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {opt.label}
@@ -246,7 +256,7 @@ export default function UnifiedActionSheet({
                   className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
                     selectedObligId === o.id
                       ? "bg-alert-orange text-white"
-                      : "bg-white/8 text-muted-foreground hover:text-foreground"
+                      : "bg-gray-100 text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {o.name} ({formatAmount(o.amount)} ₸)
@@ -265,7 +275,7 @@ export default function UnifiedActionSheet({
                   className={`flex-1 py-2.5 rounded-[12px] text-sm font-semibold transition-all ${
                     savingsTarget === "virtual"
                       ? "bg-safe-green/15 border border-safe-green/40 text-safe-green"
-                      : "border border-white/8 text-muted-foreground"
+                      : "border border-border text-muted-foreground"
                   }`}
                 >
                   Отметить
@@ -276,7 +286,7 @@ export default function UnifiedActionSheet({
                     className={`flex-1 py-2.5 rounded-[12px] text-sm font-semibold transition-all ${
                       savingsTarget === "transfer"
                         ? "bg-safe-green/15 border border-safe-green/40 text-safe-green"
-                        : "border border-white/8 text-muted-foreground"
+                        : "border border-border text-muted-foreground"
                     }`}
                   >
                     На депозит
@@ -292,7 +302,7 @@ export default function UnifiedActionSheet({
                       className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
                         toAccount === acc.name
                           ? "bg-safe-green text-primary-foreground"
-                          : "bg-white/8 text-muted-foreground"
+                          : "bg-gray-100 text-muted-foreground"
                       }`}
                     >
                       {acc.name}
@@ -303,7 +313,7 @@ export default function UnifiedActionSheet({
             </div>
           )}
 
-          {/* Note (for income and editing) */}
+          {/* Note */}
           {(tab === "income" || isEditing) && (
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
