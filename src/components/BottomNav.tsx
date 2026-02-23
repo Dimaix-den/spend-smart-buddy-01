@@ -1,6 +1,6 @@
-import { Home, Landmark } from "lucide-react";
+import { Home, CreditCard, Settings } from "lucide-react";
 
-type Tab = "today" | "capital";
+type Tab = "today" | "accounts" | "settings";
 
 interface BottomNavProps {
   active: Tab;
@@ -8,14 +8,15 @@ interface BottomNavProps {
 }
 
 export default function BottomNav({ active, onChange }: BottomNavProps) {
-  const tabs: { id: Tab; label: string; Icon: typeof Home }[] = [
-    { id: "today", label: "СЕГОДНЯ", Icon: Home },
-    { id: "capital", label: "КАПИТАЛ", Icon: Landmark },
-  ];
+  const tabs: {id: Tab;label: string;Icon: typeof Home;}[] = [
+  { id: "today", label: "СЕГОДНЯ", Icon: Home },
+  { id: "accounts", label: "СЧЕТА", Icon: CreditCard },
+  { id: "settings", label: "НАСТРОЙКИ", Icon: Settings }];
+
 
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-40 max-w-app mx-auto">
-      <div className="flex items-center glass-nav px-2 py-1" style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}>
+    <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-app z-40 rounded-full">
+      <div className="flex items-center glass-nav px-2 pb-safe">
         {tabs.map(({ id, label, Icon }) => {
           const isActive = active === id;
           return (
@@ -23,25 +24,30 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
               key={id}
               onClick={() => onChange(id)}
               className={`flex-1 flex flex-col items-center gap-1 py-3 px-2 transition-all duration-300 relative active:scale-95 ${
-                isActive ? "text-safe-green" : "text-muted-foreground"
-              }`}
-            >
+              isActive ? "text-safe-green" : "text-muted-foreground opacity-60"}`
+              }>
+
               <Icon
                 size={22}
                 strokeWidth={isActive ? 2.5 : 1.8}
                 className="transition-all duration-300"
-                style={{ transform: isActive ? "scale(1.05)" : "scale(1)" }}
-              />
+                style={{ transform: isActive ? "scale(1.1)" : "scale(1)" }} />
+
               <span
-                className={`tracking-wider transition-all duration-300 ${isActive ? "font-semibold" : "font-medium"}`}
-                style={{ fontSize: "10px" }}
-              >
+                className="font-semibold tracking-wider transition-all duration-300"
+                style={{ fontSize: "9px" }}>
+
                 {label}
               </span>
-            </button>
-          );
+              {isActive &&
+              <span
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-safe-green" />
+
+              }
+            </button>);
+
         })}
       </div>
-    </nav>
-  );
+    </nav>);
+
 }
