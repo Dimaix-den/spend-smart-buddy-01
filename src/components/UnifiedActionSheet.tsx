@@ -3,7 +3,7 @@ import { X } from "lucide-react";
 import { Account, Obligation, ExpenseType, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 
-type ActionTab = "expense" | "income" | "savings";
+type ActionTab = "expense" | "income" | "transfer";
 
 interface UnifiedActionSheetProps {
   open: boolean;
@@ -35,8 +35,8 @@ export default function UnifiedActionSheet({
   const initialTab: ActionTab = editingExpense
     ? editingExpense.type === "income"
       ? "income"
-      : editingExpense.type === "savings"
-      ? "savings"
+      : editingExpense.type === "savings" || editingExpense.type === "transfer"
+      ? "transfer"
       : "expense"
     : "expense";
 
@@ -46,12 +46,11 @@ export default function UnifiedActionSheet({
   const [note, setNote] = useState("");
   const [expenseType, setExpenseType] = useState<"regular" | "obligation">("regular");
   const [selectedObligId, setSelectedObligId] = useState("");
-  const [savingsTarget, setSavingsTarget] = useState<"transfer" | "virtual">("virtual");
   const [toAccount, setToAccount] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const activeAccounts = accounts.filter((a) => a.isActive);
-  const inactiveAccounts = accounts.filter((a) => !a.isActive);
+  const activeAccounts = accounts.filter((a) => a.type === "active");
+  const allAccounts = accounts;
   const unpaidObligations = obligations.filter((o) => !o.paid);
 
   // Scroll lock
@@ -77,8 +76,7 @@ export default function UnifiedActionSheet({
         setNote("");
         setExpenseType("regular");
         setSelectedObligId("");
-        setSavingsTarget("virtual");
-        setToAccount(inactiveAccounts[0]?.name ?? "");
+        setToAccount("");
         if (activeAccounts.length > 0) setSelectedAccount(activeAccounts[0].name);
       }
       setTimeout(() => inputRef.current?.focus(), 200);
@@ -95,12 +93,14 @@ export default function UnifiedActionSheet({
       onUpdateExpense(editingExpense!.id, num, selectedAccount, note);
     } else if (tab === "income") {
       onSaveIncome(num, selectedAccount, note || undefined);
-    } else if (tab === "savings") {
-      const opts: { toAccount?: string } = {};
-      if (savingsTarget === "transfer" && toAccount) opts.toAccount = toAccount;
-      onSaveExpense(num, selectedAccount, "savings", opts);
+    } else if (tab === "transfer") {
+      if (!toAccount) return;
+      // Check if target is savings
+      const targetAcc = accounts.find(a => a.name === toAccount);
+      const type: ExpenseType = targetAcc?.type === "savings" ? "savings" : "transfer";
+      onSaveExpense(num, selectedAccount, type, { toAccount, note });
     } else {
-      const opts: { obligationId?: string } = {};
+      const opts: { obligationId?: string; note?: string } = { note };
       const type: ExpenseType = expenseType === "obligation" ? "obligation" : "regular";
       if (type === "obligation" && selectedObligId) opts.obligationId = selectedObligId;
       onSaveExpense(num, selectedAccount, type, opts);
@@ -111,29 +111,22 @@ export default function UnifiedActionSheet({
   const tabs: { id: ActionTab; label: string }[] = [
     { id: "expense", label: "Расход" },
     { id: "income", label: "Доход" },
-    { id: "savings", label: "Накопление" },
+    { id: "transfer", label: "Перевод" },
   ];
 
   const accentColor =
-    tab === "income" ? "hsl(217 91% 60%)" : tab === "savings" ? "hsl(162 100% 33%)" : "hsl(22 82% 51%)";
+    tab === "income" ? "hsl(211 100% 50%)" : tab === "transfer" ? "hsl(162 100% 33%)" : "hsl(38 100% 52%)";
 
   const accentClass =
-    tab === "income" ? "text-income-blue" : tab === "savings" ? "text-safe-green" : "text-alert-orange";
-
-  const borderAccent =
-    tab === "income"
-      ? "border-income-blue bg-income-blue/10"
-      : tab === "savings"
-      ? "border-safe-green bg-safe-green/10"
-      : "border-alert-orange bg-alert-orange/10";
+    tab === "income" ? "text-income-blue" : tab === "transfer" ? "text-safe-green" : "text-alert-orange";
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 glass-overlay" onClick={onClose} />
-      <div className="relative w-full max-w-app glass-sheet rounded-t-[24px] modal-slide-up pb-8 max-h-[90vh] overflow-y-auto">
+      <div className="relative w-full max-w-app glass-sheet rounded-t-[20px] modal-slide-up pb-8 max-h-[90vh] overflow-y-auto">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          <div className="w-10 h-1 rounded-full" style={{ background: "hsl(0 0% 30%)" }} />
         </div>
 
         {/* Header */}
@@ -143,7 +136,8 @@ export default function UnifiedActionSheet({
           </h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-muted-foreground hover:text-foreground transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+            style={{ background: "hsl(0 0% 23%)" }}
           >
             <X size={16} />
           </button>
@@ -152,16 +146,17 @@ export default function UnifiedActionSheet({
         {/* Segmented control */}
         {!isEditing && (
           <div className="px-5 mb-4">
-            <div className="flex p-1 bg-gray-100 rounded-[16px]">
+            <div className="flex p-1 rounded-[12px]" style={{ background: "hsl(0 0% 18%)" }}>
               {tabs.map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`flex-1 py-2 rounded-[12px] text-sm font-semibold transition-all duration-300 ${
+                  className={`flex-1 py-2 rounded-[10px] text-sm font-semibold transition-all duration-300 ${
                     tab === t.id
-                      ? "bg-white text-foreground shadow-sm"
+                      ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
+                  style={tab === t.id ? { background: "hsl(0 0% 28%)" } : {}}
                 >
                   {t.label}
                 </button>
@@ -182,32 +177,33 @@ export default function UnifiedActionSheet({
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0"
-                className="w-full glass-input px-4 py-3.5 text-3xl font-bold text-foreground tabular-nums placeholder:text-muted-foreground/40 focus:outline-none transition-colors"
-                style={{ borderColor: amount ? accentColor : undefined }}
+                className="w-full glass-input px-4 py-3.5 text-3xl font-bold tabular-nums placeholder:text-muted-foreground/40 focus:outline-none"
+                style={amount ? { boxShadow: `0 0 0 2px ${accentColor}` } : {}}
               />
               <span className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">₸</span>
             </div>
           </div>
 
-          {/* Account selector */}
+          {/* Account selector — "Откуда" */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              {tab === "income" ? "На какой счёт" : "Откуда взять"}
+              {tab === "income" ? "На какой счёт" : "Откуда"}
             </label>
             <div className="space-y-2">
-              {activeAccounts.map((acc) => (
+              {(tab === "income" ? allAccounts.filter(a => a.type !== "inactive") : activeAccounts).map((acc) => (
                 <button
                   key={acc.id}
                   onClick={() => setSelectedAccount(acc.name)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-[14px] border transition-all duration-200 ${
-                    selectedAccount === acc.name ? borderAccent : "border-border bg-gray-50 hover:bg-gray-100"
-                  }`}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-[10px] transition-all duration-200"
+                  style={{
+                    background: selectedAccount === acc.name ? `${accentColor}22` : "hsl(0 0% 18%)",
+                    boxShadow: selectedAccount === acc.name ? `inset 0 0 0 1.5px ${accentColor}` : "none",
+                  }}
                 >
                   <div className="flex items-center gap-2.5">
                     <div
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                        selectedAccount === acc.name ? `border-current ${accentClass}` : "border-muted-foreground"
-                      }`}
+                      className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                      style={{ borderColor: selectedAccount === acc.name ? accentColor : "hsl(0 0% 40%)" }}
                     >
                       {selectedAccount === acc.name && (
                         <div className="w-2 h-2 rounded-full" style={{ background: accentColor }} />
@@ -221,6 +217,42 @@ export default function UnifiedActionSheet({
             </div>
           </div>
 
+          {/* Transfer target — "Куда" */}
+          {tab === "transfer" && !isEditing && (
+            <div className="space-y-1.5 animate-fade-in-up">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Куда</label>
+              <div className="space-y-2">
+                {allAccounts.filter(a => a.name !== selectedAccount).map((acc) => (
+                  <button
+                    key={acc.id}
+                    onClick={() => setToAccount(acc.name)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-[10px] transition-all duration-200"
+                    style={{
+                      background: toAccount === acc.name ? "hsl(162 100% 33% / 0.15)" : "hsl(0 0% 18%)",
+                      boxShadow: toAccount === acc.name ? "inset 0 0 0 1.5px hsl(162 100% 33%)" : "none",
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                        style={{ borderColor: toAccount === acc.name ? "hsl(162 100% 33%)" : "hsl(0 0% 40%)" }}
+                      >
+                        {toAccount === acc.name && (
+                          <div className="w-2 h-2 rounded-full bg-safe-green" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="font-semibold text-foreground">{acc.name}</span>
+                        {acc.type === "savings" && <span className="text-xs text-safe-green ml-2">сбережения</span>}
+                      </div>
+                    </div>
+                    <span className="text-sm text-muted-foreground font-tabular">{formatAmount(acc.balance)} ₸</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Expense-specific: type selector */}
           {tab === "expense" && !isEditing && (
             <div className="space-y-1.5">
@@ -233,11 +265,12 @@ export default function UnifiedActionSheet({
                   <button
                     key={opt.value}
                     onClick={() => setExpenseType(opt.value)}
-                    className={`flex-1 py-2.5 rounded-[12px] text-sm font-semibold transition-all duration-200 ${
-                      expenseType === opt.value
-                        ? "bg-alert-orange/15 border border-alert-orange/40 text-alert-orange"
-                        : "border border-border text-muted-foreground hover:text-foreground"
-                    }`}
+                    className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold transition-all duration-200"
+                    style={{
+                      background: expenseType === opt.value ? "hsl(38 100% 52% / 0.15)" : "hsl(0 0% 18%)",
+                      boxShadow: expenseType === opt.value ? "inset 0 0 0 1.5px hsl(38 100% 52%)" : "none",
+                      color: expenseType === opt.value ? "hsl(38 100% 52%)" : "hsl(0 0% 60%)",
+                    }}
                   >
                     {opt.label}
                   </button>
@@ -253,11 +286,11 @@ export default function UnifiedActionSheet({
                 <button
                   key={o.id}
                   onClick={() => setSelectedObligId(o.id)}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
-                    selectedObligId === o.id
-                      ? "bg-alert-orange text-white"
-                      : "bg-gray-100 text-muted-foreground hover:text-foreground"
-                  }`}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+                  style={{
+                    background: selectedObligId === o.id ? "hsl(38 100% 52%)" : "hsl(0 0% 18%)",
+                    color: selectedObligId === o.id ? "black" : "hsl(0 0% 60%)",
+                  }}
                 >
                   {o.name} ({formatAmount(o.amount)} ₸)
                 </button>
@@ -265,78 +298,28 @@ export default function UnifiedActionSheet({
             </div>
           )}
 
-          {/* Savings target */}
-          {tab === "savings" && !isEditing && (
-            <div className="space-y-2 animate-fade-in-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Куда?</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSavingsTarget("virtual")}
-                  className={`flex-1 py-2.5 rounded-[12px] text-sm font-semibold transition-all ${
-                    savingsTarget === "virtual"
-                      ? "bg-safe-green/15 border border-safe-green/40 text-safe-green"
-                      : "border border-border text-muted-foreground"
-                  }`}
-                >
-                  Отметить
-                </button>
-                {inactiveAccounts.length > 0 && (
-                  <button
-                    onClick={() => setSavingsTarget("transfer")}
-                    className={`flex-1 py-2.5 rounded-[12px] text-sm font-semibold transition-all ${
-                      savingsTarget === "transfer"
-                        ? "bg-safe-green/15 border border-safe-green/40 text-safe-green"
-                        : "border border-border text-muted-foreground"
-                    }`}
-                  >
-                    На депозит
-                  </button>
-                )}
-              </div>
-              {savingsTarget === "transfer" && inactiveAccounts.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {inactiveAccounts.map((acc) => (
-                    <button
-                      key={acc.id}
-                      onClick={() => setToAccount(acc.name)}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
-                        toAccount === acc.name
-                          ? "bg-safe-green text-primary-foreground"
-                          : "bg-gray-100 text-muted-foreground"
-                      }`}
-                    >
-                      {acc.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Note */}
-          {(tab === "income" || isEditing) && (
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Примечание
-              </label>
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder={tab === "income" ? "Зарплата / Бонус" : "Заметка"}
-                className="w-full glass-input px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none transition-colors"
-              />
-            </div>
-          )}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Примечание
+            </label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={tab === "income" ? "Зарплата / Бонус" : tab === "transfer" ? "Заметка" : "На что потрачено"}
+              className="w-full glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none"
+            />
+          </div>
 
           {/* Save button */}
           <button
             onClick={handleSave}
-            disabled={!amount || !selectedAccount}
-            className="w-full py-4 rounded-[16px] font-bold text-base text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+            disabled={!amount || !selectedAccount || (tab === "transfer" && !toAccount && !isEditing)}
+            className="w-full py-4 rounded-[12px] font-bold text-base text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
             style={{ background: accentColor }}
           >
-            {isEditing ? "Сохранить" : tab === "income" ? "Добавить доход" : tab === "savings" ? "Отложить" : "Добавить расход"}
+            {isEditing ? "Сохранить" : tab === "income" ? "Добавить доход" : tab === "transfer" ? "Перевести" : "Добавить расход"}
           </button>
         </div>
       </div>

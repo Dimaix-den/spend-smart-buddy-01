@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { HelpCircle, Plus, TrendingDown, TrendingUp, PiggyBank, Trash2 } from "lucide-react";
+import { HelpCircle, Plus, TrendingDown, TrendingUp, ArrowRightLeft, PiggyBank, Trash2, ChevronRight } from "lucide-react";
 import { useFinance, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import UnifiedActionSheet from "@/components/UnifiedActionSheet";
@@ -8,6 +8,7 @@ import { toast } from "@/hooks/use-toast";
 
 interface TodayProps {
   finance: ReturnType<typeof useFinance>;
+  onShowHistory: () => void;
 }
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
@@ -62,11 +63,11 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
     <div className="fixed inset-0 z-40 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 glass-overlay" />
       <div
-        className="relative w-full max-w-app glass-sheet rounded-t-[24px] p-5 modal-slide-up mb-20"
+        className="relative w-full max-w-app glass-sheet rounded-t-[20px] p-5 modal-slide-up mb-20"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          <div className="w-10 h-1 rounded-full" style={{ background: "hsl(0 0% 30%)" }} />
         </div>
         <h3 className="text-sm font-bold text-foreground mb-3">Как рассчитывается?</h3>
         <div className="space-y-2 text-sm">
@@ -82,11 +83,11 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
             <span>− Осталось сберечь</span>
             <span className="font-tabular font-semibold">−{formatAmount(stillNeedToSave)} ₸</span>
           </div>
-          <div className="border-t border-border pt-2 flex justify-between text-foreground">
+          <div className="border-t border-white/5 pt-2 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
-          <div className="bg-primary/10 border border-primary/20 rounded-[16px] p-3 mt-1 space-y-1.5">
+          <div className="rounded-[12px] p-3 mt-1 space-y-1.5" style={{ background: "hsl(0 0% 18%)" }}>
             <div className="flex justify-between">
               <span className="text-foreground/80">= Дневной лимит</span>
               <span className="text-foreground font-semibold font-tabular">{formatAmount(dailyBudget)} ₸</span>
@@ -95,7 +96,7 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
               <span className="text-foreground/80">− Потрачено сегодня</span>
               <span className="text-alert-orange font-semibold font-tabular">{formatAmount(spentToday)} ₸</span>
             </div>
-            <div className="flex justify-between items-center border-t border-border pt-1.5">
+            <div className="flex justify-between items-center border-t border-white/5 pt-1.5">
               <span className="text-foreground font-medium">= Можно потратить</span>
               <span className="text-safe-green font-bold font-tabular text-lg">
                 {formatAmount(Math.max(0, safeToSpend))} ₸
@@ -122,7 +123,7 @@ function TransactionRow({
   const [swiped, setSwiped] = useState(false);
   const touchStartX = useRef(0);
   const isIncome = expense.type === "income";
-  const isSavings = expense.type === "savings";
+  const isTransfer = expense.type === "transfer" || expense.type === "savings";
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -133,12 +134,16 @@ function TransactionRow({
     else if (diff < -30) setSwiped(false);
   };
 
+  const Icon = isIncome ? TrendingUp : isTransfer ? ArrowRightLeft : TrendingDown;
+  const color = isIncome ? "text-safe-green" : isTransfer ? "text-income-blue" : "text-alert-orange";
+  const bgColor = isIncome ? "bg-safe-green/15" : isTransfer ? "bg-income-blue/15" : "bg-alert-orange/15";
+
   return (
-    <div className="relative overflow-hidden rounded-[16px]">
+    <div className="relative overflow-hidden rounded-[12px]">
       {swiped && (
         <button
           onClick={() => onDelete(expense.id)}
-          className="absolute right-0 top-0 bottom-0 w-20 bg-destructive flex items-center justify-center animate-swipe-reveal rounded-r-[16px]"
+          className="absolute right-0 top-0 bottom-0 w-20 bg-destructive flex items-center justify-center animate-swipe-reveal rounded-r-[12px]"
         >
           <Trash2 size={18} className="text-white" />
         </button>
@@ -147,35 +152,21 @@ function TransactionRow({
         className={`glass-card px-4 py-3 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 ${
           swiped ? "-translate-x-20" : "translate-x-0"
         }`}
-        style={{ borderRadius: 16, transition: "transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)" }}
+        style={{ transition: "transform 0.25s ease-out" }}
         onClick={() => !swiped && onEdit(expense)}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
         <div className="flex items-center gap-3">
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${
-              isIncome ? "bg-income-blue/15" : isSavings ? "bg-safe-green/15" : "bg-destructive/15"
-            }`}
-          >
-            {isIncome ? (
-              <TrendingUp size={14} className="text-income-blue" />
-            ) : isSavings ? (
-              <PiggyBank size={14} className="text-safe-green" />
-            ) : (
-              <TrendingDown size={14} className="text-destructive" />
-            )}
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${bgColor}`}>
+            <Icon size={14} className={color} />
           </div>
           <div>
             <p className="text-sm font-medium text-foreground">{label}</p>
-            <p className="text-xs text-muted-foreground">{expense.account} · {expense.date}</p>
+            <p className="text-xs text-muted-foreground">{expense.account}</p>
           </div>
         </div>
-        <span
-          className={`font-bold font-tabular text-sm ${
-            isIncome ? "text-income-blue" : isSavings ? "text-safe-green" : "text-alert-orange"
-          }`}
-        >
+        <span className={`font-bold font-tabular text-sm ${color}`}>
           {isIncome ? "+" : "−"}{formatAmount(expense.amount)} ₸
         </span>
       </div>
@@ -183,7 +174,7 @@ function TransactionRow({
   );
 }
 
-export default function Today({ finance }: TodayProps) {
+export default function Today({ finance, onShowHistory }: TodayProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [showInfo, setShowInfo] = useState(false);
@@ -204,6 +195,10 @@ export default function Today({ finance }: TodayProps) {
     budgetStatus,
     alreadySaved,
     savingsProgress,
+    plannedSavings,
+    savingsAccounts,
+    getSavingsForAccount,
+    updateAccountGoal,
     addExpense,
     addIncome,
     deleteExpense,
@@ -224,7 +219,14 @@ export default function Today({ finance }: TodayProps) {
       ? "text-alert-orange"
       : "text-safe-green";
 
-  const recentExpenses = state.expenses.slice(0, 8);
+  // Recent 6 transactions grouped by date
+  const recentExpenses = state.expenses.slice(0, 6);
+  const groupedRecent = new Map<string, Expense[]>();
+  recentExpenses.forEach((e) => {
+    const arr = groupedRecent.get(e.date) || [];
+    arr.push(e);
+    groupedRecent.set(e.date, arr);
+  });
 
   const displayAmount = Math.max(0, safeToSpend);
   const isOverspent = safeToSpend < 0;
@@ -236,6 +238,10 @@ export default function Today({ finance }: TodayProps) {
       : safeToSpendStatus === "warning"
       ? "ПОЧТИ ИСЧЕРПАН ЛИМИТ"
       : "МОЖЕШЬ ПОТРАТИТЬ СЕГОДНЯ";
+
+  // Inline savings goal editing
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [goalInput, setGoalInput] = useState("");
 
   return (
     <div className="flex flex-col min-h-screen pb-28">
@@ -259,7 +265,7 @@ export default function Today({ finance }: TodayProps) {
 
         <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
           <span>Лимит: <span className="text-foreground font-semibold">{formatAmount(dailyBudget)} ₸</span></span>
-          <span className="text-gray-300">•</span>
+          <span style={{ opacity: 0.3 }}>•</span>
           <span>Потрачено: <span className="text-alert-orange font-semibold">{formatAmount(spentToday)} ₸</span></span>
         </div>
 
@@ -279,6 +285,7 @@ export default function Today({ finance }: TodayProps) {
           totalDays={state.budgetPeriod.totalDays}
           currentDay={state.budgetPeriod.currentDay}
           dailyBudget={dailyBudget}
+          startDate={state.budgetPeriod.startDate}
         />
 
         {/* Monthly budget card */}
@@ -296,22 +303,22 @@ export default function Today({ finance }: TodayProps) {
               <span className="font-semibold font-tabular text-alert-orange">{formatAmount(spentThisMonth)} ₸</span>
             </div>
             {monthlyBudget > 0 && (
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${Math.min(100, (spentThisMonth / monthlyBudget) * 100)}%`,
                     background:
                       budgetStatus === "critical"
-                        ? "hsl(0 84% 60%)"
+                        ? "hsl(0 76% 61%)"
                         : budgetStatus === "warning"
-                        ? "hsl(22 82% 51%)"
+                        ? "hsl(38 100% 52%)"
                         : "hsl(162 100% 33%)",
                   }}
                 />
               </div>
             )}
-            <div className="flex items-center justify-between pt-1 border-t border-border">
+            <div className="flex items-center justify-between pt-1 border-t border-white/5">
               <span className="text-sm font-medium text-foreground">Остаток</span>
               <span className={`font-bold font-tabular text-lg ${budgetColor}`}>
                 <AnimatedNumber value={Math.max(0, budgetRemaining)} /> ₸
@@ -320,8 +327,8 @@ export default function Today({ finance }: TodayProps) {
           </div>
         </div>
 
-        {/* Savings progress card */}
-        {state.savingsGoal > 0 && (
+        {/* Savings progress — per-account with inline editing */}
+        {savingsAccounts.length > 0 && (
           <div className="glass-card p-4 animate-fade-in-up" style={{ animationDelay: "0.08s" }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -332,64 +339,122 @@ export default function Today({ finance }: TodayProps) {
               </div>
               <span className="text-xs font-bold text-safe-green">{savingsProgress}%</span>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-foreground/80">Уже отложено</span>
-                <span className="font-bold font-tabular text-safe-green">{formatAmount(alreadySaved)} ₸</span>
-              </div>
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${savingsProgress}%`,
-                    background: "linear-gradient(90deg, hsl(162 100% 28%), hsl(162 100% 40%))",
-                  }}
-                />
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-foreground/80">Цель</span>
-                <span className="font-tabular text-muted-foreground">{formatAmount(state.savingsGoal)} ₸</span>
-              </div>
+            <div className="space-y-3">
+              {savingsAccounts.map((acc) => {
+                const saved = getSavingsForAccount(acc.name);
+                const goal = acc.monthlyGoal || 0;
+                const pct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
+
+                return (
+                  <div key={acc.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-foreground">{acc.name}</span>
+                      {editingGoalId === acc.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            autoFocus
+                            type="number"
+                            value={goalInput}
+                            onChange={(e) => setGoalInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                updateAccountGoal(acc.id, parseFloat(goalInput) || 0);
+                                setEditingGoalId(null);
+                              }
+                            }}
+                            className="w-24 glass-input px-2 py-1 text-xs font-tabular text-right focus:outline-none"
+                          />
+                          <button onClick={() => { updateAccountGoal(acc.id, parseFloat(goalInput) || 0); setEditingGoalId(null); }} className="text-xs text-safe-green font-bold">OK</button>
+                        </div>
+                      ) : (
+                        <button onClick={() => { setEditingGoalId(acc.id); setGoalInput((acc.monthlyGoal || 0).toString()); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                          {goal > 0 ? `${formatAmount(goal)} ₸/мес ✎` : "Задать цель ✎"}
+                        </button>
+                      )}
+                    </div>
+                    {goal > 0 && (
+                      <>
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
+                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: "hsl(162 100% 33%)" }} />
+                        </div>
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                          <span>Отложено: <span className="text-safe-green font-semibold">{formatAmount(saved)} ₸</span></span>
+                          <span>{pct}%</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* Recent transactions */}
+        {/* Recent transactions grouped by date */}
         {recentExpenses.length > 0 && (
           <div className="animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
               Последние операции
             </h3>
-            <div className="space-y-2">
-              {recentExpenses.map((expense) => {
-                const isIncome = expense.type === "income";
-                const isSavings = expense.type === "savings";
-                const isObligation = expense.type === "obligation";
-                const label = isIncome
-                  ? expense.note || "Доход"
-                  : isSavings
-                  ? "Сбережения"
-                  : isObligation
-                  ? (state.obligations.find((o) => o.id === expense.obligationId)?.name ?? "Обязательство")
-                  : expense.note || expense.account;
+            <div className="space-y-3">
+              {[...groupedRecent.entries()].map(([date, txns]) => {
+                const dayTotal = txns.reduce((sum, e) => {
+                  if (e.type === "income") return sum + e.amount;
+                  if (e.type === "transfer") return sum;
+                  return sum - e.amount;
+                }, 0);
 
                 return (
-                  <TransactionRow
-                    key={expense.id}
-                    expense={expense}
-                    label={label}
-                    onDelete={(id) => {
-                      deleteExpense(id);
-                      toast({ description: "🗑 Операция удалена", duration: 2000 });
-                    }}
-                    onEdit={(exp) => {
-                      setEditingExpense(exp);
-                      setSheetOpen(true);
-                    }}
-                  />
+                  <div key={date}>
+                    <div className="flex items-center justify-between mb-1 px-1">
+                      <span className="text-xs text-muted-foreground">{date}</span>
+                      <span className={`text-xs font-bold font-tabular ${dayTotal >= 0 ? "text-safe-green" : "text-alert-orange"}`}>
+                        {dayTotal >= 0 ? "+" : ""}{formatAmount(dayTotal)} ₸
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {txns.map((expense) => {
+                        const isIncome = expense.type === "income";
+                        const isTransfer = expense.type === "transfer" || expense.type === "savings";
+                        const isObligation = expense.type === "obligation";
+                        const label = isIncome
+                          ? expense.note || "Доход"
+                          : isTransfer
+                          ? expense.toAccount ? `→ ${expense.toAccount}` : "Перевод"
+                          : isObligation
+                          ? (state.obligations.find((o) => o.id === expense.obligationId)?.name ?? "Обязательство")
+                          : expense.note || expense.account;
+
+                        return (
+                          <TransactionRow
+                            key={expense.id}
+                            expense={expense}
+                            label={label}
+                            onDelete={(id) => {
+                              deleteExpense(id);
+                              toast({ description: "🗑 Операция удалена", duration: 2000 });
+                            }}
+                            onEdit={(exp) => {
+                              setEditingExpense(exp);
+                              setSheetOpen(true);
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
                 );
               })}
             </div>
+
+            {/* Show all history button */}
+            <button
+              onClick={onShowHistory}
+              className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-[12px] text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              style={{ background: "hsl(0 0% 11%)" }}
+            >
+              Показать всю историю <ChevronRight size={16} />
+            </button>
           </div>
         )}
       </div>
@@ -400,10 +465,10 @@ export default function Today({ finance }: TodayProps) {
           setEditingExpense(null);
           setSheetOpen(true);
         }}
-        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all duration-200"
+        className="fixed bottom-20 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-all duration-200"
         style={{
-          background: "linear-gradient(135deg, hsl(162 100% 38%), hsl(162 100% 28%))",
-          boxShadow: "0 4px 16px rgba(0, 166, 118, 0.3)",
+          background: "hsl(162 100% 33%)",
+          boxShadow: "0 4px 16px rgba(0, 166, 118, 0.4)",
         }}
       >
         <Plus
@@ -423,7 +488,7 @@ export default function Today({ finance }: TodayProps) {
         }}
         onSaveExpense={(amount, account, type, opts) => {
           addExpense(amount, account, type, opts);
-          const label = type === "savings" ? "💰 Отложено" : type === "obligation" ? "✅ Платёж" : "✅ Расход";
+          const label = type === "savings" || type === "transfer" ? "💰 Переведено" : type === "obligation" ? "✅ Платёж" : "✅ Расход";
           toast({ description: `${label}: ${formatAmount(amount)} ₸`, duration: 2000 });
         }}
         onSaveIncome={(amount, account, note) => {

@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 
+export type AccountType = "active" | "savings" | "inactive";
+
 export interface Account {
   id: string;
   name: string;
   balance: number;
   isActive: boolean;
+  type: AccountType;
+  monthlyGoal?: number | null;
 }
 
 export interface Obligation {
@@ -12,9 +16,10 @@ export interface Obligation {
   name: string;
   amount: number;
   paid: boolean;
+  installments?: { total: number; remaining: number } | null;
 }
 
-export type ExpenseType = "regular" | "obligation" | "savings" | "income";
+export type ExpenseType = "regular" | "obligation" | "savings" | "income" | "transfer";
 
 export interface Expense {
   id: string;
@@ -42,49 +47,70 @@ export interface FinanceState {
   currentDate: string;
 }
 
-const STORAGE_KEY = "sanda_finance_v2";
+const STORAGE_KEY = "sanda_finance_v3";
 
 const today = () => new Date().toISOString().split("T")[0];
 
 const DEFAULT_STATE: FinanceState = {
   accounts: [
-    { id: "1", name: "Kaspi Gold", balance: 150000, isActive: true },
-    { id: "2", name: "Halyk", balance: 45000, isActive: true },
-    { id: "3", name: "Наличка", balance: 5000, isActive: true },
-    { id: "4", name: "Депозит", balance: 500000, isActive: false },
+    { id: "1", name: "Kaspi Gold", balance: 150000, isActive: true, type: "active" },
+    { id: "2", name: "Halyk", balance: 45000, isActive: true, type: "active" },
+    { id: "3", name: "Наличка", balance: 5000, isActive: true, type: "active" },
+    { id: "4", name: "Фин. подушка", balance: 500000, isActive: false, type: "savings", monthlyGoal: 100000 },
+    { id: "5", name: "На поездки", balance: 200000, isActive: false, type: "savings", monthlyGoal: 50000 },
   ],
   obligations: [
     { id: "1", name: "Аренда", amount: 60000, paid: false },
-    { id: "2", name: "Kaspi рассрочка", amount: 15000, paid: false },
-    { id: "3", name: "Halyk кредит", amount: 22000, paid: false },
+    { id: "2", name: "Kaspi рассрочка", amount: 15000, paid: false, installments: { total: 8, remaining: 5 } },
+    { id: "3", name: "Halyk кредит", amount: 22000, paid: false, installments: { total: 24, remaining: 18 } },
     { id: "4", name: "Подписки", amount: 5000, paid: false },
   ],
-  savingsGoal: 30000,
+  savingsGoal: 150000,
   budgetPeriod: { totalDays: 30, currentDay: 12, startDate: "2025-11-01" },
   expenses: [],
   currentDate: today(),
 };
 
+function migrateState(parsed: any): FinanceState {
+  // Migrate accounts to have type
+  if (parsed.accounts) {
+    parsed.accounts = parsed.accounts.map((a: any) => ({
+      ...a,
+      type: a.type || (a.isActive ? "active" : "inactive"),
+      monthlyGoal: a.monthlyGoal ?? null,
+    }));
+  }
+  if (parsed.obligations) {
+    parsed.obligations = parsed.obligations.map((o: any) => ({
+      ...o,
+      paid: o.paid ?? false,
+      installments: o.installments ?? null,
+    }));
+  }
+  if (parsed.expenses) {
+    parsed.expenses = parsed.expenses.map((e: any) => ({
+      ...e,
+      type: e.type || (e.isObligation ? "obligation" : "regular"),
+      obligationId: e.obligationId ?? null,
+      toAccount: e.toAccount ?? null,
+      note: e.note ?? "",
+    }));
+  }
+  if (!parsed.currentDate) parsed.currentDate = today();
+  if (!parsed.budgetPeriod?.startDate) parsed.budgetPeriod.startDate = today();
+  return parsed as FinanceState;
+}
+
 function loadState(): FinanceState {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    // Try new key first
+    let stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      stored = localStorage.getItem("sanda_finance_v2");
+    }
     if (stored) {
-      const parsed = JSON.parse(stored) as FinanceState;
-      if (parsed.obligations && parsed.obligations.length > 0 && !("paid" in parsed.obligations[0])) {
-        parsed.obligations = parsed.obligations.map((o) => ({ ...o, paid: false }));
-      }
-      if (parsed.expenses && parsed.expenses.length > 0 && !("type" in parsed.expenses[0])) {
-        parsed.expenses = parsed.expenses.map((e: any) => ({
-          ...e,
-          type: e.isObligation ? "obligation" : "regular",
-          obligationId: null,
-          toAccount: null,
-          note: "",
-        }));
-      }
-      if (!parsed.currentDate) parsed.currentDate = today();
-      if (!parsed.budgetPeriod.startDate) parsed.budgetPeriod.startDate = today();
-      return parsed;
+      const parsed = JSON.parse(stored);
+      return migrateState(parsed);
     }
   } catch {}
   return DEFAULT_STATE;
@@ -123,11 +149,13 @@ export function useFinance() {
     saveState(state);
   }, [state]);
 
-  // ─── Core calculations ─────────────────────────────────────────
+  // ─── Derived: accounts by type ────────────────────────────────
+  const activeAccounts = state.accounts.filter((a) => a.type === "active");
+  const savingsAccounts = state.accounts.filter((a) => a.type === "savings");
+  const inactiveAccounts = state.accounts.filter((a) => a.type === "inactive");
 
-  const activeBalance = state.accounts
-    .filter((a) => a.isActive)
-    .reduce((sum, a) => sum + a.balance, 0);
+  // ─── Core calculations ─────────────────────────────────────────
+  const activeBalance = activeAccounts.reduce((sum, a) => sum + a.balance, 0);
 
   const remainingObligations = state.obligations
     .filter((o) => !o.paid)
@@ -135,11 +163,21 @@ export function useFinance() {
 
   const totalObligations = state.obligations.reduce((sum, o) => sum + o.amount, 0);
 
+  // Planned savings = sum of all savings accounts' monthly goals
+  const plannedSavings = savingsAccounts.reduce((sum, a) => sum + (a.monthlyGoal || 0), 0);
+
   const alreadySaved = state.expenses
-    .filter((e) => e.type === "savings")
+    .filter((e) => e.type === "savings" || (e.type === "transfer" && savingsAccounts.some(sa => sa.name === e.toAccount)))
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const stillNeedToSave = Math.max(0, state.savingsGoal - alreadySaved);
+  // Per-account savings tracking
+  const getSavingsForAccount = useCallback((accountName: string) => {
+    return state.expenses
+      .filter((e) => (e.type === "savings" || e.type === "transfer") && e.toAccount === accountName)
+      .reduce((sum, e) => sum + e.amount, 0);
+  }, [state.expenses]);
+
+  const stillNeedToSave = Math.max(0, plannedSavings - alreadySaved);
 
   const daysLeft = Math.max(1, state.budgetPeriod.totalDays - state.budgetPeriod.currentDay);
 
@@ -175,13 +213,18 @@ export function useFinance() {
     Math.round((state.budgetPeriod.currentDay / state.budgetPeriod.totalDays) * 100)
   );
 
-  const savingsProgress = state.savingsGoal > 0 ? Math.min(100, Math.round((alreadySaved / state.savingsGoal) * 100)) : 0;
+  const savingsProgress = plannedSavings > 0 ? Math.min(100, Math.round((alreadySaved / plannedSavings) * 100)) : 0;
 
   // ─── Account actions ───────────────────────────────────────────
   const toggleAccount = useCallback((id: string) => {
     setState((s) => ({
       ...s,
-      accounts: s.accounts.map((a) => (a.id === id ? { ...a, isActive: !a.isActive } : a)),
+      accounts: s.accounts.map((a) => {
+        if (a.id !== id) return a;
+        if (a.type === "active") return { ...a, type: "inactive" as AccountType, isActive: false };
+        if (a.type === "inactive") return { ...a, type: "active" as AccountType, isActive: true };
+        return a; // savings don't toggle
+      }),
     }));
   }, []);
 
@@ -199,10 +242,31 @@ export function useFinance() {
     }));
   }, []);
 
-  const addAccount = useCallback((name: string, balance: number, isActive = true) => {
+  const updateAccountType = useCallback((id: string, type: AccountType) => {
     setState((s) => ({
       ...s,
-      accounts: [...s.accounts, { id: Date.now().toString(), name, balance, isActive }],
+      accounts: s.accounts.map((a) => (a.id === id ? { ...a, type, isActive: type === "active" } : a)),
+    }));
+  }, []);
+
+  const updateAccountGoal = useCallback((id: string, monthlyGoal: number) => {
+    setState((s) => ({
+      ...s,
+      accounts: s.accounts.map((a) => (a.id === id ? { ...a, monthlyGoal } : a)),
+    }));
+  }, []);
+
+  const addAccount = useCallback((name: string, balance: number, type: AccountType = "active", monthlyGoal?: number) => {
+    setState((s) => ({
+      ...s,
+      accounts: [...s.accounts, {
+        id: Date.now().toString(),
+        name,
+        balance,
+        isActive: type === "active",
+        type,
+        monthlyGoal: monthlyGoal ?? null,
+      }],
     }));
   }, []);
 
@@ -211,10 +275,10 @@ export function useFinance() {
   }, []);
 
   // ─── Obligation actions ────────────────────────────────────────
-  const addObligation = useCallback((name: string, amount: number) => {
+  const addObligation = useCallback((name: string, amount: number, installments?: { total: number; remaining: number }) => {
     setState((s) => ({
       ...s,
-      obligations: [...s.obligations, { id: Date.now().toString(), name, amount, paid: false }],
+      obligations: [...s.obligations, { id: Date.now().toString(), name, amount, paid: false, installments: installments ?? null }],
     }));
   }, []);
 
@@ -255,21 +319,24 @@ export function useFinance() {
     ) => {
       setState((s) => {
         const nowDate = s.currentDate;
-        const updatedAccounts = s.accounts.map((a) =>
+        let updatedAccounts = s.accounts.map((a) =>
           a.name === accountName ? { ...a, balance: Math.max(0, a.balance - amount) } : a
         );
-        const finalAccounts =
-          type === "savings" && opts?.toAccount
-            ? updatedAccounts.map((a) =>
-                a.name === opts.toAccount ? { ...a, balance: a.balance + amount } : a
-              )
-            : updatedAccounts;
+
+        // For transfers/savings, add to target account
+        if ((type === "savings" || type === "transfer") && opts?.toAccount) {
+          updatedAccounts = updatedAccounts.map((a) =>
+            a.name === opts.toAccount ? { ...a, balance: a.balance + amount } : a
+          );
+        }
+
         const updatedObligations =
           type === "obligation" && opts?.obligationId
             ? s.obligations.map((o) =>
                 o.id === opts.obligationId ? { ...o, paid: true } : o
               )
             : s.obligations;
+
         const expense: Expense = {
           id: Date.now().toString(),
           date: nowDate,
@@ -282,7 +349,7 @@ export function useFinance() {
         };
         return {
           ...s,
-          accounts: finalAccounts,
+          accounts: updatedAccounts,
           obligations: updatedObligations,
           expenses: [expense, ...s.expenses],
         };
@@ -314,7 +381,6 @@ export function useFinance() {
       const expense = s.expenses.find((e) => e.id === id);
       if (!expense) return { ...s, expenses: s.expenses.filter((e) => e.id !== id) };
 
-      // Reverse the balance change
       let updatedAccounts = s.accounts;
       if (expense.type === "income") {
         updatedAccounts = updatedAccounts.map((a) =>
@@ -324,14 +390,13 @@ export function useFinance() {
         updatedAccounts = updatedAccounts.map((a) =>
           a.name === expense.account ? { ...a, balance: a.balance + expense.amount } : a
         );
-        if (expense.type === "savings" && expense.toAccount) {
+        if ((expense.type === "savings" || expense.type === "transfer") && expense.toAccount) {
           updatedAccounts = updatedAccounts.map((a) =>
             a.name === expense.toAccount ? { ...a, balance: a.balance - expense.amount } : a
           );
         }
       }
 
-      // Reverse obligation paid status
       let updatedObligations = s.obligations;
       if (expense.type === "obligation" && expense.obligationId) {
         updatedObligations = updatedObligations.map((o) =>
@@ -353,7 +418,6 @@ export function useFinance() {
       const old = s.expenses.find((e) => e.id === id);
       if (!old) return s;
 
-      // Reverse old balance
       let accs = s.accounts;
       if (old.type === "income") {
         accs = accs.map((a) => a.name === old.account ? { ...a, balance: a.balance - old.amount } : a);
@@ -361,7 +425,6 @@ export function useFinance() {
         accs = accs.map((a) => a.name === old.account ? { ...a, balance: a.balance + old.amount } : a);
       }
 
-      // Apply new balance
       if (old.type === "income") {
         accs = accs.map((a) => a.name === accountName ? { ...a, balance: a.balance + amount } : a);
       } else {
@@ -391,9 +454,13 @@ export function useFinance() {
 
   return {
     state,
+    activeAccounts,
+    savingsAccounts,
+    inactiveAccounts,
     activeBalance,
     totalObligations,
     remainingObligations,
+    plannedSavings,
     daysLeft,
     dailyBudget,
     spentToday,
@@ -407,9 +474,12 @@ export function useFinance() {
     budgetRemaining,
     budgetStatus,
     monthProgress,
+    getSavingsForAccount,
     toggleAccount,
     updateAccountBalance,
     updateAccountName,
+    updateAccountType,
+    updateAccountGoal,
     addAccount,
     deleteAccount,
     addObligation,
