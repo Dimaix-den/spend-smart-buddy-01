@@ -1,28 +1,57 @@
 import { useState } from "react";
 import BottomNav from "@/components/BottomNav";
 import Today from "@/pages/Today";
-import Accounts from "@/pages/Accounts";
-import Settings from "@/pages/Settings";
+import Capital from "@/pages/Capital";
+import AccountDetail from "@/pages/AccountDetail";
+import History from "@/pages/History";
 import { useFinance } from "@/hooks/useFinance";
 import { Toaster } from "@/components/ui/toaster";
 
-type Tab = "today" | "accounts" | "settings";
+type Tab = "today" | "capital";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("today");
+  const [detailAccountId, setDetailAccountId] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
   const finance = useFinance();
+
+  if (showHistory) {
+    return (
+      <div className="min-h-screen bg-background flex justify-center">
+        <div className="w-full max-w-app relative">
+          <History finance={finance} onBack={() => setShowHistory(false)} />
+        </div>
+        <Toaster />
+      </div>
+    );
+  }
+
+  if (detailAccountId) {
+    return (
+      <div className="min-h-screen bg-background flex justify-center">
+        <div className="w-full max-w-app relative">
+          <AccountDetail
+            finance={finance}
+            accountId={detailAccountId}
+            onBack={() => setDetailAccountId(null)}
+          />
+        </div>
+        <Toaster />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex justify-center">
       <div className="w-full max-w-app relative">
-        {/* Page content */}
         <div className="overflow-y-auto scrollbar-hide">
-          {activeTab === "today" && <Today finance={finance} />}
-          {activeTab === "accounts" && <Accounts finance={finance} />}
-          {activeTab === "settings" && <Settings finance={finance} />}
+          {activeTab === "today" && (
+            <Today finance={finance} onShowHistory={() => setShowHistory(true)} />
+          )}
+          {activeTab === "capital" && (
+            <Capital finance={finance} onOpenAccount={(id) => setDetailAccountId(id)} />
+          )}
         </div>
-
-        {/* Bottom navigation */}
         <BottomNav active={activeTab} onChange={setActiveTab} />
       </div>
       <Toaster />

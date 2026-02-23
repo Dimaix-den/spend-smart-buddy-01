@@ -7,6 +7,7 @@ interface DailySpendingChartProps {
   totalDays: number;
   currentDay: number;
   dailyBudget: number;
+  startDate: string;
 }
 
 export default function DailySpendingChart({
@@ -14,43 +15,35 @@ export default function DailySpendingChart({
   totalDays,
   currentDay,
   dailyBudget,
+  startDate,
 }: DailySpendingChartProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Build daily totals
-  const dailyTotals: number[] = [];
-  for (let day = 1; day <= totalDays; day++) {
-    dailyTotals.push(0);
-  }
+  // Build daily totals based on calendar days from startDate
+  const start = new Date(startDate);
+  const dailyData: { day: number; spent: number; dateStr: string; isToday: boolean }[] = [];
 
-  const dateMap = new Map<string, number>();
-  expenses
-    .filter((e) => e.type === "regular")
-    .forEach((e) => {
-      dateMap.set(e.date, (dateMap.get(e.date) || 0) + e.amount);
+  for (let d = 0; d < totalDays; d++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + d);
+    const dateStr = date.toISOString().split("T")[0];
+    const dayNum = date.getDate(); // actual calendar day
+
+    const daySpending = expenses
+      .filter((e) => e.type === "regular" && e.date === dateStr)
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    dailyData.push({
+      day: dayNum,
+      spent: daySpending,
+      dateStr,
+      isToday: d + 1 === currentDay,
     });
-
-  const sortedDates = [...dateMap.keys()].sort();
-  sortedDates.forEach((date, idx) => {
-    if (idx < totalDays) {
-      const dayIdx = Math.min(idx, totalDays - 1);
-      dailyTotals[dayIdx] = dateMap.get(date) || 0;
-    }
-  });
-
-  const allDays: { day: number; spent: number; isToday: boolean }[] = [];
-  for (let d = 1; d <= Math.min(currentDay, totalDays); d++) {
-    allDays.push({ day: d, spent: 0, isToday: d === currentDay });
   }
 
-  const dateEntries = [...dateMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  dateEntries.forEach((entry, idx) => {
-    if (idx < allDays.length) {
-      allDays[idx].spent = entry[1];
-    }
-  });
-
-  const maxSpent = Math.max(dailyBudget, ...allDays.map((d) => d.spent), 1);
+  // Only show days up to currentDay
+  const visibleDays = dailyData.slice(0, currentDay);
+  const maxSpent = Math.max(dailyBudget, ...visibleDays.map((d) => d.spent), 1);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -59,7 +52,7 @@ export default function DailySpendingChart({
     }
   }, [currentDay]);
 
-  if (allDays.length === 0) {
+  if (visibleDays.length === 0) {
     return (
       <div className="glass-card p-4 animate-fade-in-up">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
@@ -88,24 +81,24 @@ export default function DailySpendingChart({
 
       {/* Limit line label */}
       <div className="flex items-center gap-2 mb-1">
-        <div className="flex-1 border-t border-dashed border-gray-300" />
+        <div className="flex-1 border-t border-dashed" style={{ borderColor: "hsl(0 0% 30%)" }} />
         <span className="text-[10px] text-muted-foreground font-tabular">{formatAmount(dailyBudget)} ₸</span>
       </div>
 
       <div ref={scrollRef} className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 pt-1">
-        {allDays.map((d) => {
+        {visibleDays.map((d) => {
           const pct = Math.min((d.spent / maxSpent) * 100, 100);
           const overBudget = d.spent > dailyBudget;
           const limitPct = Math.min((dailyBudget / maxSpent) * 100, 100);
 
           return (
-            <div key={d.day} className="flex flex-col items-center gap-1 min-w-[28px]">
+            <div key={d.dateStr} className="flex flex-col items-center gap-1 min-w-[28px]">
               {/* Bar */}
-              <div className="relative w-5 h-16 rounded-md bg-gray-100 overflow-hidden flex items-end">
+              <div className="relative w-5 h-16 rounded-md overflow-hidden flex items-end" style={{ background: "hsl(0 0% 18%)" }}>
                 {/* Limit marker */}
                 <div
-                  className="absolute w-full border-t border-dashed border-gray-300"
-                  style={{ bottom: `${limitPct}%` }}
+                  className="absolute w-full border-t border-dashed"
+                  style={{ bottom: `${limitPct}%`, borderColor: "hsl(0 0% 30%)" }}
                 />
                 {/* Bar fill */}
                 <div
@@ -113,13 +106,13 @@ export default function DailySpendingChart({
                   style={{
                     height: `${Math.max(pct, d.spent > 0 ? 8 : 0)}%`,
                     background: overBudget
-                      ? "linear-gradient(180deg, hsl(22 82% 55%), hsl(22 82% 45%))"
-                      : "linear-gradient(180deg, hsl(162 100% 38%), hsl(162 100% 28%))",
+                      ? "hsl(38 100% 52%)"
+                      : "hsl(162 100% 33%)",
                     opacity: d.isToday ? 1 : 0.7,
                   }}
                 />
               </div>
-              {/* Day number */}
+              {/* Day number — calendar day */}
               <span
                 className={`text-[10px] font-tabular ${
                   d.isToday ? "text-foreground font-bold" : "text-muted-foreground"
