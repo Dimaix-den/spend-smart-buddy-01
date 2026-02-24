@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 import { Account, Obligation, ExpenseType } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
@@ -31,19 +31,6 @@ export default function AddExpenseModal({
   const [selectedObligId, setSelectedObligId] = useState("");
   const [savingsTarget, setSavingsTarget] = useState<SavingsTarget>("virtual");
   const [toAccount, setToAccount] = useState("");
-  const [showAccounts, setShowAccounts] = useState(false);
-
-  // Для сравнения "было / стало"
-  const [initialState, setInitialState] = useState<{
-    amount: string;
-    selectedAccount: string;
-    type: ExpenseType;
-    selectedObligId: string;
-    savingsTarget: SavingsTarget;
-    toAccount: string;
-  } | null>(null);
-
-  const [showConfirmClose, setShowConfirmClose] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -51,11 +38,10 @@ export default function AddExpenseModal({
   const inactiveAccounts = accounts.filter((a) => !a.isActive);
   const unpaidObligations = obligations.filter((o) => !o.paid);
 
-  // Инициализация при открытии
   useEffect(() => {
     if (open) {
       const defaultAccount =
-        selectedAccount || (activeAccounts.length > 0 ? activeAccounts[0].name : "");
+        activeAccounts.length > 0 ? activeAccounts[0].name : "";
       const defaultToAccount = inactiveAccounts[0]?.name ?? "";
 
       setAmount("");
@@ -63,71 +49,31 @@ export default function AddExpenseModal({
       setSelectedObligId("");
       setSavingsTarget("virtual");
       setToAccount(defaultToAccount);
-      setShowAccounts(false);
       setSelectedAccount(defaultAccount);
 
-      const snap = {
-        amount: "",
-        selectedAccount: defaultAccount,
-        type: "regular" as ExpenseType,
-        selectedObligId: "",
-        savingsTarget: "virtual" as SavingsTarget,
-        toAccount: defaultToAccount,
-      };
-      setInitialState(snap);
-
       setTimeout(() => inputRef.current?.focus(), 100);
-    } else {
-      // При полном закрытии можно сбросить confirm
-      setShowConfirmClose(false);
     }
   }, [open, accounts, obligations]);
 
   if (!open) return null;
 
-  const currentState = useMemo(
-    () => ({
-      amount,
-      selectedAccount,
-      type,
-      selectedObligId,
-      savingsTarget,
-      toAccount,
-    }),
-    [amount, selectedAccount, type, selectedObligId, savingsTarget, toAccount]
-  );
-
-  const hasUnsavedChanges =
-    initialState && JSON.stringify(initialState) !== JSON.stringify(currentState);
-
   const handleSave = () => {
     const num = parseFloat(amount.replace(/[^\d.]/g, ""));
     if (!num || !selectedAccount) return;
+
     const opts: { obligationId?: string; toAccount?: string } = {};
     if (type === "obligation" && selectedObligId) opts.obligationId = selectedObligId;
-    if (type === "savings" && savingsTarget === "transfer" && toAccount) opts.toAccount = toAccount;
+    if (type === "savings" && savingsTarget === "transfer" && toAccount) {
+      opts.toAccount = toAccount;
+    }
+
     onSave(num, selectedAccount, type, opts);
     onClose();
   };
 
-  const requestClose = () => {
-    if (hasUnsavedChanges) {
-      setShowConfirmClose(true);
-    } else {
-      onClose();
-    }
-  };
-
-  const confirmDiscard = () => {
-    setShowConfirmClose(false);
+  const cancel = () => {
     onClose();
   };
-
-  const cancelDiscard = () => {
-    setShowConfirmClose(false);
-  };
-
-  const selectedAccountObj = activeAccounts.find((a) => a.name === selectedAccount);
 
   const typeOptions: { value: ExpenseType; label: string; desc: string }[] = [
     { value: "regular", label: "Обычный расход", desc: "Уменьшает дневной лимит" },
@@ -140,7 +86,7 @@ export default function AddExpenseModal({
       {/* overlay */}
       <div
         className="absolute inset-0 bg-background/80 backdrop-blur-sm"
-        onClick={requestClose}
+        onClick={cancel}
         style={{ animation: "fadeIn 0.2s ease-out" }}
       />
       <div className="relative w-full max-w-app bg-card rounded-t-2xl modal-slide-up pb-8 shadow-2xl border-t border-border/60 max-h-[90vh] overflow-y-auto">
@@ -153,7 +99,7 @@ export default function AddExpenseModal({
         <div className="flex items-center justify-between px-5 pt-2 pb-4">
           <h2 className="text-lg font-bold text-foreground">Добавить расход</h2>
           <button
-            onClick={requestClose}
+            onClick={cancel}
             className="w-8 h-8 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <X size={16} />
@@ -252,7 +198,7 @@ export default function AddExpenseModal({
             </div>
           </div>
 
-          {/* Conditional: Obligation selector */}
+          {/* Obligation selector */}
           {type === "obligation" && unpaidObligations.length > 0 && (
             <div className="space-y-1.5 animate-fade-in-up">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -276,7 +222,7 @@ export default function AddExpenseModal({
             </div>
           )}
 
-          {/* Conditional: Savings target */}
+          {/* Savings target */}
           {type === "savings" && (
             <div className="space-y-1.5 animate-fade-in-up">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -357,7 +303,7 @@ export default function AddExpenseModal({
           {/* Buttons */}
           <div className="flex gap-3 pt-2">
             <button
-              onClick={requestClose}
+              onClick={cancel}
               className="flex-1 py-3.5 rounded-xl border border-border text-foreground font-semibold hover:bg-muted transition-colors"
             >
               Отмена
@@ -372,34 +318,6 @@ export default function AddExpenseModal({
           </div>
         </div>
       </div>
-
-      {/* Поп-ап подтверждения отмены */}
-      {showConfirmClose && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
-          <div className="w-full max-w-xs rounded-2xl bg-card border border-border/70 shadow-xl p-4 space-y-3">
-            <div className="text-sm font-semibold text-foreground">
-              Отменить изменения?
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Ты внес изменения, но не сохранил их. Если закроешь окно, они пропадут.
-            </div>
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={cancelDiscard}
-                className="flex-1 py-2.5 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-muted transition-colors"
-              >
-                Продолжить
-              </button>
-              <button
-                onClick={confirmDiscard}
-                className="flex-1 py-2.5 rounded-xl bg-alert-orange text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-              >
-                Отменить изменения
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
