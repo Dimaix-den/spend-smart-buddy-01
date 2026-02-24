@@ -118,14 +118,16 @@
     border-radius: 12px;
   }
 
+  /* НОВАЯ версия glass-nav в utilities */
   .glass-nav {
-    background: rgba(28, 28, 30, 0.85);
-    backdrop-filter: blur(40px) saturate(200%);
-    -webkit-backdrop-filter: blur(40px) saturate(200%);
-    border-radius: 20px;
+    background: rgba(28, 28, 30, 0.78);              /* тёмное, но прозрачное стекло */
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-radius: 18px;
     box-shadow:
-      inset 0 0 0 0.5px rgba(255,255,255,0.1),
-      0 8px 32px rgba(0,0,0,0.6);
+      inset 0 0 0 0.5px rgba(255,255,255,0.08),
+      0 10px 30px rgba(0,0,0,0.6);
+    border: 1px solid rgba(120, 120, 128, 0.4);
   }
 
   .glass-overlay {
@@ -206,15 +208,4 @@
 }
 .animate-swipe-reveal {
   animation: swipe-reveal 0.2s ease-out both;
-}
-
-.glass-nav {
-  background: rgba(15, 15, 30, 0.55);          /* более прозрачное стекло */
-  backdrop-filter: blur(14px);                 /* поменьше blur */
-  -webkit-backdrop-filter: blur(14px);
-  border-radius: 18px;                         /* чуть меньше радиус */
-  border: 1px solid rgba(255, 255, 255, 0.12); /* тонкий светлый контур */
-  box-shadow:
-    0 10px 25px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.02);
 }
