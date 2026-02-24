@@ -244,7 +244,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
   const [goalInput, setGoalInput] = useState("");
 
   return (
-    <div className="flex flex-col min-h-screen pb-28">
+    <div className="flex flex-col min-h-screen pb-40">
       {/* Hero section */}
       <div className="px-5 pt-10 pb-6 text-center">
         <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-3">
@@ -286,6 +286,9 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           currentDay={state.budgetPeriod.currentDay}
           dailyBudget={dailyBudget}
           startDate={state.budgetPeriod.startDate}
+          activeBalance={activeBalance}
+          remainingObligations={remainingObligations}
+          stillNeedToSave={stillNeedToSave}
         />
 
         {/* Monthly budget card */}
@@ -392,7 +395,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
 
         {/* Recent transactions grouped by date */}
         {recentExpenses.length > 0 && (
-          <div className="animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
+          <div className="animate-fade-in-up mt-8" style={{ animationDelay: "0.12s" }}>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
               Последние операции
             </h3>

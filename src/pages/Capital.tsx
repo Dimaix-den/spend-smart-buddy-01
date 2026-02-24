@@ -164,6 +164,33 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
           )}
         </div>
 
+        {/* ─── Inactive (collapsible, under Active) ──────────────────── */}
+        {inactiveAccounts.length > 0 && (
+          <div className="-mt-2">
+            <button onClick={() => setShowInactive(!showInactive)} className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+              Неактивные ({inactiveAccounts.length})
+              {showInactive ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+            {showInactive && (
+              <div className="space-y-2 animate-fade-in-up">
+                {inactiveAccounts.map((acc) => (
+                  <button
+                    key={acc.id}
+                    onClick={() => onOpenAccount(acc.id)}
+                    className="w-full glass-card p-4 flex items-center justify-between opacity-60 active:scale-[0.98] transition-transform"
+                  >
+                    <div className="text-left">
+                      <p className="font-semibold text-foreground">{acc.name}</p>
+                      <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(acc.balance)} ₸</p>
+                    </div>
+                    <ToggleSwitch on={false} onToggle={() => toggleAccount(acc.id)} />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ─── Savings ──────────────────────────── */}
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
@@ -222,33 +249,6 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             </button>
           )}
         </div>
-
-        {/* ─── Inactive (collapsible) ──────────────────── */}
-        {inactiveAccounts.length > 0 && (
-          <div>
-            <button onClick={() => setShowInactive(!showInactive)} className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-              Неактивные ({inactiveAccounts.length})
-              {showInactive ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </button>
-            {showInactive && (
-              <div className="space-y-2 animate-fade-in-up">
-                {inactiveAccounts.map((acc) => (
-                  <button
-                    key={acc.id}
-                    onClick={() => onOpenAccount(acc.id)}
-                    className="w-full glass-card p-4 flex items-center justify-between opacity-60 active:scale-[0.98] transition-transform"
-                  >
-                    <div className="text-left">
-                      <p className="font-semibold text-foreground">{acc.name}</p>
-                      <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(acc.balance)} ₸</p>
-                    </div>
-                    <ToggleSwitch on={false} onToggle={() => toggleAccount(acc.id)} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* ─── Obligations ──────────────────────────── */}
         <div>

@@ -114,11 +114,16 @@ export default function UnifiedActionSheet({
     { id: "transfer", label: "Перевод" },
   ];
 
-  const accentColor =
-    tab === "income" ? "hsl(211 100% 50%)" : tab === "transfer" ? "hsl(162 100% 33%)" : "hsl(38 100% 52%)";
+  const tabColors: Record<ActionTab, { accent: string; bg: string; text: string }> = {
+    expense: { accent: "hsl(0 76% 61%)", bg: "rgba(255, 69, 58, 0.1)", text: "hsl(0 76% 61%)" },
+    income: { accent: "hsl(162 100% 33%)", bg: "rgba(0, 166, 118, 0.1)", text: "hsl(162 100% 33%)" },
+    transfer: { accent: "hsl(211 100% 50%)", bg: "rgba(10, 132, 255, 0.1)", text: "hsl(211 100% 50%)" },
+  };
+
+  const accentColor = tabColors[tab].accent;
 
   const accentClass =
-    tab === "income" ? "text-income-blue" : tab === "transfer" ? "text-safe-green" : "text-alert-orange";
+    tab === "income" ? "text-safe-green" : tab === "transfer" ? "text-income-blue" : "text-destructive";
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -147,25 +152,27 @@ export default function UnifiedActionSheet({
         {!isEditing && (
           <div className="px-5 mb-4">
             <div className="flex p-1 rounded-[12px]" style={{ background: "hsl(0 0% 18%)" }}>
-              {tabs.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
-                  className={`flex-1 py-2 rounded-[10px] text-sm font-semibold transition-all duration-300 ${
-                    tab === t.id
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  style={tab === t.id ? { background: "hsl(0 0% 28%)" } : {}}
-                >
-                  {t.label}
-                </button>
-              ))}
+              {tabs.map((t) => {
+                const isActive = tab === t.id;
+                const colors = tabColors[t.id];
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTab(t.id)}
+                    className={`flex-1 py-2 rounded-[10px] text-sm font-semibold transition-all duration-300 ${
+                      isActive ? "" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    style={isActive ? { background: colors.bg, color: colors.text } : {}}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
 
-        <div className="px-5 space-y-4">
+        <div className="px-5 space-y-4" style={{ minHeight: 420 }}>
           {/* Amount */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Сумма</label>
