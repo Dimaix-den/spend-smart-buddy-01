@@ -205,7 +205,13 @@ export function useFinance() {
 
   const stillNeedToSave = Math.max(0, plannedSavings - alreadySaved);
 
-  const daysLeft = Math.max(1, state.budgetPeriod.totalDays - state.budgetPeriod.currentDay);
+  // ✅ Дни до начала следующего месяца
+  const now = new Date(state.currentDate);
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0–11
+  const nextMonthStart = new Date(year, month + 1, 1);
+  const diffMs = nextMonthStart.getTime() - now.getTime();
+  const daysLeft = Math.max(1, Math.ceil(diffMs / 86400000)); // дни до 1-го числа следующего месяца[web:244][web:247]
 
   const available = activeBalance - remainingObligations - stillNeedToSave;
   const dailyBudget = Math.max(0, Math.round(available / daysLeft));
@@ -294,8 +300,6 @@ export function useFinance() {
 
       let adjNewBalance = adjAccount.balance;
 
-      // diff > 0: на счёте стало БОЛЬШЕ — деньги пришли из "Корректировок"
-      // diff < 0: на счёте стало МЕНЬШЕ — деньги ушли в "Вне учёта"
       if (diff > 0) {
         adjNewBalance -= diff;
       } else {
@@ -675,3 +679,4 @@ export function useFinance() {
     updateExpense,
   };
 }
+
