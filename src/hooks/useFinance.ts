@@ -19,7 +19,7 @@ export interface Obligation {
   installments?: { total: number; remaining: number } | null;
 }
 
-export type ExpenseType = "regular" | "obligation" | "savings" | "income" | "transfer";
+export type ExpenseType = "regular" | "obligation" | "savings" | "income" | "transfer" | "adjustment";
 
 export interface Expense {
   id: string;
@@ -250,20 +250,40 @@ export function useFinance() {
   const updateAccountBalance = useCallback((id: string, balance: number) => {
     setState((s) => {
       const account = s.accounts.find((a) => a.id === id);
-      if (!account) return s;
+      if (!account) {
+        return s;
+      }
+
       const diff = balance - account.balance;
-      if (diff === 0) return { ...s, accounts: s.accounts.map((a) => (a.id === id ? { ...a, balance } : a)) };
+      // Если нет изменения – просто обновляем баланс без транзакции
+      if (diff === 0) {
+        return {
+          ...s,
+          accounts: s.accounts.map((a) =>
+            a.id === id ? { ...a, balance } : a
+          ),
+        };
+      }
+
+      // Обновляем баланс счёта
+      const updatedAccounts = s.accounts.map((a) =>
+        a.id === id ? { ...a, balance } : a
+      );
+
+      // NEW: создаём отдельную транзакцию типа "adjustment",
+      // которая не будет учитываться в бюджетных расчётах
       const adjustment: Expense = {
         id: Date.now().toString(),
         date: s.currentDate,
         amount: Math.abs(diff),
         account: account.name,
-        type: diff > 0 ? "income" : "regular",
+        type: "adjustment" as ExpenseType,
         note: "Корректировка баланса",
       };
+
       return {
         ...s,
-        accounts: s.accounts.map((a) => (a.id === id ? { ...a, balance } : a)),
+        accounts: updatedAccounts,
         expenses: [adjustment, ...s.expenses],
       };
     });
