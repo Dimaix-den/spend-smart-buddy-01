@@ -137,7 +137,7 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-1">{typeBadge}</p>
               <h2 className="text-2xl font-bold text-foreground mb-2">{account.name}</h2>
-              <p className="text-4xl font-bold font-tabular text-foreground">{formatAmount(account.balance)} ₸</p>
+              <p className={`text-4xl font-bold font-tabular ${account.balance < 0 ? "text-destructive" : "text-foreground"}`}>{account.balance < 0 ? "−" : ""}{formatAmount(Math.abs(account.balance))} ₸</p>
             </div>
 
             {/* Savings goal progress */}

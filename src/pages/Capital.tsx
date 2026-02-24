@@ -49,15 +49,12 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
     updateObligation,
     toggleObligationPaid,
     deleteObligation,
-    updateBudgetPeriod,
-    startNewMonth,
   } = finance;
 
   const [showInactive, setShowInactive] = useState(false);
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showAddSavings, setShowAddSavings] = useState(false);
   const [showAddOblig, setShowAddOblig] = useState(false);
-  const [showNewMonth, setShowNewMonth] = useState(false);
 
   // Add account form
   const [newAccName, setNewAccName] = useState("");
@@ -142,7 +139,7 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
               >
                 <div className="text-left">
                   <p className="font-semibold text-foreground">{acc.name}</p>
-                  <p className="text-lg font-bold font-tabular text-safe-green">{formatAmount(acc.balance)} ₸</p>
+                  <p className={`text-lg font-bold font-tabular ${acc.balance < 0 ? "text-destructive" : "text-safe-green"}`}>{acc.balance < 0 ? "−" : ""}{formatAmount(Math.abs(acc.balance))} ₸</p>
                 </div>
                 <ToggleSwitch on={acc.type === "active"} onToggle={() => toggleAccount(acc.id)} />
               </button>
@@ -325,46 +322,7 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
           )}
         </div>
 
-        {/* ─── Budget period & New month ──────────────── */}
-        <div className="glass-card p-4 space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Период бюджета</h3>
-          <div className="flex gap-3">
-            <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">Дней в периоде</label>
-              <input type="number" value={state.budgetPeriod.totalDays || ""} onChange={(e) => updateBudgetPeriod({ totalDays: parseInt(e.target.value) || 30 })} className="w-full glass-input px-3 py-2.5 text-sm font-bold font-tabular focus:outline-none" />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-muted-foreground mb-1 block">Текущий день</label>
-              <input type="number" value={state.budgetPeriod.currentDay || ""} onChange={(e) => updateBudgetPeriod({ currentDay: Math.min(parseInt(e.target.value) || 1, state.budgetPeriod.totalDays) })} className="w-full glass-input px-3 py-2.5 text-sm font-bold font-tabular focus:outline-none" />
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setShowNewMonth(true)}
-          className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-4 rounded-[12px] text-sm font-semibold transition-colors"
-          style={{ background: "hsl(0 0% 11%)" }}
-        >
-          Начать новый месяц
-        </button>
       </div>
-
-      {/* New Month Dialog */}
-      {showNewMonth && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
-          <div className="absolute inset-0 glass-overlay" onClick={() => setShowNewMonth(false)} />
-          <div className="relative glass-card-raised p-6 w-full max-w-sm animate-fade-in-up">
-            <h3 className="text-lg font-bold text-foreground mb-3">Начать новый месяц?</h3>
-            <p className="text-sm text-muted-foreground mb-5">
-              Счётчик дней сбросится, история расходов очистится. Обязательства станут неоплаченными.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setShowNewMonth(false)} className="flex-1 py-3 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Отмена</button>
-              <button onClick={() => { startNewMonth(); setShowNewMonth(false); toast({ description: "🔄 Новый месяц начат", duration: 2000 }); }} className="flex-1 py-3 rounded-[10px] text-sm font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>Начать</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
