@@ -313,7 +313,7 @@ export function useFinance() {
         account: diff > 0 ? adjAccount.name : account.name,
         type: "transfer",
         toAccount: diff > 0 ? account.name : adjAccount.name,
-        note: "Корректировка баланса",
+        note: "Вне учета",
       };
 
       return {
