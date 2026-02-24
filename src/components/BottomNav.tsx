@@ -14,45 +14,61 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
   ];
 
   return (
-    <nav className="fixed bottom-3 left-3 right-3 z-40 max-w-app mx-auto">
-      <div
-        className="flex items-center glass-nav px-1 py-1 rounded-[18px]"
-        style={{ paddingBottom: "calc(4px + env(safe-area-inset-bottom))" }}
-      >
-        {tabs.map(({ id, label, Icon }) => {
-          const isActive = active === id;
+    <nav className="fixed bottom-4 left-0 right-0 z-40">
+      <div className="flex justify-center">
+        <div
+          className="glass-nav flex items-center px-2 py-1 rounded-full"
+          style={{
+            minWidth: 230,
+            maxWidth: 260,
+            paddingBottom: "calc(4px + env(safe-area-inset-bottom))",
+          }}
+        >
+          {tabs.map(({ id, label, Icon }, index) => {
+            const isActive = active === id;
+            const isFirst = index === 0;
 
-          return (
-            <button
-              key={id}
-              onClick={() => onChange(id)}
-              className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 transition-all duration-250 ease-out relative active:scale-95 ${
-                isActive ? "text-safe-green" : "text-muted-foreground"
-              }`}
-              style={{
-                transform: isActive
-                  ? "translateY(-2px) scale(1.03)"
-                  : "translateY(0) scale(1)",
-              }}
-            >
-              <Icon
-                size={22}
-                strokeWidth={isActive ? 2.4 : 1.8}
-                className="transition-all duration-250"
-                style={{ transform: isActive ? "scale(1.06)" : "scale(1)" }}
-              />
-
-              <span
-                className={`tracking-wider transition-all duration-200 ${
-                  isActive ? "font-semibold" : "font-medium"
-                }`}
-                style={{ fontSize: "10px" }}
+            return (
+              <div
+                key={id}
+                className="flex-1 flex items-center justify-center relative"
               >
-                {label}
-              </span>
-            </button>
-          );
-        })}
+                <button
+                  onClick={() => onChange(id)}
+                  className={`flex flex-col items-center gap-1 py-2 px-3 transition-all duration-200 ease-out active:scale-95 ${
+                    isActive ? "text-safe-green" : "text-muted-foreground"
+                  }`}
+                  style={{
+                    transform: isActive
+                      ? "translateY(-1px) scale(1.02)"
+                      : "translateY(0) scale(1)",
+                  }}
+                >
+                  <Icon
+                    size={20}
+                    strokeWidth={isActive ? 2.4 : 1.8}
+                    className="transition-all duration-200"
+                    style={{
+                      transform: isActive ? "scale(1.06)" : "scale(1)",
+                    }}
+                  />
+                  <span
+                    className={`tracking-wider transition-all duration-150 ${
+                      isActive ? "font-semibold" : "font-medium"
+                    }`}
+                    style={{ fontSize: "9px" }}
+                  >
+                    {label}
+                  </span>
+                </button>
+
+                {isFirst && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 h-6 w-px bg-white/10" />
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );
