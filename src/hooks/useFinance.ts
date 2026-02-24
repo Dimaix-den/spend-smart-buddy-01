@@ -45,6 +45,7 @@ export interface FinanceState {
   budgetPeriod: BudgetPeriod;
   expenses: Expense[];
   currentDate: string;
+  monthStartBalances?: Record<string, number>;
 }
 
 const STORAGE_KEY = "sanda_finance_v3";
@@ -196,7 +197,13 @@ export function useFinance() {
   const safeToSpendStatus =
     safeToSpend < 0 ? "overspent" : percentSpent >= 80 ? "warning" : "ok";
 
-  const monthlyBudget = Math.max(0, available);
+  // ─── Monthly budget: starting balance + income this month ────
+  const monthStartBalance = Object.values(state.monthStartBalances || {}).reduce((s, v) => s + v, 0);
+  const monthlyIncome = state.expenses
+    .filter((e) => e.type === "income")
+    .reduce((sum, e) => sum + e.amount, 0);
+  const monthlyBudget = monthStartBalance + monthlyIncome;
+
   const spentThisMonth = state.expenses
     .filter((e) => e.type === "regular")
     .reduce((sum, e) => sum + e.amount, 0);
@@ -229,10 +236,26 @@ export function useFinance() {
   }, []);
 
   const updateAccountBalance = useCallback((id: string, balance: number) => {
-    setState((s) => ({
-      ...s,
-      accounts: s.accounts.map((a) => (a.id === id ? { ...a, balance } : a)),
-    }));
+    setState((s) => {
+      const account = s.accounts.find((a) => a.id === id);
+      if (!account) return s;
+      const diff = balance - account.balance;
+      if (diff === 0) return { ...s, accounts: s.accounts.map((a) => (a.id === id ? { ...a, balance } : a)) };
+      // Create adjustment transaction
+      const adjustment: Expense = {
+        id: Date.now().toString(),
+        date: s.currentDate,
+        amount: Math.abs(diff),
+        account: account.name,
+        type: diff > 0 ? "income" : "regular",
+        note: "Корректировка баланса",
+      };
+      return {
+        ...s,
+        accounts: s.accounts.map((a) => (a.id === id ? { ...a, balance } : a)),
+        expenses: [adjustment, ...s.expenses],
+      };
+    });
   }, []);
 
   const updateAccountName = useCallback((id: string, name: string) => {
@@ -320,7 +343,7 @@ export function useFinance() {
       setState((s) => {
         const nowDate = s.currentDate;
         let updatedAccounts = s.accounts.map((a) =>
-          a.name === accountName ? { ...a, balance: Math.max(0, a.balance - amount) } : a
+          a.name === accountName ? { ...a, balance: a.balance - amount } : a
         );
 
         // For transfers/savings, add to target account
@@ -428,7 +451,7 @@ export function useFinance() {
       if (old.type === "income") {
         accs = accs.map((a) => a.name === accountName ? { ...a, balance: a.balance + amount } : a);
       } else {
-        accs = accs.map((a) => a.name === accountName ? { ...a, balance: Math.max(0, a.balance - amount) } : a);
+        accs = accs.map((a) => a.name === accountName ? { ...a, balance: a.balance - amount } : a);
       }
 
       return {
@@ -441,15 +464,34 @@ export function useFinance() {
     });
   }, []);
 
-  // ─── New month ─────────────────────────────────────────────────
-  const startNewMonth = useCallback(() => {
-    setState((s) => ({
-      ...s,
-      budgetPeriod: { ...s.budgetPeriod, currentDay: 1, startDate: today() },
-      obligations: s.obligations.map((o) => ({ ...o, paid: false })),
-      expenses: [],
-      currentDate: today(),
-    }));
+  // ─── New month (auto-detect) ────────────────────────────────────
+  // Initialize monthStartBalances if missing
+  useEffect(() => {
+    if (!state.monthStartBalances) {
+      const balances: Record<string, number> = {};
+      state.accounts.filter(a => a.type === "active").forEach(a => { balances[a.id] = a.balance; });
+      setState(s => ({ ...s, monthStartBalances: balances }));
+    }
+  }, []);
+
+  // Auto-detect new month
+  useEffect(() => {
+    const currentMonth = new Date().getMonth();
+    const startMonth = new Date(state.budgetPeriod.startDate).getMonth();
+    if (currentMonth !== startMonth) {
+      setState(s => {
+        const balances: Record<string, number> = {};
+        s.accounts.filter(a => a.type === "active").forEach(a => { balances[a.id] = a.balance; });
+        return {
+          ...s,
+          budgetPeriod: { ...s.budgetPeriod, currentDay: 1, startDate: today() },
+          obligations: s.obligations.map(o => ({ ...o, paid: false })),
+          expenses: [],
+          monthStartBalances: balances,
+          currentDate: today(),
+        };
+      });
+    }
   }, []);
 
   return {
@@ -492,6 +534,5 @@ export function useFinance() {
     addIncome,
     deleteExpense,
     updateExpense,
-    startNewMonth,
   };
 }

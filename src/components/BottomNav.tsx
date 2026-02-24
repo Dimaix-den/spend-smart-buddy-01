@@ -15,7 +15,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
 
   return (
     <nav className="fixed bottom-3 left-3 right-3 z-40 max-w-app mx-auto">
-      <div className="flex items-center glass-nav px-2 py-1 rounded-full" style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}>
+      <div className="flex items-center glass-nav px-2 py-1 rounded-[24px]" style={{ paddingBottom: "calc(8px + env(safe-area-inset-bottom))" }}>
         {tabs.map(({ id, label, Icon }) => {
           const isActive = active === id;
           return (
