@@ -60,7 +60,7 @@ const DEFAULT_STATE: FinanceState = {
     { id: "4", name: "Фин. подушка", balance: 500000, isActive: false, type: "savings", monthlyGoal: 100000 },
     { id: "5", name: "На поездки", balance: 200000, isActive: false, type: "savings", monthlyGoal: 50000 },
     // Скрытый счёт для корректировок (вне учёта лимитов и UI)
-    { id: "adj", name: "Корректировки", balance: 0, isActive: false, type: "inactive" },
+    { id: "adj", name: "Вне учёта", balance: 0, isActive: false, type: "inactive" },
   ],
   obligations: [
     { id: "1", name: "Аренда", amount: 60000, paid: false },
@@ -82,12 +82,12 @@ function migrateState(parsed: any): FinanceState {
       monthlyGoal: a.monthlyGoal ?? null,
     }));
 
-    // Гарантируем наличие скрытого счёта "Корректировки"
-    const hasAdj = parsed.accounts.some((a: any) => a.name === "Корректировки");
+    // Гарантируем наличие скрытого счёта "Вне учёта"
+    const hasAdj = parsed.accounts.some((a: any) => a.name === "Вне учёта");
     if (!hasAdj) {
       parsed.accounts.push({
         id: "adj",
-        name: "Корректировки",
+        name: "Вне учёта",
         balance: 0,
         isActive: false,
         type: "inactive" as AccountType,
@@ -285,7 +285,7 @@ export function useFinance() {
       }
 
       // Счёт для корректировок
-      const adjAccount = s.accounts.find((a) => a.name === "Корректировки");
+      const adjAccount = s.accounts.find((a) => a.name === "Вне учёта");
       if (!adjAccount) return s;
 
       let updatedAccounts = s.accounts.map((a) =>
@@ -295,7 +295,7 @@ export function useFinance() {
       let adjNewBalance = adjAccount.balance;
 
       // diff > 0: на счёте стало БОЛЬШЕ — деньги пришли из "Корректировок"
-      // diff < 0: на счёте стало МЕНЬШЕ — деньги ушли в "Корректировки"
+      // diff < 0: на счёте стало МЕНЬШЕ — деньги ушли в "Вне учёта"
       if (diff > 0) {
         adjNewBalance -= diff;
       } else {
