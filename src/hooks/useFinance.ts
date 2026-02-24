@@ -52,6 +52,21 @@ const STORAGE_KEY = "sanda_finance_v3";
 
 const today = () => new Date().toISOString().split("T")[0];
 
+// 🔹 НОВАЯ функция: дни до начала следующего месяца
+function getDaysUntilNextMonth(currentDateStr: string) {
+  const current = new Date(currentDateStr); // "YYYY-MM-DD"
+  const year = current.getFullYear();
+  const month = current.getMonth(); // 0-11
+
+  const startOfToday = new Date(year, month, current.getDate());
+  const nextMonthStart = new Date(year, month + 1, 1);
+
+  const diffMs = nextMonthStart.getTime() - startOfToday.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  return Math.max(1, diffDays); // минимум 1 день, чтобы не делить на 0
+}
+
 const DEFAULT_STATE: FinanceState = {
   accounts: [
     { id: "1", name: "Kaspi Gold", balance: 150000, isActive: true, type: "active" },
@@ -73,7 +88,6 @@ const DEFAULT_STATE: FinanceState = {
 };
 
 function migrateState(parsed: any): FinanceState {
-  // Migrate accounts to have type
   if (parsed.accounts) {
     parsed.accounts = parsed.accounts.map((a: any) => ({
       ...a,
@@ -104,7 +118,6 @@ function migrateState(parsed: any): FinanceState {
 
 function loadState(): FinanceState {
   try {
-    // Try new key first
     let stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) {
       stored = localStorage.getItem("sanda_finance_v2");
@@ -164,14 +177,12 @@ export function useFinance() {
 
   const totalObligations = state.obligations.reduce((sum, o) => sum + o.amount, 0);
 
-  // Planned savings = sum of all savings accounts' monthly goals
   const plannedSavings = savingsAccounts.reduce((sum, a) => sum + (a.monthlyGoal || 0), 0);
 
   const alreadySaved = state.expenses
     .filter((e) => e.type === "savings" || (e.type === "transfer" && savingsAccounts.some(sa => sa.name === e.toAccount)))
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // Per-account savings tracking
   const getSavingsForAccount = useCallback((accountName: string) => {
     return state.expenses
       .filter((e) => (e.type === "savings" || e.type === "transfer") && e.toAccount === accountName)
@@ -180,7 +191,8 @@ export function useFinance() {
 
   const stillNeedToSave = Math.max(0, plannedSavings - alreadySaved);
 
-  const daysLeft = Math.max(1, state.budgetPeriod.totalDays - state.budgetPeriod.currentDay);
+  // 🔹 НОВЫЙ расчёт daysLeft — календарные дни до следующего месяца
+  const daysLeft = getDaysUntilNextMonth(state.currentDate);
 
   const available = activeBalance - remainingObligations - stillNeedToSave;
   const dailyBudget = Math.max(0, Math.round(available / daysLeft));
@@ -230,7 +242,7 @@ export function useFinance() {
         if (a.id !== id) return a;
         if (a.type === "active") return { ...a, type: "inactive" as AccountType, isActive: false };
         if (a.type === "inactive") return { ...a, type: "active" as AccountType, isActive: true };
-        return a; // savings don't toggle
+        return a;
       }),
     }));
   }, []);
@@ -241,7 +253,6 @@ export function useFinance() {
       if (!account) return s;
       const diff = balance - account.balance;
       if (diff === 0) return { ...s, accounts: s.accounts.map((a) => (a.id === id ? { ...a, balance } : a)) };
-      // Create adjustment transaction
       const adjustment: Expense = {
         id: Date.now().toString(),
         date: s.currentDate,
@@ -346,7 +357,6 @@ export function useFinance() {
           a.name === accountName ? { ...a, balance: a.balance - amount } : a
         );
 
-        // For transfers/savings, add to target account
         if ((type === "savings" || type === "transfer") && opts?.toAccount) {
           updatedAccounts = updatedAccounts.map((a) =>
             a.name === opts.toAccount ? { ...a, balance: a.balance + amount } : a
@@ -465,7 +475,6 @@ export function useFinance() {
   }, []);
 
   // ─── New month (auto-detect) ────────────────────────────────────
-  // Initialize monthStartBalances if missing
   useEffect(() => {
     if (!state.monthStartBalances) {
       const balances: Record<string, number> = {};
@@ -474,7 +483,6 @@ export function useFinance() {
     }
   }, []);
 
-  // Auto-detect new month
   useEffect(() => {
     const currentMonth = new Date().getMonth();
     const startMonth = new Date(state.budgetPeriod.startDate).getMonth();
@@ -536,3 +544,4 @@ export function useFinance() {
     updateExpense,
   };
 }
+
