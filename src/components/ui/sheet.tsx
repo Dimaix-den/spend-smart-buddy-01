@@ -55,26 +55,6 @@ const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
 >(({ side = "right", className, children, ...props }, ref) => {
-  const startY = React.useRef<number | null>(null);
-
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    startY.current = e.touches[0]?.clientY ?? null;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (startY.current == null) return;
-    const endY = e.changedTouches[0]?.clientY ?? startY.current;
-    const deltaY = endY - startY.current;
-    const MIN_SWIPE = 48; // порог свайпа вниз
-
-    if (deltaY > MIN_SWIPE) {
-      // Закрываем sheet свайпом вниз
-      (props as any)?.onOpenChange?.(false);
-    }
-
-    startY.current = null;
-  };
-
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -82,8 +62,6 @@ const SheetContent = React.forwardRef<
         ref={ref}
         className={cn(sheetVariants({ side }), className)}
         {...props}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
       >
         {children}
         <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
@@ -134,3 +112,4 @@ export {
   SheetTitle,
   SheetTrigger,
 };
+
