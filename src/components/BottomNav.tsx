@@ -14,10 +14,9 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
   ];
 
   return (
-  <nav className="fixed bottom-4 left-0 right-0 z-40">
-    <div className="flex justify-center">
+    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
       <div
-        className="glass-nav flex items-center rounded-full"
+        className="glass-nav flex items-center rounded-full shadow-lg"
         style={{
           minWidth: 280,
           maxWidth: 320,
@@ -70,8 +69,6 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
           );
         })}
       </div>
-    </div>
-  </nav>
-);
-
+    </nav>
+  );
 }
