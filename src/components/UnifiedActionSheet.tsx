@@ -274,50 +274,36 @@ export default function UnifiedActionSheet({
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {tab === "income" ? "На какой счёт" : "Откуда"}
             </label>
-            <div className="space-y-2">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
               {(tab === "income"
                 ? allAccounts.filter((a) => a.type !== "inactive")
                 : activeAccounts
-              ).map((acc) => (
-                <button
-                  key={acc.id}
-                  onClick={() => setSelectedAccount(acc.name)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-[10px] transition-all duration-200"
-                  style={{
-                    background:
-                      selectedAccount === acc.name
-                        ? `${accentColor}22`
-                        : "hsl(0 0% 18%)",
-                    boxShadow:
-                      selectedAccount === acc.name
+              ).map((acc) => {
+                const isActive = selectedAccount === acc.name;
+                return (
+                  <button
+                    key={acc.id}
+                    onClick={() => setSelectedAccount(acc.name)}
+                    className="flex-shrink-0 px-3 py-2 rounded-[10px] text-left transition-all duration-200 min-w-[140px]"
+                    style={{
+                      background: isActive ? `${accentColor}22` : "hsl(0 0% 18%)",
+                      boxShadow: isActive
                         ? `inset 0 0 0 1.5px ${accentColor}`
                         : "none",
-                  }}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                      style={{
-                        borderColor:
-                          selectedAccount === acc.name
-                            ? accentColor
-                            : "hsl(0 0% 40%)",
-                      }}
-                    >
-                      {selectedAccount === acc.name && (
-                        <div
-                          className="w-2 h-2 rounded-full"
-                          style={{ background: accentColor }}
-                        />
-                      )}
+                    }}
+                  >
+                    <div className="text-xs text-muted-foreground mb-0.5">
+                      {acc.type === "savings" ? "Сбережения" : "Счёт"}
                     </div>
-                    <span className="font-semibold text-foreground">{acc.name}</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground font-tabular">
-                    {formatAmount(acc.balance)} ₸
-                  </span>
-                </button>
-              ))}
+                    <div className="text-sm font-semibold text-foreground truncate">
+                      {acc.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-tabular">
+                      {formatAmount(acc.balance)} ₸
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -327,55 +313,37 @@ export default function UnifiedActionSheet({
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Куда
               </label>
-              <div className="space-y-2">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                 {allAccounts
                   .filter((a) => a.name !== selectedAccount)
-                  .map((acc) => (
-                    <button
-                      key={acc.id}
-                      onClick={() => setToAccount(acc.name)}
-                      className="w-full flex items-center justify-between px-4 py-3 rounded-[10px] transition-all duration-200"
-                      style={{
-                        background:
-                          toAccount === acc.name
+                  .map((acc) => {
+                    const isActive = toAccount === acc.name;
+                    return (
+                      <button
+                        key={acc.id}
+                        onClick={() => setToAccount(acc.name)}
+                        className="flex-shrink-0 px-3 py-2 rounded-[10px] text-left transition-all duration-200 min-w-[140px]"
+                        style={{
+                          background: isActive
                             ? "hsl(162 100% 33% / 0.15)"
                             : "hsl(0 0% 18%)",
-                        boxShadow:
-                          toAccount === acc.name
+                          boxShadow: isActive
                             ? "inset 0 0 0 1.5px hsl(162 100% 33%)"
                             : "none",
-                      }}
-                    >
-                      <div className="flex items-center_gap-2.5">
-                        <div
-                          className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                          style={{
-                            borderColor:
-                              toAccount === acc.name
-                                ? "hsl(162 100% 33%)"
-                                : "hsl(0 0% 40%)",
-                          }}
-                        >
-                          {toAccount === acc.name && (
-                            <div className="w-2 h-2 rounded-full bg-safe-green" />
-                          )}
+                        }}
+                      >
+                        <div className="text-xs text-muted-foreground mb-0.5">
+                          {acc.type === "savings" ? "Сбережения" : "Счёт"}
                         </div>
-                        <div>
-                          <span className="font-semibold text-foreground">
-                            {acc.name}
-                          </span>
-                          {acc.type === "savings" && (
-                            <span className="text-xs text-safe-green ml-2">
-                              сбережения
-                            </span>
-                          )}
+                        <div className="text-sm font-semibold text-foreground truncate">
+                          {acc.name}
                         </div>
-                      </div>
-                      <span className="text-sm text-muted-foreground font-tabular">
-                        {formatAmount(acc.balance)} ₸
-                      </span>
-                    </button>
-                  ))}
+                        <div className="text-xs text-muted-foreground font-tabular">
+                          {formatAmount(acc.balance)} ₸
+                        </div>
+                      </button>
+                    );
+                  })}
               </div>
             </div>
           )}
