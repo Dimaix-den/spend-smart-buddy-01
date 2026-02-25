@@ -3,6 +3,7 @@ import { Plus, ChevronDown, ChevronUp, CheckCircle2, Circle, X, Pencil, Check } 
 import { useFinance, AccountType } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import { toast } from "@/hooks/use-toast";
+import MoneyInput from "@/components/MoneyInput";
 
 interface CapitalProps {
   finance: ReturnType<typeof useFinance>;
@@ -149,7 +150,12 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
               <input autoFocus placeholder="Название" value={newAccName} onChange={(e) => setNewAccName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
               <div className="relative">
-                <input type="number" placeholder="0" value={newAccBalance} onChange={(e) => setNewAccBalance(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
+                <MoneyInput
+                  placeholder="0"
+                  value={newAccBalance}
+                  onChange={setNewAccBalance}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+                />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
               </div>
               <div className="flex gap-2">
@@ -231,11 +237,21 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
               <input autoFocus placeholder="Название" value={newSavName} onChange={(e) => setNewSavName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
               <div className="relative">
-                <input type="number" placeholder="Текущий баланс" value={newSavBalance} onChange={(e) => setNewSavBalance(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
+                <MoneyInput
+                  placeholder="Текущий баланс"
+                  value={newSavBalance}
+                  onChange={setNewSavBalance}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+                />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
               </div>
               <div className="relative">
-                <input type="number" placeholder="Цель в месяц" value={newSavGoal} onChange={(e) => setNewSavGoal(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-12" />
+                <MoneyInput
+                  placeholder="Цель в месяц"
+                  value={newSavGoal}
+                  onChange={setNewSavGoal}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-12"
+                />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸/мес</span>
               </div>
               <div className="flex gap-2">
@@ -262,7 +278,11 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
                   <div className="flex gap-2">
                     <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 glass-input px-2 py-1.5 text-sm focus:outline-none" />
                     <div className="relative w-28">
-                      <input type="number" value={editAmount} onChange={(e) => setEditAmount(e.target.value)} className="w-full glass-input px-2 py-1.5 text-sm focus:outline-none pr-5" />
+                      <MoneyInput
+                        value={editAmount}
+                        onChange={setEditAmount}
+                        className="w-full glass-input px-2 py-1.5 text-sm focus:outline-none pr-5"
+                      />
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸</span>
                     </div>
                     <button onClick={() => { const amt = parseFloat(editAmount) || 0; if (amt && editName.trim()) updateObligation(o.id, editName.trim(), amt); setEditingOblig(null); }} className="px-2 py-1 rounded-lg text-xs font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>
@@ -307,7 +327,13 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
               <input autoFocus placeholder="Название" value={newObligName} onChange={(e) => setNewObligName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
               <div className="relative">
-                <input type="number" placeholder="0" value={newObligAmount} onChange={(e) => setNewObligAmount(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddObligation()} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
+                <MoneyInput
+                  placeholder="0"
+                  value={newObligAmount}
+                  onChange={setNewObligAmount}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddObligation()}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+                />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
               </div>
               <div className="flex gap-2">
