@@ -476,6 +476,7 @@ export default function UnifiedActionSheet({
                 onChange={(e) => setOperationDate(e.target.value)}
                 className="glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none flex-1"
               />
+            </div>
           </div>
 
           {/* Save button */}
