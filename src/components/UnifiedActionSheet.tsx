@@ -473,7 +473,7 @@ export default function UnifiedActionSheet({
               type="date"
               value={operationDate}
               onChange={(e) => setOperationDate(e.target.value)}
-              className="w-full glass-input px-4 py-2 text-sm placeholder:text-muted-foreground/40 focus:outline-none"
+              className="block w-full glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none"
             />
           </div>
 
