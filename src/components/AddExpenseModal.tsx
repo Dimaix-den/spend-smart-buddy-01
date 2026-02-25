@@ -32,6 +32,11 @@ export default function AddExpenseModal({
   const [showAccounts, setShowAccounts] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // 👉 Новое состояние для даты операции
+  const [operationDate, setOperationDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+
   const activeAccounts = accounts.filter((a) => a.isActive);
   const inactiveAccounts = accounts.filter((a) => !a.isActive);
   const unpaidObligations = obligations.filter((o) => !o.paid);
@@ -47,8 +52,11 @@ export default function AddExpenseModal({
       if (!selectedAccount && activeAccounts.length > 0) {
         setSelectedAccount(activeAccounts[0].name);
       }
+      // 👉 При каждом открытии сбрасываем дату на сегодня
+      setOperationDate(new Date().toISOString().split("T")[0]);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!open) return null;
@@ -58,7 +66,11 @@ export default function AddExpenseModal({
     if (!num || !selectedAccount) return;
     const opts: { obligationId?: string; toAccount?: string } = {};
     if (type === "obligation" && selectedObligId) opts.obligationId = selectedObligId;
-    if (type === "savings" && savingsTarget === "transfer" && toAccount) opts.toAccount = toAccount;
+    if (type === "savings" && savingsTarget === "transfer" && toAccount)
+      opts.toAccount = toAccount;
+
+    // Пока дата операции не прокидывается дальше (onSave сигнатуру не трогаем),
+    // на следующем шаге расширим onSave / addExpense, чтобы использовать operationDate.
     onSave(num, selectedAccount, type, opts);
     onClose();
   };
@@ -98,7 +110,9 @@ export default function AddExpenseModal({
         <div className="px-5 space-y-4">
           {/* Amount */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Сумма</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Сумма
+            </label>
             <div className="relative">
               <input
                 ref={inputRef}
@@ -109,13 +123,17 @@ export default function AddExpenseModal({
                 placeholder="0"
                 className="w-full bg-surface-raised border-2 border-border rounded-xl px-4 py-3.5 text-3xl font-bold text-foreground tabular-nums placeholder:text-muted-foreground/50 focus:border-alert-orange focus:outline-none transition-colors"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">₸</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl font-bold text-muted-foreground">
+                ₸
+              </span>
             </div>
           </div>
 
           {/* Account selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Откуда взять</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Откуда взять
+            </label>
             <div className="space-y-2">
               {activeAccounts.map((acc) => (
                 <button
@@ -128,14 +146,22 @@ export default function AddExpenseModal({
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                      selectedAccount === acc.name ? "border-alert-orange" : "border-muted-foreground"
-                    }`}>
-                      {selectedAccount === acc.name && <div className="w-2 h-2 rounded-full bg-alert-orange" />}
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                        selectedAccount === acc.name
+                          ? "border-alert-orange"
+                          : "border-muted-foreground"
+                      }`}
+                    >
+                      {selectedAccount === acc.name && (
+                        <div className="w-2 h-2 rounded-full bg-alert-orange" />
+                      )}
                     </div>
                     <span className="font-semibold text-foreground">{acc.name}</span>
                   </div>
-                  <span className="text-sm text-muted-foreground font-tabular">{formatAmount(acc.balance)} ₸</span>
+                  <span className="text-sm text-muted-foreground font-tabular">
+                    {formatAmount(acc.balance)} ₸
+                  </span>
                 </button>
               ))}
             </div>
@@ -143,7 +169,9 @@ export default function AddExpenseModal({
 
           {/* Type selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Тип расхода</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Тип расхода
+            </label>
             <div className="space-y-2">
               {typeOptions.map((opt) => (
                 <button
@@ -155,13 +183,19 @@ export default function AddExpenseModal({
                       : "border-border bg-surface-raised hover:border-muted-foreground"
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
-                    type === opt.value ? "border-safe-green" : "border-muted-foreground"
-                  }`}>
-                    {type === opt.value && <div className="w-2 h-2 rounded-full bg-safe-green" />}
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                      type === opt.value ? "border-safe-green" : "border-muted-foreground"
+                    }`}
+                  >
+                    {type === opt.value && (
+                      <div className="w-2 h-2 rounded-full bg-safe-green" />
+                    )}
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-foreground">{opt.label}</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      {opt.label}
+                    </div>
                     <div className="text-xs text-muted-foreground">{opt.desc}</div>
                   </div>
                 </button>
@@ -172,7 +206,9 @@ export default function AddExpenseModal({
           {/* Conditional: Obligation selector */}
           {type === "obligation" && unpaidObligations.length > 0 && (
             <div className="space-y-1.5 animate-fade-in-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Какой платёж?</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Какой платёж?
+              </label>
               <div className="flex flex-wrap gap-2">
                 {unpaidObligations.map((o) => (
                   <button
@@ -194,35 +230,65 @@ export default function AddExpenseModal({
           {/* Conditional: Savings target */}
           {type === "savings" && (
             <div className="space-y-1.5 animate-fade-in-up">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Куда положить?</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Куда положить?
+              </label>
               <div className="space-y-2">
                 <button
                   onClick={() => setSavingsTarget("virtual")}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
-                    savingsTarget === "virtual" ? "border-safe-green bg-safe-green/10" : "border-border bg-surface-raised"
+                    savingsTarget === "virtual"
+                      ? "border-safe-green bg-safe-green/10"
+                      : "border-border bg-surface-raised"
                   }`}
                 >
-                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${savingsTarget === "virtual" ? "border-safe-green" : "border-muted-foreground"}`}>
-                    {savingsTarget === "virtual" && <div className="w-2 h-2 rounded-full bg-safe-green" />}
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                      savingsTarget === "virtual"
+                        ? "border-safe-green"
+                        : "border-muted-foreground"
+                    }`}
+                  >
+                    {savingsTarget === "virtual" && (
+                      <div className="w-2 h-2 rounded-full bg-safe-green" />
+                    )}
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-foreground">Просто отметить</div>
-                    <div className="text-xs text-muted-foreground">Виртуально зарезервировать</div>
+                    <div className="text-sm font-semibold text-foreground">
+                      Просто отметить
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      Виртуально зарезервировать
+                    </div>
                   </div>
                 </button>
                 {inactiveAccounts.length > 0 && (
                   <button
                     onClick={() => setSavingsTarget("transfer")}
                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
-                      savingsTarget === "transfer" ? "border-safe-green bg-safe-green/10" : "border-border bg-surface-raised"
+                      savingsTarget === "transfer"
+                        ? "border-safe-green bg-safe-green/10"
+                        : "border-border bg-surface-raised"
                     }`}
                   >
-                    <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${savingsTarget === "transfer" ? "border-safe-green" : "border-muted-foreground"}`}>
-                      {savingsTarget === "transfer" && <div className="w-2 h-2 rounded-full bg-safe-green" />}
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                        savingsTarget === "transfer"
+                          ? "border-safe-green"
+                          : "border-muted-foreground"
+                      }`}
+                    >
+                      {savingsTarget === "transfer" && (
+                        <div className="w-2 h-2 rounded-full bg-safe-green" />
+                      )}
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-foreground">На депозит (физически)</div>
-                      <div className="text-xs text-muted-foreground">Перевести на сберегательный счёт</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        На депозит (физически)
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        Перевести на сберегательный счёт
+                      </div>
                     </div>
                   </button>
                 )}
@@ -234,7 +300,9 @@ export default function AddExpenseModal({
                       key={acc.id}
                       onClick={() => setToAccount(acc.name)}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        toAccount === acc.name ? "bg-safe-green text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                        toAccount === acc.name
+                          ? "bg-safe-green text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       {acc.name}
@@ -244,6 +312,19 @@ export default function AddExpenseModal({
               )}
             </div>
           )}
+
+          {/* Date selector */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Дата операции
+            </label>
+            <input
+              type="date"
+              value={operationDate}
+              onChange={(e) => setOperationDate(e.target.value)}
+              className="w-full bg-surface-raised border border-border rounded-xl px-3 py-2 text-sm text-foreground"
+            />
+          </div>
 
           {/* Buttons */}
           <div className="flex gap-3 pt-2">
