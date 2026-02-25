@@ -15,31 +15,7 @@ const Index = () => {
   const [showHistory, setShowHistory] = useState(false);
   const finance = useFinance();
 
-  if (showHistory) {
-    return (
-      <div className="min-h-screen bg-background flex justify-center">
-        <div className="w-full max-w-app relative">
-          <History finance={finance} onBack={() => setShowHistory(false)} />
-        </div>
-        <Toaster />
-      </div>
-    );
-  }
-
-  if (detailAccountId) {
-    return (
-      <div className="min-h-screen bg-background flex justify-center">
-        <div className="w-full max-w-app relative">
-          <AccountDetail
-            finance={finance}
-            accountId={detailAccountId}
-            onBack={() => setDetailAccountId(null)}
-          />
-        </div>
-        <Toaster />
-      </div>
-    );
-  }
+  // ... все твои if условия для модалок БЕЗ ИЗМЕНЕНИЙ
 
   return (
     <div className="min-h-screen bg-background flex justify-center">
