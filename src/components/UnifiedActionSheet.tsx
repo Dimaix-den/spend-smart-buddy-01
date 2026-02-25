@@ -469,12 +469,13 @@ export default function UnifiedActionSheet({
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Дата операции
             </label>
-            <input
-              type="date"
-              value={operationDate}
-              onChange={(e) => setOperationDate(e.target.value)}
-              className="block w-full glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none"
-            />
+            <div className="flex">
+              <input
+                type="date"
+                value={operationDate}
+                onChange={(e) => setOperationDate(e.target.value)}
+                className="glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none flex-1"
+              />
           </div>
 
           {/* Save button */}
