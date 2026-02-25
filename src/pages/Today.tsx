@@ -1,10 +1,20 @@
 import { useState, useRef, useEffect } from "react";
-import { HelpCircle, Plus, TrendingDown, TrendingUp, ArrowRightLeft, PiggyBank, Trash2, ChevronRight } from "lucide-react";
+import {
+  HelpCircle,
+  Plus,
+  TrendingDown,
+  TrendingUp,
+  ArrowRightLeft,
+  PiggyBank,
+  Trash2,
+  ChevronRight,
+} from "lucide-react";
 import { useFinance, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import UnifiedActionSheet from "@/components/UnifiedActionSheet";
 import DailySpendingChart from "@/components/DailySpendingChart";
 import { toast } from "@/hooks/use-toast";
+import MoneyInput from "@/components/MoneyInput";
 
 interface TodayProps {
   finance: ReturnType<typeof useFinance>;
@@ -44,7 +54,16 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
   );
 }
 
-function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSave, daysLeft, dailyBudget, spentToday, safeToSpend }: {
+function InfoPanel({
+  onClose,
+  activeBalance,
+  remainingObligations,
+  stillNeedToSave,
+  daysLeft,
+  dailyBudget,
+  spentToday,
+  safeToSpend,
+}: {
   onClose: () => void;
   activeBalance: number;
   remainingObligations: number;
@@ -55,8 +74,8 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
   safeToSpend: number;
 }) {
   useEffect(() => {
-    document.body.classList.add('popup-open');
-    return () => document.body.classList.remove('popup-open');
+    document.body.classList.add("popup-open");
+    return () => document.body.classList.remove("popup-open");
   }, []);
 
   return (
@@ -67,34 +86,50 @@ function InfoPanel({ onClose, activeBalance, remainingObligations, stillNeedToSa
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full" style={{ background: "hsl(0 0% 30%)" }} />
+          <div
+            className="w-10 h-1 rounded-full"
+            style={{ background: "hsl(0 0% 30%)" }}
+          />
         </div>
         <h3 className="text-sm font-bold text-foreground mb-3">Как рассчитывается?</h3>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between text-foreground/80">
             <span>Доступно на счетах</span>
-            <span className="font-tabular font-semibold">{formatAmount(activeBalance)} ₸</span>
+            <span className="font-tabular font-semibold">
+              {formatAmount(activeBalance)} ₸
+            </span>
           </div>
           <div className="flex justify-between text-alert-orange">
             <span>− Неоплаченные обязательства</span>
-            <span className="font-tabular font-semibold">−{formatAmount(remainingObligations)} ₸</span>
+            <span className="font-tabular font-semibold">
+              −{formatAmount(remainingObligations)} ₸
+            </span>
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>− Осталось сберечь</span>
-            <span className="font-tabular font-semibold">−{formatAmount(stillNeedToSave)} ₸</span>
+            <span className="font-tabular font-semibold">
+              −{formatAmount(stillNeedToSave)} ₸
+            </span>
           </div>
-          <div className="border-t border-white/5 pt-2 flex justify-between text-foreground">
+          <div className="border-t border-white/5_pt-2 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
-          <div className="rounded-[12px] p-3 mt-1 space-y-1.5" style={{ background: "hsl(0 0% 18%)" }}>
+          <div
+            className="rounded-[12px] p-3 mt-1 space-y-1.5"
+            style={{ background: "hsl(0 0% 18%)" }}
+          >
             <div className="flex justify-between">
               <span className="text-foreground/80">= Дневной лимит</span>
-              <span className="text-foreground font-semibold font-tabular">{formatAmount(dailyBudget)} ₸</span>
+              <span className="text-foreground font-semibold font-tabular">
+                {formatAmount(dailyBudget)} ₸
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-foreground/80">− Потрачено сегодня</span>
-              <span className="text-alert-orange font-semibold font-tabular">{formatAmount(spentToday)} ₸</span>
+              <span className="text-alert-orange font-semibold font-tabular">
+                {formatAmount(spentToday)} ₸
+              </span>
             </div>
             <div className="flex justify-between items-center border-t border-white/5 pt-1.5">
               <span className="text-foreground font-medium">= Можно потратить</span>
@@ -167,7 +202,8 @@ function TransactionRow({
           </div>
         </div>
         <span className={`font-bold font-tabular text-sm ${color}`}>
-          {isIncome ? "+" : "−"}{formatAmount(expense.amount)} ₸
+          {isIncome ? "+" : "−"}
+          {formatAmount(expense.amount)} ₸
         </span>
       </div>
     </div>
@@ -219,8 +255,12 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
       ? "text-alert-orange"
       : "text-safe-green";
 
-  // Recent 6 transactions grouped by date
-  const recentExpenses = state.expenses.slice(0, 6);
+  // Recent 6 transactions grouped by operation date (по убыванию даты)
+  const sortedByDateDesc = [...state.expenses].sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : 0
+  );
+  const recentExpenses = sortedByDateDesc.slice(0, 6);
+
   const groupedRecent = new Map<string, Expense[]>();
   recentExpenses.forEach((e) => {
     const arr = groupedRecent.get(e.date) || [];
@@ -251,10 +291,20 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           {heroLabel}
         </p>
         <div className="flex items-end justify-center gap-2 mb-1">
-          <span className={`safe-number font-tabular ${isOverspent ? "text-destructive" : safeToSpendColor}`}>
+          <span
+            className={`safe-number font-tabular ${
+              isOverspent ? "text-destructive" : safeToSpendColor
+            }`}
+          >
             <AnimatedNumber value={displayAmount} />
           </span>
-          <span className={`text-4xl font-bold mb-1 opacity-80 ${isOverspent ? "text-destructive" : safeToSpendColor}`}>₸</span>
+          <span
+            className={`text-4xl font-bold mb-1 opacity-80 ${
+              isOverspent ? "text-destructive" : safeToSpendColor
+            }`}
+          >
+            ₸
+          </span>
         </div>
 
         {isOverspent && (
@@ -264,9 +314,19 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
         )}
 
         <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
-          <span>Лимит: <span className="text-foreground font-semibold">{formatAmount(dailyBudget)} ₸</span></span>
+          <span>
+            Лимит:{" "}
+            <span className="text-foreground font-semibold">
+              {formatAmount(dailyBudget)} ₸
+            </span>
+          </span>
           <span style={{ opacity: 0.3 }}>•</span>
-          <span>Потрачено: <span className="text-alert-orange font-semibold">{formatAmount(spentToday)} ₸</span></span>
+          <span>
+            Потрачено:{" "}
+            <span className="text-alert-orange font-semibold">
+              {formatAmount(spentToday)} ₸
+            </span>
+          </span>
         </div>
 
         <button
@@ -292,21 +352,31 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
         />
 
         {/* Monthly budget card */}
-        <div className="glass-card p-4 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
+        <div
+          className="glass-card p-4 animate-fade-in-up"
+          style={{ animationDelay: "0.05s" }}
+        >
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Бюджет на месяц
           </h3>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground/80">Выделено</span>
-              <span className="font-bold font-tabular text-foreground">{formatAmount(monthlyBudget)} ₸</span>
+              <span className="font-bold font-tabular text-foreground">
+                {formatAmount(monthlyBudget)} ₸
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground/80">Потрачено</span>
-              <span className="font-semibold font-tabular text-alert-orange">{formatAmount(spentThisMonth)} ₸</span>
+              <span className="font-semibold font-tabular text-alert-orange">
+                {formatAmount(spentThisMonth)} ₸
+              </span>
             </div>
             {monthlyBudget > 0 && (
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
+              <div
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ background: "hsl(0 0% 23%)" }}
+              >
                 <div
                   className="h-full rounded-full transition-all duration-500"
                   style={{
@@ -332,7 +402,10 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
 
         {/* Savings progress — per-account with inline editing */}
         {savingsAccounts.length > 0 && (
-          <div className="glass-card p-4 animate-fade-in-up" style={{ animationDelay: "0.08s" }}>
+          <div
+            className="glass-card p-4 animate-fade-in-up"
+            style={{ animationDelay: "0.08s" }}
+          >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <PiggyBank size={14} className="text-safe-green" />
@@ -340,13 +413,16 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                   Цель сбережений
                 </h3>
               </div>
-              <span className="text-xs font-bold text-safe-green">{savingsProgress}%</span>
+              <span className="text-xs font-bold text-safe-green">
+                {savingsProgress}%
+              </span>
             </div>
             <div className="space-y-3">
               {savingsAccounts.map((acc) => {
                 const saved = getSavingsForAccount(acc.name);
                 const goal = acc.monthlyGoal || 0;
-                const pct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
+                const pct =
+                  goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
 
                 return (
                   <div key={acc.id}>
@@ -354,11 +430,10 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                       <span className="text-sm text-foreground">{acc.name}</span>
                       {editingGoalId === acc.id ? (
                         <div className="flex items-center gap-2">
-                          <input
+                          <MoneyInput
                             autoFocus
-                            type="number"
                             value={goalInput}
-                            onChange={(e) => setGoalInput(e.target.value)}
+                            onChange={setGoalInput}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 updateAccountGoal(acc.id, parseFloat(goalInput) || 0);
@@ -367,21 +442,51 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                             }}
                             className="w-24 glass-input px-2 py-1 text-xs font-tabular text-right focus:outline-none"
                           />
-                          <button onClick={() => { updateAccountGoal(acc.id, parseFloat(goalInput) || 0); setEditingGoalId(null); }} className="text-xs text-safe-green font-bold">OK</button>
+                          <button
+                            onClick={() => {
+                              updateAccountGoal(acc.id, parseFloat(goalInput) || 0);
+                              setEditingGoalId(null);
+                            }}
+                            className="text-xs text-safe-green font-bold"
+                          >
+                            OK
+                          </button>
                         </div>
                       ) : (
-                        <button onClick={() => { setEditingGoalId(acc.id); setGoalInput((acc.monthlyGoal || 0).toString()); }} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                          {goal > 0 ? `${formatAmount(goal)} ₸/мес ✎` : "Задать цель ✎"}
+                        <button
+                          onClick={() => {
+                            setEditingGoalId(acc.id);
+                            setGoalInput((acc.monthlyGoal || 0).toString());
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {goal > 0
+                            ? `${formatAmount(goal)} ₸/мес ✎`
+                            : "Задать цель ✎"}
                         </button>
                       )}
                     </div>
                     {goal > 0 && (
                       <>
-                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
-                          <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: "hsl(162 100% 33%)" }} />
+                        <div
+                          className="h-1.5 rounded-full overflow-hidden"
+                          style={{ background: "hsl(0 0% 23%)" }}
+                        >
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${pct}%`,
+                              background: "hsl(162 100% 33%)",
+                            }}
+                          />
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>Отложено: <span className="text-safe-green font-semibold">{formatAmount(saved)} ₸</span></span>
+                          <span>
+                            Отложено:{" "}
+                            <span className="text-safe-green font-semibold">
+                              {formatAmount(saved)} ₸
+                            </span>
+                          </span>
                           <span>{pct}%</span>
                         </div>
                       </>
@@ -395,7 +500,10 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
 
         {/* Recent transactions grouped by date */}
         {recentExpenses.length > 0 && (
-          <div className="animate-fade-in-up mt-8" style={{ animationDelay: "0.12s" }}>
+          <div
+            className="animate-fade-in-up mt-8"
+            style={{ animationDelay: "0.12s" }}
+          >
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
               Последние операции
             </h3>
@@ -411,21 +519,31 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                   <div key={date}>
                     <div className="flex items-center justify-between mb-1 px-1">
                       <span className="text-xs text-muted-foreground">{date}</span>
-                      <span className={`text-xs font-bold font-tabular ${dayTotal >= 0 ? "text-safe-green" : "text-alert-orange"}`}>
-                        {dayTotal >= 0 ? "+" : ""}{formatAmount(dayTotal)} ₸
+                      <span
+                        className={`text-xs font-bold font-tabular ${
+                          dayTotal >= 0 ? "text-safe-green" : "text-alert-orange"
+                        }`}
+                      >
+                        {dayTotal >= 0 ? "+" : ""}
+                        {formatAmount(dayTotal)} ₸
                       </span>
                     </div>
                     <div className="space-y-1.5">
                       {txns.map((expense) => {
                         const isIncome = expense.type === "income";
-                        const isTransfer = expense.type === "transfer" || expense.type === "savings";
+                        const isTransfer =
+                          expense.type === "transfer" || expense.type === "savings";
                         const isObligation = expense.type === "obligation";
                         const label = isIncome
                           ? expense.note || "Доход"
                           : isTransfer
-                          ? expense.toAccount ? `→ ${expense.toAccount}` : "Перевод"
+                          ? expense.toAccount
+                            ? `→ ${expense.toAccount}`
+                            : "Перевод"
                           : isObligation
-                          ? (state.obligations.find((o) => o.id === expense.obligationId)?.name ?? "Обязательство")
+                          ? state.obligations.find(
+                              (o) => o.id === expense.obligationId
+                            )?.name ?? "Обязательство"
                           : expense.note || expense.account;
 
                         return (
@@ -435,7 +553,10 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                             label={label}
                             onDelete={(id) => {
                               deleteExpense(id);
-                              toast({ description: "🗑 Операция удалена", duration: 2000 });
+                              toast({
+                                description: "🗑 Операция удалена",
+                                duration: 2000,
+                              });
                             }}
                             onEdit={(exp) => {
                               setEditingExpense(exp);
@@ -491,20 +612,30 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
         }}
         onSaveExpense={(amount, account, type, opts) => {
           addExpense(amount, account, type, opts);
-          const label = type === "savings" || type === "transfer" ? "💰 Переведено" : type === "obligation" ? "✅ Платёж" : "✅ Расход";
-          toast({ description: `${label}: ${formatAmount(amount)} ₸`, duration: 2000 });
+          const label =
+            type === "savings" || type === "transfer"
+              ? "💰 Переведено"
+              : type === "obligation"
+              ? "✅ Платёж"
+              : "✅ Расход";
+          toast({
+            description: `${label}: ${formatAmount(amount)} ₸`,
+            duration: 2000,
+          });
         }}
-        onSaveIncome={(amount, account, note) => {
-          addIncome(amount, account, note);
-          toast({ description: `💰 Доход: +${formatAmount(amount)} ₸`, duration: 2000 });
+        onSaveIncome={(amount, account, note, date) => {
+          addIncome(amount, account, note, date);
+          toast({
+            description: `💰 Доход: +${formatAmount(amount)} ₸`,
+            duration: 2000,
+          });
+        }}
+        onDeleteExpense={(id) => {
+          deleteExpense(id);
         }}
         accounts={state.accounts}
         obligations={state.obligations}
         editingExpense={editingExpense}
-        onUpdateExpense={(id, amount, account, note) => {
-          updateExpense(id, amount, account, note);
-          toast({ description: "✏️ Операция обновлена", duration: 2000 });
-        }}
       />
 
       {/* Info panel */}
@@ -523,4 +654,3 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
     </div>
   );
 }
-
