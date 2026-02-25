@@ -3,6 +3,7 @@ import { ChevronLeft, Pencil } from "lucide-react";
 import { useFinance, AccountType } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import { toast } from "@/hooks/use-toast";
+import MoneyInput from "@/components/MoneyInput";
 
 interface AccountDetailProps {
   finance: ReturnType<typeof useFinance>;
@@ -96,7 +97,11 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Баланс</label>
               <div className="relative">
-                <input type="number" value={editBalance} onChange={(e) => setEditBalance(e.target.value)} className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-8" />
+                <MoneyInput
+                  value={editBalance}
+                  onChange={setEditBalance}
+                  className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-8"
+                />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₸</span>
               </div>
             </div>
@@ -121,7 +126,11 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Цель в месяц</label>
                 <div className="relative">
-                  <input type="number" value={editGoal} onChange={(e) => setEditGoal(e.target.value)} className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-12" />
+                  <MoneyInput
+                    value={editGoal}
+                    onChange={setEditGoal}
+                    className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-12"
+                  />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸/мес</span>
                 </div>
               </div>
