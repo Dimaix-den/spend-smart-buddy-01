@@ -21,10 +21,6 @@ interface TodayProps {
   onShowHistory: () => void;
 }
 
-// Единый класс для всех карточек
-const cardBase =
-  "rounded-2xl bg-white/5 border border-white/10 p-4";
-
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
   const [display, setDisplay] = useState(value);
   const [flash, setFlash] = useState(false);
@@ -52,7 +48,7 @@ function AnimatedNumber({ value, className }: { value: number; className?: strin
   }, [value]);
 
   return (
-    <span className={`${className ?? ""} ${flash ? "number-flash" : ""}`}>
+    <span className={`${className} ${flash ? "number-flash" : ""}`}>
       {formatAmount(Math.abs(display))}
     </span>
   );
@@ -115,7 +111,7 @@ function InfoPanel({
               −{formatAmount(stillNeedToSave)} ₸
             </span>
           </div>
-          <div className="border-t border-white/5 pt-2 flex justify-between text-foreground">
+          <div className="border-t border-white/5_pt-2 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
@@ -178,7 +174,7 @@ function TransactionRow({
   const bgColor = isIncome ? "bg-safe-green/15" : isTransfer ? "bg-income-blue/15" : "bg-alert-orange/15";
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative overflow-hidden rounded-[12px]">
       {swiped && (
         <button
           onClick={() => onDelete(expense.id)}
@@ -187,19 +183,18 @@ function TransactionRow({
           <Trash2 size={18} className="text-white" />
         </button>
       )}
-        <div
-          className={`px-3 py-2.5 flex items-center justify-between cursor-pointer ${
-            swiped ? "-translate-x-20" : "translate-x-0"
-          } hover:bg-white/3 active:bg-white/5 transition-all duration-200`}
-          style={{ transition: "transform 0.25s ease-out, background-color 0.15s ease-out" }}
-          onClick={() => !swiped && onEdit(expense)}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-        >
-
+      <div
+        className={`glass-card px-4 py-3 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 ${
+          swiped ? "-translate-x-20" : "translate-x-0"
+        }`}
+        style={{ transition: "transform 0.25s ease-out" }}
+        onClick={() => !swiped && onEdit(expense)}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         <div className="flex items-center gap-3">
-          <div className={`w-7 h-7 rounded-full flex items-center justify-center ${bgColor}`}>
-            <Icon size={13} className={color} />
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${bgColor}`}>
+            <Icon size={14} className={color} />
           </div>
           <div>
             <p className="text-sm font-medium text-foreground">{label}</p>
@@ -213,7 +208,6 @@ function TransactionRow({
       </div>
     </div>
   );
-
 }
 
 export default function Today({ finance, onShowHistory }: TodayProps) {
@@ -290,30 +284,22 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
   const [goalInput, setGoalInput] = useState("");
 
   return (
-    <div
-      className="flex flex-col min-h-screen pb-40"
-      style={{
-        background:
-          "radial-gradient(circle at top center, rgba(0,166,118,0.22), transparent 60%), #050608",
-      }}
-    >
+    <div className="flex flex-col min-h-screen pb-40">
       {/* Hero section */}
-      <div className="px-5 pt-12 pb-8 text-center">
-        <p className="text-[11px] font-semibold tracking-[0.16em] uppercase text-muted-foreground mb-3">
+      <div className="px-5 pt-10 pb-6 text-center">
+        <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-3">
           {heroLabel}
         </p>
-
-        <div className="flex items-end justify-center gap-2 mb-2">
+        <div className="flex items-end justify-center gap-2 mb-1">
           <span
-            className={`font-tabular ${
+            className={`safe-number font-tabular ${
               isOverspent ? "text-destructive" : safeToSpendColor
             }`}
-            style={{ fontSize: "44px", fontWeight: 800 }}
           >
             <AnimatedNumber value={displayAmount} />
           </span>
           <span
-            className={`text-3xl font-bold mb-1 ${
+            className={`text-4xl font-bold mb-1 opacity-80 ${
               isOverspent ? "text-destructive" : safeToSpendColor
             }`}
           >
@@ -322,19 +308,19 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
         </div>
 
         {isOverspent && (
-          <p className="text-xs font-semibold text-alert-orange mb-2">
+          <p className="text-sm font-semibold text-alert-orange mt-1 animate-fade-in-up">
             Перерасход: {formatAmount(overspendAmount)} ₸
           </p>
         )}
 
-        <div className="flex items-center justify-center gap-3 text-[12px] text-muted-foreground font-tabular mb-2">
+        <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
           <span>
             Лимит:{" "}
             <span className="text-foreground font-semibold">
               {formatAmount(dailyBudget)} ₸
             </span>
           </span>
-          <span style={{ opacity: 0.35 }}>•</span>
+          <span style={{ opacity: 0.3 }}>•</span>
           <span>
             Потрачено:{" "}
             <span className="text-alert-orange font-semibold">
@@ -345,16 +331,31 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
 
         <button
           onClick={() => setShowInfo(true)}
-          className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+          className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <HelpCircle size={12} />
           Как считается?
         </button>
       </div>
 
-      <div className="flex-1 px-5 space-y-6 pt-1 pb-4">
+      <div className="flex-1 px-4 space-y-3">
+        {/* Daily spending chart */}
+        <DailySpendingChart
+          expenses={state.expenses}
+          totalDays={state.budgetPeriod.totalDays}
+          currentDay={state.budgetPeriod.currentDay}
+          dailyBudget={dailyBudget}
+          startDate={state.budgetPeriod.startDate}
+          activeBalance={activeBalance}
+          remainingObligations={remainingObligations}
+          stillNeedToSave={stillNeedToSave}
+        />
+
         {/* Monthly budget card */}
-        <div className={cardBase}>
+        <div
+          className="glass-card p-4 animate-fade-in-up"
+          style={{ animationDelay: "0.05s" }}
+        >
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
             Бюджет на месяц
           </h3>
@@ -390,7 +391,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                 />
               </div>
             )}
-            <div className="flex items-center justify-between pt-1 border-t border-white/10">
+            <div className="flex items-center justify-between pt-1 border-t border-white/5">
               <span className="text-sm font-medium text-foreground">Остаток</span>
               <span className={`font-bold font-tabular text-lg ${budgetColor}`}>
                 <AnimatedNumber value={Math.max(0, budgetRemaining)} /> ₸
@@ -399,26 +400,12 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           </div>
         </div>
 
-        {/* Daily spending chart — тоже в карточке */}
-        <div className={cardBase}>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Расходы по дням
-          </h3>
-          <DailySpendingChart
-            expenses={state.expenses}
-            totalDays={state.budgetPeriod.totalDays}
-            currentDay={state.budgetPeriod.currentDay}
-            dailyBudget={dailyBudget}
-            startDate={state.budgetPeriod.startDate}
-            activeBalance={activeBalance}
-            remainingObligations={remainingObligations}
-            stillNeedToSave={stillNeedToSave}
-          />
-        </div>
-
         {/* Savings progress — per-account with inline editing */}
         {savingsAccounts.length > 0 && (
-          <div className={cardBase}>
+          <div
+            className="glass-card p-4 animate-fade-in-up"
+            style={{ animationDelay: "0.08s" }}
+          >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <PiggyBank size={14} className="text-safe-green" />
@@ -513,21 +500,14 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
 
         {/* Recent transactions grouped by date */}
         {recentExpenses.length > 0 && (
-          <div className={cardBase}>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Последние операции
-              </h3>
-              <button
-                onClick={onShowHistory}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Вся история
-                <ChevronRight size={14} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
+          <div
+            className="animate-fade-in-up mt-8"
+            style={{ animationDelay: "0.12s" }}
+          >
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+              Последние операции
+            </h3>
+            <div className="space-y-3">
               {[...groupedRecent.entries()].map(([date, txns]) => {
                 const dayTotal = txns.reduce((sum, e) => {
                   if (e.type === "income") return sum + e.amount;
@@ -537,7 +517,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
 
                 return (
                   <div key={date}>
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1 px-1">
                       <span className="text-xs text-muted-foreground">{date}</span>
                       <span
                         className={`text-xs font-bold font-tabular ${
@@ -590,6 +570,15 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                 );
               })}
             </div>
+
+            {/* Show all history button */}
+            <button
+              onClick={onShowHistory}
+              className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-[12px] text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              style={{ background: "hsl(0 0% 11%)" }}
+            >
+              Показать всю историю <ChevronRight size={16} />
+            </button>
           </div>
         )}
       </div>
