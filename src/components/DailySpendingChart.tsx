@@ -21,13 +21,56 @@ export default function DailySpendingChart({
   stillNeedToSave = 0,
 }: DailySpendingChartProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [tooltip, setTooltip] = useState<{ day: string; amount: number; limit: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{ day: string; amount: number; limit: number } | null>(
+    null
+  );
 
   const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 
-  const today = new Date();
-
   const dailyData = useMemo(() => {
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
+    // все даты, где были операции
+    const datesWithData = Array.from(new Set(expenses.map((e) => e.date))).sort(); // "YYYY-MM-DD"
+
+    const hasAnyData = datesWithData.length > 0;
+    const hasDataToday = datesWithData.includes(todayStr);
+
+    let visibleDays: string[] = [];
+
+    if (!hasAnyData || (hasDataToday && datesWithData.length === 1)) {
+      // кейс: нет данных вообще ИЛИ данные только сегодня
+      // первый столбец = сегодня, дальше 10 будущих дней
+      for (let i = 0; i < 11; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        visibleDays.push(d.toISOString().split("T")[0]);
+      }
+    } else {
+      // есть данные за прошлые дни
+      const firstDateStr = datesWithData[0]; // первый день с операциями
+      const first = new Date(firstDateStr);
+      const last = new Date(todayStr); // всегда сегодня
+
+      // все дни от первой даты с данными до сегодня
+      const allDays: string[] = [];
+      for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
+        allDays.push(d.toISOString().split("T")[0]);
+      }
+
+      // максимум 14 последних
+      visibleDays = allDays.slice(-14);
+
+      // если всё равно меньше 11 (например, пользователь начал 3 дня назад),
+      // добавляем будущие дни после сегодня, чтобы было минимум 11
+      while (visibleDays.length < 11) {
+        const lastDay = new Date(visibleDays[visibleDays.length - 1]);
+        lastDay.setDate(lastDay.getDate() + 1);
+        visibleDays.push(lastDay.toISOString().split("T")[0]);
+      }
+    }
+
     const data: {
       day: number;
       spent: number;
@@ -36,29 +79,28 @@ export default function DailySpendingChart({
       historicalLimit: number;
     }[] = [];
 
-    for (let i = 13; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - i);
-      const dateStr = date.toISOString().split("T")[0];
+    visibleDays.forEach((dateStr) => {
+      const date = new Date(dateStr);
       const dayNum = date.getDate();
 
       const daySpending = expenses
         .filter((e) => e.type === "regular" && e.date === dateStr)
         .reduce((sum, e) => sum + e.amount, 0);
 
+      // считаем исторический лимит
       let spendingAfterThisDay = 0;
       let incomeAfterThisDay = 0;
-      for (let j = i - 1; j >= 0; j--) {
-        const futureDate = new Date(today);
-        futureDate.setDate(today.getDate() - j);
-        const futureDateStr = futureDate.toISOString().split("T")[0];
-        spendingAfterThisDay += expenses
-          .filter((e) => e.type === "regular" && e.date === futureDateStr)
-          .reduce((sum, e) => sum + e.amount, 0);
-        incomeAfterThisDay += expenses
-          .filter((e) => e.type === "income" && e.date === futureDateStr)
-          .reduce((sum, e) => sum + e.amount, 0);
-      }
+
+      visibleDays.forEach((futureDateStr) => {
+        if (futureDateStr > dateStr) {
+          spendingAfterThisDay += expenses
+            .filter((e) => e.type === "regular" && e.date === futureDateStr)
+            .reduce((sum, e) => sum + e.amount, 0);
+          incomeAfterThisDay += expenses
+            .filter((e) => e.type === "income" && e.date === futureDateStr)
+            .reduce((sum, e) => sum + e.amount, 0);
+        }
+      });
 
       const balanceOnDay = activeBalance + spendingAfterThisDay - incomeAfterThisDay;
       const daysLeftOnDay = Math.max(
@@ -66,18 +108,23 @@ export default function DailySpendingChart({
         new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate() - dayNum
       );
       const availableOnDay = balanceOnDay - remainingObligations - stillNeedToSave;
-      const historicalLimit = Math.max(0, Math.round(availableOnDay / daysLeftOnDay));
+
+      const historicalLimit =
+        dateStr === todayStr
+          ? dailyBudget // для "сегодня" лимит = дневной лимит из хедера
+          : Math.max(0, Math.round(availableOnDay / daysLeftOnDay));
 
       data.push({
         day: dayNum,
         spent: daySpending,
         dateStr,
-        isToday: i === 0,
+        isToday: dateStr === todayStr,
         historicalLimit,
       });
-    }
+    });
+
     return data;
-  }, [expenses, activeBalance, remainingObligations, stillNeedToSave]);
+  }, [expenses, activeBalance, remainingObligations, stillNeedToSave, dailyBudget]);
 
   const maxValue = Math.max(
     dailyBudget,
@@ -96,7 +143,7 @@ export default function DailySpendingChart({
     <div className="space-y-2">
       {/* Легенда сверху, без заголовка блока */}
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-        <span>Расходы за последние 14 дней</span>
+        <span>Расходы за последние дни</span>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1">
             <span className="w-2 h-2 rounded-sm bg-safe-green inline-block" /> в норме
@@ -138,9 +185,7 @@ export default function DailySpendingChart({
           const limitPct = Math.min((d.historicalLimit / maxValue) * 100, 100);
 
           const dateObj = new Date(d.dateStr);
-          const tooltipLabel = `${dateObj.getDate()} ${
-            months[dateObj.getMonth()]
-          }`;
+          const tooltipLabel = `${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
 
           return (
             <div
