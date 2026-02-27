@@ -75,7 +75,9 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
   const [editName, setEditName] = useState("");
   const [editAmount, setEditAmount] = useState("");
 
-  const totalAssets = state.accounts.reduce((s, a) => s + a.balance, 0);
+  const totalAssets = state.accounts
+  .filter(a => a.type === "active" || a.type === "savings")
+  .reduce((s, a) => s + a.balance, 0);
   const netWorth = totalAssets - totalObligations;
 
   const handleAddAccount = () => {
