@@ -190,7 +190,7 @@ export default function DailySpendingChart({
           return (
             <div
               key={d.dateStr}
-              className="flex flex-col items-center gap-1 min-w-[28px] cursor-pointer"
+              className="flex flex-col items-center gap-1 min-w-[30px] cursor-pointer"
               onClick={() =>
                 setTooltip(
                   tooltip?.day === tooltipLabel
