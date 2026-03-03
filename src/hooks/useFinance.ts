@@ -9,6 +9,9 @@ export interface Account {
   isActive: boolean;
   type: AccountType;
   monthlyGoal?: number | null;
+  isSystem?: boolean;
+  usageCount?: number;
+  lastUsed?: string;
 }
 
 export interface Obligation {
@@ -47,6 +50,8 @@ export interface FinanceState {
   expenses: Expense[];
   currentDate: string;
   monthStartBalances?: Record<string, number>;
+  budgetPeriodType?: "calendar" | "salary";
+  salaryDay?: number;
 }
 
 const STORAGE_KEY = "sanda_finance_v3";
@@ -74,8 +79,8 @@ const DEFAULT_STATE: FinanceState = {
       type: "savings",
       monthlyGoal: 50000,
     },
-    // Скрытый счёт для корректировок (вне учёта лимитов и UI)
-    { id: "adj", name: "Вне учёта", balance: 0, isActive: false, type: "inactive" },
+    // Скрытый системный счёт для корректировок
+    { id: "adj", name: "Вне учёта", balance: 0, isActive: false, type: "inactive", isSystem: true },
   ],
   obligations: [
     { id: "1", name: "Аренда", amount: 60000, paid: false },
@@ -99,6 +104,8 @@ const DEFAULT_STATE: FinanceState = {
   budgetPeriod: { totalDays: 30, currentDay: 12, startDate: "2025-11-01" },
   expenses: [],
   currentDate: today(),
+  budgetPeriodType: "calendar",
+  salaryDay: 15,
 };
 
 function migrateState(parsed: any): FinanceState {
@@ -107,6 +114,9 @@ function migrateState(parsed: any): FinanceState {
       ...a,
       type: a.type || (a.isActive ? "active" : "inactive"),
       monthlyGoal: a.monthlyGoal ?? null,
+      isSystem: a.isSystem ?? (a.name === "Вне учёта"),
+      usageCount: a.usageCount ?? 0,
+      lastUsed: a.lastUsed ?? null,
     }));
 
     // Гарантируем наличие скрытого счёта "Вне учёта"
@@ -119,6 +129,7 @@ function migrateState(parsed: any): FinanceState {
         isActive: false,
         type: "inactive" as AccountType,
         monthlyGoal: null,
+        isSystem: true,
       });
     }
   }
@@ -143,6 +154,8 @@ function migrateState(parsed: any): FinanceState {
 
   if (!parsed.currentDate) parsed.currentDate = today();
   if (!parsed.budgetPeriod?.startDate) parsed.budgetPeriod.startDate = today();
+  if (!parsed.budgetPeriodType) parsed.budgetPeriodType = "calendar";
+  if (!parsed.salaryDay) parsed.salaryDay = 15;
   return parsed as FinanceState;
 }
 
@@ -193,10 +206,10 @@ export function useFinance() {
     saveState(state);
   }, [state]);
 
-  // ─── Derived: accounts by type ────────────────────────────────
-  const activeAccounts = state.accounts.filter((a) => a.type === "active");
-  const savingsAccounts = state.accounts.filter((a) => a.type === "savings");
-  const inactiveAccounts = state.accounts.filter((a) => a.type === "inactive");
+  // ─── Derived: accounts by type (excluding system) ─────────────
+  const activeAccounts = state.accounts.filter((a) => a.type === "active" && !a.isSystem);
+  const savingsAccounts = state.accounts.filter((a) => a.type === "savings" && !a.isSystem);
+  const inactiveAccounts = state.accounts.filter((a) => a.type === "inactive" && !a.isSystem);
 
   // ─── Core calculations ─────────────────────────────────────────
   const activeBalance = activeAccounts.reduce((sum, a) => sum + a.balance, 0);
@@ -206,6 +219,14 @@ export function useFinance() {
     .reduce((sum, o) => sum + o.amount, 0);
 
   const totalObligations = state.obligations.reduce((sum, o) => sum + o.amount, 0);
+
+  // Total debt for net worth: installments count remaining × monthly, recurring = 0
+  const totalDebt = state.obligations.reduce((sum, o) => {
+    if (o.installments) {
+      return sum + (o.amount * o.installments.remaining);
+    }
+    return sum; // recurring obligations don't count as debt in net worth
+  }, 0);
 
   const plannedSavings = savingsAccounts.reduce(
     (sum, a) => sum + (a.monthlyGoal || 0),
@@ -245,13 +266,27 @@ export function useFinance() {
 
   const stillNeedToSave = Math.max(0, plannedSavings - alreadySaved);
 
-  // ✅ Дни до начала следующего месяца
+  // ✅ Days left — respects budget period type
   const now = new Date(state.currentDate);
   const year = now.getFullYear();
-  const month = now.getMonth(); // 0–11
-  const nextMonthStart = new Date(year, month + 1, 1);
-  const diffMs = nextMonthStart.getTime() - now.getTime();
-  const daysLeft = Math.max(1, Math.ceil(diffMs / 86400000));
+  const month = now.getMonth();
+
+  let daysLeft: number;
+  if (state.budgetPeriodType === "salary" && state.salaryDay) {
+    const salaryDay = state.salaryDay;
+    const currentDay = now.getDate();
+    let periodEnd: Date;
+    if (currentDay >= salaryDay) {
+      periodEnd = new Date(year, month + 1, salaryDay - 1);
+    } else {
+      periodEnd = new Date(year, month, salaryDay - 1);
+    }
+    daysLeft = Math.max(1, Math.ceil((periodEnd.getTime() - now.getTime()) / 86400000));
+  } else {
+    const nextMonthStart = new Date(year, month + 1, 1);
+    const diffMs = nextMonthStart.getTime() - now.getTime();
+    daysLeft = Math.max(1, Math.ceil(diffMs / 86400000));
+  }
 
   const available = activeBalance - remainingObligations - stillNeedToSave;
   const dailyBudget = Math.max(0, Math.round(available / daysLeft));
@@ -497,6 +532,10 @@ export function useFinance() {
     }));
   }, []);
 
+  const updateSettings = useCallback((settings: { budgetPeriodType?: "calendar" | "salary"; salaryDay?: number }) => {
+    setState((s) => ({ ...s, ...settings }));
+  }, []);
+
   // ─── Expense actions ───────────────────────────────────────────
   const addExpense = useCallback(
     (
@@ -509,12 +548,16 @@ export function useFinance() {
         const opDate = opts?.date || s.currentDate;
 
         let updatedAccounts = s.accounts.map((a) =>
-          a.name === accountName ? { ...a, balance: a.balance - amount } : a
+          a.name === accountName
+            ? { ...a, balance: a.balance - amount, usageCount: (a.usageCount || 0) + 1, lastUsed: new Date().toISOString() }
+            : a
         );
 
         if ((type === "savings" || type === "transfer") && opts?.toAccount) {
           updatedAccounts = updatedAccounts.map((a) =>
-            a.name === opts.toAccount ? { ...a, balance: a.balance + amount } : a
+            a.name === opts.toAccount
+              ? { ...a, balance: a.balance + amount, usageCount: (a.usageCount || 0) + 1, lastUsed: new Date().toISOString() }
+              : a
           );
         }
 
@@ -551,7 +594,9 @@ export function useFinance() {
       setState((s) => {
         const opDate = date || s.currentDate;
         const updatedAccounts = s.accounts.map((a) =>
-          a.name === accountName ? { ...a, balance: a.balance + amount } : a
+          a.name === accountName
+            ? { ...a, balance: a.balance + amount, usageCount: (a.usageCount || 0) + 1, lastUsed: new Date().toISOString() }
+            : a
         );
         const income: Expense = {
           id: Date.now().toString(),
@@ -666,7 +711,7 @@ export function useFinance() {
     if (!state.monthStartBalances) {
       const balances: Record<string, number> = {};
       state.accounts
-        .filter((a) => a.type === "active")
+        .filter((a) => a.type === "active" && !a.isSystem)
         .forEach((a) => {
           balances[a.id] = a.balance;
         });
@@ -681,7 +726,7 @@ export function useFinance() {
       setState((s) => {
         const balances: Record<string, number> = {};
         s.accounts
-          .filter((a) => a.type === "active")
+          .filter((a) => a.type === "active" && !a.isSystem)
           .forEach((a) => {
             balances[a.id] = a.balance;
           });
@@ -704,6 +749,7 @@ export function useFinance() {
     inactiveAccounts,
     activeBalance,
     totalObligations,
+    totalDebt,
     remainingObligations,
     plannedSavings,
     daysLeft,
@@ -733,6 +779,7 @@ export function useFinance() {
     deleteObligation,
     setSavingsGoal,
     updateBudgetPeriod,
+    updateSettings,
     addExpense,
     addIncome,
     deleteExpense,

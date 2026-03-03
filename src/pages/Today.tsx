@@ -589,7 +589,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           setEditingExpense(null);
           setSheetOpen(true);
         }}
-        className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30 w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-all duration-200"
+        className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30 w-16 h-16 rounded-full flex items-center justify-center active:scale-90 transition-all duration-200"
         style={{
           background: "hsl(162 100% 33%)",
           boxShadow: "0 4px 16px rgba(0, 166, 118, 0.4)",

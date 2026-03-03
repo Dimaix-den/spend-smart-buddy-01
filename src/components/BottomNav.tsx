@@ -1,6 +1,6 @@
-import { Home, Landmark } from "lucide-react";
+import { Home, Landmark, Settings } from "lucide-react";
 
-type Tab = "today" | "capital";
+type Tab = "today" | "capital" | "settings";
 
 interface BottomNavProps {
   active: Tab;
@@ -11,6 +11,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
   const tabs: { id: Tab; label: string; Icon: typeof Home }[] = [
     { id: "today", label: "СЕГОДНЯ", Icon: Home },
     { id: "capital", label: "КАПИТАЛ", Icon: Landmark },
+    { id: "settings", label: "НАСТРОЙКИ", Icon: Settings },
   ];
 
   return (
@@ -18,15 +19,15 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
       <div
         className="glass-nav flex items-center rounded-full shadow-lg"
         style={{
-          minWidth: 280,
-          maxWidth: 320,
+          minWidth: 320,
+          maxWidth: 400,
           padding: "8px 8px",
           paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
         }}
       >
         {tabs.map(({ id, label, Icon }, index) => {
           const isActive = active === id;
-          const isFirst = index === 0;
+          const isLast = index === tabs.length - 1;
 
           return (
             <div
@@ -35,7 +36,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
             >
               <button
                 onClick={() => onChange(id)}
-                className={`flex flex-col items-center gap-1 py-1.5 px-4 transition-all duration-200 ease-out active:scale-95 ${
+                className={`flex flex-col items-center gap-1 py-1.5 px-3 transition-all duration-200 ease-out active:scale-95 ${
                   isActive ? "text-safe-green" : "text-muted-foreground"
                 }`}
                 style={{
@@ -62,7 +63,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
                 </span>
               </button>
 
-              {isFirst && (
+              {!isLast && (
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 h-6 w-px bg-white/15" />
               )}
             </div>

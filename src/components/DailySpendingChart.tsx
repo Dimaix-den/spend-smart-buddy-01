@@ -26,13 +26,13 @@ export default function DailySpendingChart({
   );
 
   const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+  const weekDays = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 
   const dailyData = useMemo(() => {
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
-    // все даты, где были операции
-    const datesWithData = Array.from(new Set(expenses.map((e) => e.date))).sort(); // "YYYY-MM-DD"
+    const datesWithData = Array.from(new Set(expenses.map((e) => e.date))).sort();
 
     const hasAnyData = datesWithData.length > 0;
     const hasDataToday = datesWithData.includes(todayStr);
@@ -40,30 +40,23 @@ export default function DailySpendingChart({
     let visibleDays: string[] = [];
 
     if (!hasAnyData || (hasDataToday && datesWithData.length === 1)) {
-      // кейс: нет данных вообще ИЛИ данные только сегодня
-      // первый столбец = сегодня, дальше 10 будущих дней
       for (let i = 0; i < 11; i++) {
         const d = new Date(today);
         d.setDate(today.getDate() + i);
         visibleDays.push(d.toISOString().split("T")[0]);
       }
     } else {
-      // есть данные за прошлые дни
-      const firstDateStr = datesWithData[0]; // первый день с операциями
+      const firstDateStr = datesWithData[0];
       const first = new Date(firstDateStr);
-      const last = new Date(todayStr); // всегда сегодня
+      const last = new Date(todayStr);
 
-      // все дни от первой даты с данными до сегодня
       const allDays: string[] = [];
       for (let d = new Date(first); d <= last; d.setDate(d.getDate() + 1)) {
         allDays.push(d.toISOString().split("T")[0]);
       }
 
-      // максимум 14 последних
       visibleDays = allDays.slice(-14);
 
-      // если всё равно меньше 11 (например, пользователь начал 3 дня назад),
-      // добавляем будущие дни после сегодня, чтобы было минимум 11
       while (visibleDays.length < 11) {
         const lastDay = new Date(visibleDays[visibleDays.length - 1]);
         lastDay.setDate(lastDay.getDate() + 1);
@@ -77,6 +70,7 @@ export default function DailySpendingChart({
       dateStr: string;
       isToday: boolean;
       historicalLimit: number;
+      weekDay: string;
     }[] = [];
 
     visibleDays.forEach((dateStr) => {
@@ -87,7 +81,6 @@ export default function DailySpendingChart({
         .filter((e) => e.type === "regular" && e.date === dateStr)
         .reduce((sum, e) => sum + e.amount, 0);
 
-      // считаем исторический лимит
       let spendingAfterThisDay = 0;
       let incomeAfterThisDay = 0;
 
@@ -111,7 +104,7 @@ export default function DailySpendingChart({
 
       const historicalLimit =
         dateStr === todayStr
-          ? dailyBudget // для "сегодня" лимит = дневной лимит из хедера
+          ? dailyBudget
           : Math.max(0, Math.round(availableOnDay / daysLeftOnDay));
 
       data.push({
@@ -120,6 +113,7 @@ export default function DailySpendingChart({
         dateStr,
         isToday: dateStr === todayStr,
         historicalLimit,
+        weekDay: weekDays[date.getDay()],
       });
     });
 
@@ -141,7 +135,7 @@ export default function DailySpendingChart({
 
   return (
     <div className="space-y-2">
-      {/* Легенда сверху, без заголовка блока */}
+      {/* Legend */}
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
         <span>Расходы за последние дни</span>
         <div className="flex items-center gap-3">
@@ -174,7 +168,7 @@ export default function DailySpendingChart({
         </div>
       )}
 
-      {/* Бар‑чарт */}
+      {/* Bar chart — enlarged height */}
       <div
         ref={scrollRef}
         className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1 pt-1"
@@ -190,7 +184,7 @@ export default function DailySpendingChart({
           return (
             <div
               key={d.dateStr}
-              className="flex flex-col items-center gap-1 min-w-[30px] cursor-pointer"
+              className="flex flex-col items-center gap-1 min-w-[32px] cursor-pointer"
               onClick={() =>
                 setTooltip(
                   tooltip?.day === tooltipLabel
@@ -200,10 +194,10 @@ export default function DailySpendingChart({
               }
             >
               <div
-                className="relative w-5 h-16 rounded-md overflow-hidden flex items-end"
-                style={{ background: "hsl(0 0% 14%)" }}
+                className="relative w-6 rounded-md overflow-hidden flex items-end"
+                style={{ height: 120, background: "hsl(0 0% 14%)" }}
               >
-                {/* Маркер лимита */}
+                {/* Limit marker */}
                 <div
                   className="absolute w-full border-t border-dashed border-white/20"
                   style={{ bottom: `${limitPct}%` }}
@@ -222,11 +216,18 @@ export default function DailySpendingChart({
                 />
               </div>
               <span
-                className={`text-[10px] font-tabular ${
+                className={`text-[10px] font-tabular leading-none ${
                   d.isToday ? "text-safe-green font-bold" : "text-muted-foreground"
                 }`}
               >
-                {d.isToday ? "•" : d.day}
+                {d.day}
+              </span>
+              <span
+                className={`text-[8px] leading-none ${
+                  d.isToday ? "text-safe-green" : "text-muted-foreground/60"
+                }`}
+              >
+                {d.isToday ? "сег" : d.weekDay}
               </span>
             </div>
           );
