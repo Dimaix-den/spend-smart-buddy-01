@@ -4,10 +4,11 @@ import Today from "@/pages/Today";
 import Capital from "@/pages/Capital";
 import AccountDetail from "@/pages/AccountDetail";
 import History from "@/pages/History";
+import Settings from "@/pages/Settings";
 import { useFinance } from "@/hooks/useFinance";
 import { Toaster } from "@/components/ui/toaster";
 
-type Tab = "today" | "capital";
+type Tab = "today" | "capital" | "settings";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<Tab>("today");
@@ -50,6 +51,9 @@ const Index = () => {
           )}
           {activeTab === "capital" && (
             <Capital finance={finance} onOpenAccount={(id) => setDetailAccountId(id)} />
+          )}
+          {activeTab === "settings" && (
+            <Settings finance={finance} />
           )}
         </div>
         <BottomNav active={activeTab} onChange={setActiveTab} />

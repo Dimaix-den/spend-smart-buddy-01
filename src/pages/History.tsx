@@ -91,7 +91,7 @@ return (
             Все счета
           </button>
 
-          {state.accounts.map((acc) => (
+          {state.accounts.filter(a => !a.isSystem).map((acc) => (
             <button
               key={acc.id}
               onClick={() => {

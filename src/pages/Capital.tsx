@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, ChevronDown, ChevronUp, CheckCircle2, Circle, X, Pencil, Check } from "lucide-react";
+import { Plus, ChevronDown, ChevronUp, ChevronRight, X, Pencil, Check } from "lucide-react";
 import { useFinance, AccountType } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import { toast } from "@/hooks/use-toast";
@@ -10,41 +10,15 @@ interface CapitalProps {
   onOpenAccount: (id: string) => void;
 }
 
-function ToggleSwitch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      className="relative flex-shrink-0"
-      style={{ width: 51, height: 31, borderRadius: 31 }}
-    >
-      <div
-        className="absolute inset-0 rounded-full transition-colors duration-300"
-        style={{ background: on ? "hsl(162 100% 33%)" : "hsl(0 0% 23%)" }}
-      />
-      <div
-        className="absolute rounded-full bg-white"
-        style={{
-          top: 2, left: 2, width: 27, height: 27,
-          boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-          transform: on ? "translateX(20px)" : "translateX(0px)",
-        }}
-      />
-    </button>
-  );
-}
-
 export default function Capital({ finance, onOpenAccount }: CapitalProps) {
   const {
     state,
     activeAccounts,
     savingsAccounts,
     inactiveAccounts,
-    activeBalance,
-    totalObligations,
+    totalDebt,
     remainingObligations,
     getSavingsForAccount,
-    toggleAccount,
     addAccount,
     addObligation,
     updateObligation,
@@ -76,9 +50,11 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
   const [editAmount, setEditAmount] = useState("");
 
   const totalAssets = state.accounts
-  .filter(a => a.type === "active" || a.type === "savings")
-  .reduce((s, a) => s + a.balance, 0);
-  const netWorth = totalAssets - totalObligations;
+    .filter(a => (a.type === "active" || a.type === "savings") && !a.isSystem)
+    .reduce((s, a) => s + a.balance, 0);
+  const netWorth = totalAssets - totalDebt;
+
+  const totalObligationsMonthly = state.obligations.reduce((sum, o) => sum + o.amount, 0);
 
   const handleAddAccount = () => {
     if (!newAccName.trim()) return;
@@ -117,18 +93,18 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             <span className="font-bold font-tabular text-foreground">{formatAmount(totalAssets)} ₸</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Обязательства</span>
-            <span className="font-bold font-tabular text-alert-orange">{formatAmount(totalObligations)} ₸</span>
+            <span className="text-sm text-muted-foreground">Долговые обязательства</span>
+            <span className="font-bold font-tabular text-alert-orange">{formatAmount(totalDebt)} ₸</span>
           </div>
           <div className="border-t border-white/5 pt-2 flex justify-between items-center">
             <span className="text-sm font-medium text-foreground">Чистый капитал</span>
-            <span className="text-xl font-bold font-tabular text-safe-green">{formatAmount(netWorth)} ₸</span>
+            <span className={`text-xl font-bold font-tabular ${netWorth >= 0 ? "text-safe-green" : "text-destructive"}`}>{netWorth < 0 ? "−" : ""}{formatAmount(Math.abs(netWorth))} ₸</span>
           </div>
         </div>
       </div>
 
       <div className="flex-1 px-4 space-y-6">
-        {/* ─── Active Accounts ──────────────────────────── */}
+        {/* ─── Active Accounts (no toggles, redesigned cards) ──────── */}
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
             Активные счета
@@ -138,13 +114,19 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
               <button
                 key={acc.id}
                 onClick={() => onOpenAccount(acc.id)}
-                className="w-full glass-card p-4 flex items-center justify-between active:scale-[0.98] transition-transform"
+                className="w-full rounded-[12px] p-4 flex items-center justify-between active:scale-[0.98] transition-transform"
+                style={{
+                  background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
+                  borderLeft: "3px solid hsl(162 100% 33%)",
+                }}
               >
                 <div className="text-left">
-                  <p className="font-semibold text-foreground">{acc.name}</p>
-                  <p className={`text-lg font-bold font-tabular ${acc.balance < 0 ? "text-destructive" : "text-safe-green"}`}>{acc.balance < 0 ? "−" : ""}{formatAmount(Math.abs(acc.balance))} ₸</p>
+                  <p className="font-semibold text-foreground text-sm">{acc.name}</p>
+                  <p className={`text-xl font-bold font-tabular mt-0.5 ${acc.balance < 0 ? "text-destructive" : "text-foreground"}`}>
+                    {acc.balance < 0 ? "−" : ""}{formatAmount(Math.abs(acc.balance))} ₸
+                  </p>
                 </div>
-                <ToggleSwitch on={acc.type === "active"} onToggle={() => toggleAccount(acc.id)} />
+                <ChevronRight size={18} className="text-muted-foreground" />
               </button>
             ))}
           </div>
@@ -185,13 +167,17 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
                   <button
                     key={acc.id}
                     onClick={() => onOpenAccount(acc.id)}
-                    className="w-full glass-card p-4 flex items-center justify-between opacity-60 active:scale-[0.98] transition-transform"
+                    className="w-full rounded-[12px] p-4 flex items-center justify-between opacity-60 active:scale-[0.98] transition-transform"
+                    style={{
+                      background: "hsl(0 0% 11%)",
+                      borderLeft: "3px solid hsl(0 0% 30%)",
+                    }}
                   >
                     <div className="text-left">
-                      <p className="font-semibold text-foreground">{acc.name}</p>
+                      <p className="font-semibold text-foreground text-sm">{acc.name}</p>
                       <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(acc.balance)} ₸</p>
                     </div>
-                    <ToggleSwitch on={false} onToggle={() => toggleAccount(acc.id)} />
+                    <ChevronRight size={18} className="text-muted-foreground" />
                   </button>
                 ))}
               </div>
@@ -213,10 +199,14 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
                 <button
                   key={acc.id}
                   onClick={() => onOpenAccount(acc.id)}
-                  className="w-full glass-card p-4 text-left active:scale-[0.98] transition-transform"
+                  className="w-full rounded-[12px] p-4 text-left active:scale-[0.98] transition-transform"
+                  style={{
+                    background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
+                    borderLeft: "3px solid hsl(162 100% 33%)",
+                  }}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <p className="font-semibold text-foreground">{acc.name}</p>
+                    <p className="font-semibold text-foreground text-sm">{acc.name}</p>
                     <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(acc.balance)} ₸</p>
                   </div>
                   {goal > 0 && (
@@ -268,60 +258,122 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
           )}
         </div>
 
-        {/* ─── Obligations ──────────────────────────── */}
+        {/* ─── Obligations (redesigned to match savings style) ──────── */}
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
             Обязательства
           </h2>
-          <div className="glass-card overflow-hidden">
-            {state.obligations.map((o, i) => (
-              <div key={o.id} className={`px-4 py-3.5 ${i < state.obligations.length - 1 ? "border-b border-white/5" : ""}`}>
-                {editingOblig === o.id ? (
-                  <div className="flex gap-2">
-                    <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 glass-input px-2 py-1.5 text-sm focus:outline-none" />
-                    <div className="relative w-28">
-                      <MoneyInput
-                        value={editAmount}
-                        onChange={setEditAmount}
-                        className="w-full glass-input px-2 py-1.5 text-sm focus:outline-none pr-5"
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸</span>
+          <div className="space-y-2">
+            {state.obligations.map((o) => {
+              const isInstallment = !!o.installments;
+              const totalRemaining = isInstallment
+                ? o.amount * o.installments!.remaining
+                : o.amount;
+              const paidCount = isInstallment
+                ? o.installments!.total - o.installments!.remaining
+                : 0;
+              const installmentPct = isInstallment
+                ? Math.round((paidCount / o.installments!.total) * 100)
+                : 0;
+
+              return (
+                <div
+                  key={o.id}
+                  className="rounded-[12px] p-4"
+                  style={{
+                    background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
+                    borderLeft: "3px solid hsl(38 100% 52%)",
+                  }}
+                >
+                  {editingOblig === o.id ? (
+                    <div className="flex gap-2">
+                      <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 glass-input px-2 py-1.5 text-sm focus:outline-none" />
+                      <div className="relative w-28">
+                        <MoneyInput
+                          value={editAmount}
+                          onChange={setEditAmount}
+                          className="w-full glass-input px-2 py-1.5 text-sm focus:outline-none pr-5"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸</span>
+                      </div>
+                      <button onClick={() => { const amt = parseFloat(editAmount) || 0; if (amt && editName.trim()) updateObligation(o.id, editName.trim(), amt); setEditingOblig(null); }} className="px-2 py-1 rounded-lg text-xs font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>
+                        <Check size={14} />
+                      </button>
                     </div>
-                    <button onClick={() => { const amt = parseFloat(editAmount) || 0; if (amt && editName.trim()) updateObligation(o.id, editName.trim(), amt); setEditingOblig(null); }} className="px-2 py-1 rounded-lg text-xs font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>
-                      <Check size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <button onClick={(e) => { e.stopPropagation(); toggleObligationPaid(o.id); }} className="mr-3 flex-shrink-0">
-                      {o.paid ? <CheckCircle2 size={18} className="text-safe-green" /> : <Circle size={18} className="text-muted-foreground" />}
-                    </button>
+                  ) : (
                     <div
-                      className={`flex-1 flex items-center justify-between cursor-pointer ${o.paid ? "opacity-50" : ""}`}
+                      className="cursor-pointer"
                       onClick={() => { setEditingOblig(o.id); setEditName(o.name); setEditAmount(o.amount.toString()); }}
                     >
-                      <div>
-                        <span className={`text-sm ${o.paid ? "line-through text-muted-foreground" : "text-foreground"}`}>{o.name}</span>
-                        {o.installments && (
-                          <p className="text-xs text-muted-foreground">{formatAmount(o.amount)} ₸ × {o.installments.remaining} мес</p>
-                        )}
+                      <div className="flex items-start justify-between mb-1">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-semibold ${o.paid ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                              {o.name}
+                            </span>
+                            {o.paid && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "hsl(162 100% 33% / 0.15)", color: "hsl(162 100% 33%)" }}>
+                                Оплачено
+                              </span>
+                            )}
+                          </div>
+                          {isInstallment && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              Ежемесячно: {formatAmount(o.amount)} ₸
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg font-bold font-tabular text-foreground">
+                            {isInstallment ? formatAmount(totalRemaining) : formatAmount(o.amount)} ₸
+                          </span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deleteObligation(o.id); }}
+                            className="text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold font-tabular text-foreground">{formatAmount(o.amount)} ₸</span>
-                        <button onClick={(e) => { e.stopPropagation(); deleteObligation(o.id); }} className="text-muted-foreground hover:text-destructive transition-colors">
-                          <X size={14} />
-                        </button>
-                      </div>
+
+                      {/* Progress bar for installments */}
+                      {isInstallment && (
+                        <div className="mt-2 space-y-1">
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ width: `${installmentPct}%`, background: "hsl(38 100% 52%)" }}
+                            />
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {o.installments!.remaining} из {o.installments!.total} месяцев осталось
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Paid toggle button */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleObligationPaid(o.id); }}
+                        className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-[8px] transition-colors"
+                        style={{
+                          background: o.paid ? "hsl(162 100% 33% / 0.15)" : "hsl(0 0% 18%)",
+                          color: o.paid ? "hsl(162 100% 33%)" : "hsl(0 0% 60%)",
+                        }}
+                      >
+                        {o.paid ? "✓ Оплачено" : "Отметить оплату"}
+                      </button>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
-            <div className="px-4 py-3" style={{ background: "hsl(0 0% 14%)" }}>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground">Неоплачено</span>
-                <span className="font-bold font-tabular text-alert-orange">{formatAmount(remainingObligations)} ₸</span>
-              </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Unpaid summary */}
+          <div className="glass-card px-4 py-3 mt-2" style={{ background: "hsl(0 0% 9%)" }}>
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">Неоплачено в этом месяце</span>
+              <span className="font-bold font-tabular text-alert-orange">{formatAmount(remainingObligations)} ₸</span>
             </div>
           </div>
 
@@ -349,7 +401,6 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             </button>
           )}
         </div>
-
       </div>
     </div>
   );

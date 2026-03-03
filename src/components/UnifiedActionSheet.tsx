@@ -22,6 +22,18 @@ interface UnifiedActionSheetProps {
   editingExpense?: Expense | null;
 }
 
+// Sort accounts by usage frequency
+function sortByUsage(accounts: Account[]): Account[] {
+  return [...accounts].sort((a, b) => {
+    const aCount = a.usageCount || 0;
+    const bCount = b.usageCount || 0;
+    if (bCount !== aCount) return bCount - aCount;
+    const aDate = a.lastUsed || "";
+    const bDate = b.lastUsed || "";
+    return bDate.localeCompare(aDate);
+  });
+}
+
 export default function UnifiedActionSheet({
   open,
   onClose,
@@ -56,8 +68,10 @@ export default function UnifiedActionSheet({
     new Date().toISOString().split("T")[0]
   );
 
-  const activeAccounts = accounts.filter((a) => a.type === "active");
-  const allAccounts = accounts;
+  // Filter out system accounts, include both active and savings for transfers
+  const nonSystemAccounts = accounts.filter((a) => !a.isSystem);
+  const activeAccounts = sortByUsage(nonSystemAccounts.filter((a) => a.type === "active"));
+  const transferableAccounts = sortByUsage(nonSystemAccounts.filter((a) => a.type === "active" || a.type === "savings"));
   const unpaidObligations = obligations.filter((o) => !o.paid);
 
   // Scroll lock
@@ -76,7 +90,6 @@ export default function UnifiedActionSheet({
       if (editingExpense) {
         const exp = editingExpense;
 
-        // таб по типу
         const t: ActionTab =
           exp.type === "income"
             ? "income"
@@ -90,7 +103,6 @@ export default function UnifiedActionSheet({
         setNote(exp.note || "");
         setOperationDate(exp.date || new Date().toISOString().split("T")[0]);
 
-        // расход: обычный / обязательство
         if (t === "expense") {
           if (exp.type === "obligation" && exp.obligationId) {
             setExpenseType("obligation");
@@ -104,14 +116,12 @@ export default function UnifiedActionSheet({
           setSelectedObligId("");
         }
 
-        // перевод
         if (t === "transfer") {
           setToAccount(exp.toAccount || "");
         } else {
           setToAccount("");
         }
       } else {
-        // создание новой
         setTab("expense");
         setAmount("");
         setNote("");
@@ -138,7 +148,6 @@ export default function UnifiedActionSheet({
     const num = parseAmount();
     if (!num || !selectedAccount) return;
 
-    // если редактируем — сначала удаляем старую операцию
     if (isEditing && editingExpense) {
       onDeleteExpense(editingExpense.id);
     }
@@ -196,6 +205,12 @@ export default function UnifiedActionSheet({
   };
 
   const accentColor = tabColors[tab].accent;
+
+  // Choose which accounts to show based on tab
+  const sourceAccounts = tab === "transfer" ? sortByUsage(transferableAccounts) : activeAccounts;
+  const targetAccounts = sortByUsage(
+    transferableAccounts.filter((a) => a.name !== selectedAccount)
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -276,10 +291,11 @@ export default function UnifiedActionSheet({
             </label>
             <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
               {(tab === "income"
-                ? allAccounts.filter((a) => a.type !== "inactive")
-                : activeAccounts
+                ? sortByUsage(nonSystemAccounts.filter((a) => a.type !== "inactive"))
+                : sourceAccounts
               ).map((acc) => {
                 const isActive = selectedAccount === acc.name;
+                const isSavingsAcc = acc.type === "savings";
                 return (
                   <button
                     key={acc.id}
@@ -292,8 +308,15 @@ export default function UnifiedActionSheet({
                         : "none",
                     }}
                   >
-                    <div className="text-xs text-muted-foreground mb-0.5">
-                      {acc.type === "savings" ? "Сбережения" : "Счёт"}
+                    <div className="flex items-center gap-1">
+                      <span className="text-xs text-muted-foreground">
+                        {isSavingsAcc ? "Сбережения" : "Счёт"}
+                      </span>
+                      {isSavingsAcc && (
+                        <span className="text-[9px] px-1 py-0.5 rounded font-semibold" style={{ background: "hsl(162 100% 33% / 0.15)", color: "hsl(162 100% 33%)" }}>
+                          SAVINGS
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm font-semibold text-foreground truncate">
                       {acc.name}
@@ -314,36 +337,42 @@ export default function UnifiedActionSheet({
                 Куда
               </label>
               <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                {allAccounts
-                  .filter((a) => a.name !== selectedAccount)
-                  .map((acc) => {
-                    const isActive = toAccount === acc.name;
-                    return (
-                      <button
-                        key={acc.id}
-                        onClick={() => setToAccount(acc.name)}
-                        className="flex-shrink-0 px-3 py-2 rounded-[10px] text-left transition-all duration-200 min-w-[140px]"
-                        style={{
-                          background: isActive
-                            ? "hsl(162 100% 33% / 0.15)"
-                            : "hsl(0 0% 18%)",
-                          boxShadow: isActive
-                            ? "inset 0 0 0 1.5px hsl(162 100% 33%)"
-                            : "none",
-                        }}
-                      >
-                        <div className="text-xs text-muted-foreground mb-0.5">
-                          {acc.type === "savings" ? "Сбережения" : "Счёт"}
-                        </div>
-                        <div className="text-sm font-semibold text-foreground truncate">
-                          {acc.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground font-tabular">
-                          {formatAmount(acc.balance)} ₸
-                        </div>
-                      </button>
-                    );
-                  })}
+                {targetAccounts.map((acc) => {
+                  const isActive = toAccount === acc.name;
+                  const isSavingsAcc = acc.type === "savings";
+                  return (
+                    <button
+                      key={acc.id}
+                      onClick={() => setToAccount(acc.name)}
+                      className="flex-shrink-0 px-3 py-2 rounded-[10px] text-left transition-all duration-200 min-w-[140px]"
+                      style={{
+                        background: isActive
+                          ? "hsl(162 100% 33% / 0.15)"
+                          : "hsl(0 0% 18%)",
+                        boxShadow: isActive
+                          ? "inset 0 0 0 1.5px hsl(162 100% 33%)"
+                          : "none",
+                      }}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">
+                          {isSavingsAcc ? "Сбережения" : "Счёт"}
+                        </span>
+                        {isSavingsAcc && (
+                          <span className="text-[9px] px-1 py-0.5 rounded font-semibold" style={{ background: "hsl(162 100% 33% / 0.15)", color: "hsl(162 100% 33%)" }}>
+                            SAVINGS
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-sm font-semibold text-foreground truncate">
+                        {acc.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-tabular">
+                        {formatAmount(acc.balance)} ₸
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

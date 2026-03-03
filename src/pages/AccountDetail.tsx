@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { useFinance, AccountType } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
@@ -11,6 +11,30 @@ interface AccountDetailProps {
   onBack: () => void;
 }
 
+function ToggleSwitch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      className="relative flex-shrink-0"
+      style={{ width: 51, height: 31, borderRadius: 31 }}
+    >
+      <div
+        className="absolute inset-0 rounded-full transition-colors duration-300"
+        style={{ background: on ? "hsl(162 100% 33%)" : "hsl(0 0% 23%)" }}
+      />
+      <div
+        className="absolute rounded-full bg-white"
+        style={{
+          top: 2, left: 2, width: 27, height: 27,
+          boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+          transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          transform: on ? "translateX(20px)" : "translateX(0px)",
+        }}
+      />
+    </button>
+  );
+}
+
 export default function AccountDetail({ finance, accountId, onBack }: AccountDetailProps) {
   const {
     state,
@@ -20,6 +44,7 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
     updateAccountType,
     updateAccountGoal,
     deleteAccount,
+    toggleAccount,
   } = finance;
 
   const account = state.accounts.find((a) => a.id === accountId);
@@ -28,6 +53,38 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
   const [editBalance, setEditBalance] = useState(account?.balance.toString() ?? "");
   const [editType, setEditType] = useState<AccountType>(account?.type ?? "active");
   const [editGoal, setEditGoal] = useState(account?.monthlyGoal?.toString() ?? "");
+
+  // Swipe-to-go-back
+  const swipeRef = useRef<{ startX: number; startY: number; swiping: boolean; dx: number }>({
+    startX: 0, startY: 0, swiping: false, dx: 0,
+  });
+  const [swipeDx, setSwipeDx] = useState(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    if (touch.clientX < 30) {
+      swipeRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: true, dx: 0 };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!swipeRef.current.swiping) return;
+    const dx = e.touches[0].clientX - swipeRef.current.startX;
+    const dy = Math.abs(e.touches[0].clientY - swipeRef.current.startY);
+    if (dy > 50) { swipeRef.current.swiping = false; setSwipeDx(0); return; }
+    if (dx > 0) {
+      setSwipeDx(dx);
+      swipeRef.current.dx = dx;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (swipeRef.current.swiping && swipeRef.current.dx > 100) {
+      onBack();
+    }
+    swipeRef.current.swiping = false;
+    setSwipeDx(0);
+  };
 
   if (!account) {
     return (
@@ -73,9 +130,20 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
   };
 
   const typeBadge = account.type === "active" ? "Активный счёт" : account.type === "savings" ? "Сбережения" : "Неактивный";
+  const isActiveAccount = account.type === "active";
 
   return (
-    <div className="flex flex-col min-h-screen pb-8">
+    <div
+      className="flex flex-col min-h-screen pb-8"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{
+        transform: swipeDx > 0 ? `translateX(${swipeDx}px)` : undefined,
+        transition: swipeDx > 0 ? "none" : "transform 0.3s ease-out",
+        opacity: swipeDx > 0 ? Math.max(0.5, 1 - swipeDx / 400) : 1,
+      }}
+    >
       {/* Header */}
       <div className="px-5 pt-10 pb-4 flex items-center justify-between">
         <button onClick={onBack} className="flex items-center gap-1 text-safe-green text-sm font-medium">
@@ -162,6 +230,24 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Отложено: <span className="text-safe-green font-semibold">{formatAmount(saved)} ₸</span></span>
                   <span>{pct}%</span>
+                </div>
+              </div>
+            )}
+
+            {/* Use in calculations toggle (only for active accounts) */}
+            {account.type === "active" && (
+              <div className="glass-card p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Использовать в расчётах</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Если выключить, этот счёт не будет учитываться в цифре «Можешь потратить сегодня»
+                    </p>
+                  </div>
+                  <ToggleSwitch
+                    on={isActiveAccount}
+                    onToggle={() => toggleAccount(accountId)}
+                  />
                 </div>
               </div>
             )}
