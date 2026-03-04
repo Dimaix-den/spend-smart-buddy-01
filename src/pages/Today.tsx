@@ -336,52 +336,6 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           stillNeedToSave={stillNeedToSave}
         />
 
-        {/* Monthly budget card */}
-        <div className="glass-card p-4 animate-fade-in-up" style={{ animationDelay: "0.05s" }}>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Бюджет на месяц
-          </h3>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-foreground/80">Выделено</span>
-              <span className="font-bold font-tabular text-foreground">
-                {formatAmount(monthlyBudget)} ₸
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-foreground/80">Потрачено</span>
-              <span className="font-semibold font-tabular text-alert-orange">
-                {formatAmount(spentThisMonth)} ₸
-              </span>
-            </div>
-            {monthlyBudget > 0 && (
-              <div
-                className="h-1.5 rounded-full overflow-hidden"
-                style={{ background: "hsl(0 0% 23%)" }}
-              >
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(100, (spentThisMonth / monthlyBudget) * 100)}%`,
-                    background:
-                      budgetStatus === "critical"
-                        ? "hsl(0 76% 61%)"
-                        : budgetStatus === "warning"
-                        ? "hsl(38 100% 52%)"
-                        : "hsl(162 100% 33%)",
-                  }}
-                />
-              </div>
-            )}
-            <div className="flex items-center justify-between pt-1 border-t border-white/5">
-              <span className="text-sm font-medium text-foreground">Остаток</span>
-              <span className={`font-bold font-tabular text-lg ${budgetColor}`}>
-                <AnimatedNumber value={Math.max(0, budgetRemaining)} /> ₸
-              </span>
-            </div>
-          </div>
-        </div>
-
         {/* Savings progress */}
         {savingsAccounts.length > 0 && (
           <div className="glass-card p-4 animate-fade-in-up" style={{ animationDelay: "0.08s" }}>
