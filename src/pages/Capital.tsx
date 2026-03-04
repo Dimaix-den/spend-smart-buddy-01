@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Plus, ChevronDown, ChevronUp, ChevronRight, X, Pencil, Check } from "lucide-react";
-import { useFinance, AccountType } from "@/hooks/useFinance";
+import { Plus, ChevronDown, ChevronUp, ChevronRight } from "lucide-react";
+import { useFinance } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import { toast } from "@/hooks/use-toast";
 import MoneyInput from "@/components/MoneyInput";
@@ -8,22 +8,19 @@ import MoneyInput from "@/components/MoneyInput";
 interface CapitalProps {
   finance: ReturnType<typeof useFinance>;
   onOpenAccount: (id: string) => void;
+  onOpenObligation: (id: string) => void;
 }
 
-export default function Capital({ finance, onOpenAccount }: CapitalProps) {
+export default function Capital({ finance, onOpenAccount, onOpenObligation }: CapitalProps) {
   const {
     state,
     activeAccounts,
     savingsAccounts,
     inactiveAccounts,
     totalDebt,
-    remainingObligations,
     getSavingsForAccount,
     addAccount,
     addObligation,
-    updateObligation,
-    toggleObligationPaid,
-    deleteObligation,
   } = finance;
 
   const [showInactive, setShowInactive] = useState(false);
@@ -42,19 +39,13 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
 
   // Add obligation form
   const [newObligName, setNewObligName] = useState("");
-  const [newObligAmount, setNewObligAmount] = useState("");
-
-  // Editing obligation
-  const [editingOblig, setEditingOblig] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editAmount, setEditAmount] = useState("");
+  const [newObligTotal, setNewObligTotal] = useState("");
+  const [newObligMonthly, setNewObligMonthly] = useState("");
 
   const totalAssets = state.accounts
     .filter(a => (a.type === "active" || a.type === "savings") && !a.isSystem)
     .reduce((s, a) => s + a.balance, 0);
   const netWorth = totalAssets - totalDebt;
-
-  const totalObligationsMonthly = state.obligations.reduce((sum, o) => sum + o.amount, 0);
 
   const handleAddAccount = () => {
     if (!newAccName.trim()) return;
@@ -74,13 +65,23 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
   };
 
   const handleAddObligation = () => {
-    if (!newObligName.trim() || !newObligAmount) return;
-    const amount = parseFloat(newObligAmount) || 0;
-    if (!amount) return;
-    addObligation(newObligName.trim(), amount);
-    setNewObligName(""); setNewObligAmount(""); setShowAddOblig(false);
+    if (!newObligName.trim()) return;
+    const total = parseFloat(newObligTotal) || 0;
+    const monthly = parseFloat(newObligMonthly) || 0;
+    if (!monthly) return;
+    addObligation(newObligName.trim(), total || monthly, monthly);
+    setNewObligName(""); setNewObligTotal(""); setNewObligMonthly(""); setShowAddOblig(false);
     toast({ description: "✅ Обязательство добавлено", duration: 2000 });
   };
+
+  const autoMonths = (() => {
+    const total = parseFloat(newObligTotal) || 0;
+    const monthly = parseFloat(newObligMonthly) || 0;
+    if (total > 0 && monthly > 0 && total > monthly) {
+      return Math.ceil(total / monthly);
+    }
+    return null;
+  })();
 
   return (
     <div className="flex flex-col min-h-screen pb-28">
@@ -98,13 +99,15 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
           </div>
           <div className="border-t border-white/5 pt-2 flex justify-between items-center">
             <span className="text-sm font-medium text-foreground">Чистый капитал</span>
-            <span className={`text-xl font-bold font-tabular ${netWorth >= 0 ? "text-safe-green" : "text-destructive"}`}>{netWorth < 0 ? "−" : ""}{formatAmount(Math.abs(netWorth))} ₸</span>
+            <span className={`text-xl font-bold font-tabular ${netWorth >= 0 ? "text-safe-green" : "text-destructive"}`}>
+              {netWorth < 0 ? "−" : ""}{formatAmount(Math.abs(netWorth))} ₸
+            </span>
           </div>
         </div>
       </div>
 
       <div className="flex-1 px-4 space-y-6">
-        {/* ─── Active Accounts (no toggles, redesigned cards) ──────── */}
+        {/* ─── Active Accounts ──────── */}
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
             Активные счета
@@ -134,12 +137,7 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
               <input autoFocus placeholder="Название" value={newAccName} onChange={(e) => setNewAccName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
               <div className="relative">
-                <MoneyInput
-                  placeholder="0"
-                  value={newAccBalance}
-                  onChange={setNewAccBalance}
-                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
-                />
+                <MoneyInput placeholder="0" value={newAccBalance} onChange={setNewAccBalance} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
               </div>
               <div className="flex gap-2">
@@ -154,7 +152,7 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
           )}
         </div>
 
-        {/* ─── Inactive (collapsible, under Active) ──────────────────── */}
+        {/* ─── Inactive (collapsible) ──────────────────── */}
         {inactiveAccounts.length > 0 && (
           <div className="-mt-2">
             <button onClick={() => setShowInactive(!showInactive)} className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
@@ -164,15 +162,9 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             {showInactive && (
               <div className="space-y-2 animate-fade-in-up">
                 {inactiveAccounts.map((acc) => (
-                  <button
-                    key={acc.id}
-                    onClick={() => onOpenAccount(acc.id)}
+                  <button key={acc.id} onClick={() => onOpenAccount(acc.id)}
                     className="w-full rounded-[12px] p-4 flex items-center justify-between opacity-60 active:scale-[0.98] transition-transform"
-                    style={{
-                      background: "hsl(0 0% 11%)",
-                      borderLeft: "3px solid hsl(0 0% 30%)",
-                    }}
-                  >
+                    style={{ background: "hsl(0 0% 11%)", borderLeft: "3px solid hsl(0 0% 30%)" }}>
                     <div className="text-left">
                       <p className="font-semibold text-foreground text-sm">{acc.name}</p>
                       <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(acc.balance)} ₸</p>
@@ -187,24 +179,16 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
 
         {/* ─── Savings ──────────────────────────── */}
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-            Сбережения
-          </h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">Сбережения</h2>
           <div className="space-y-2">
             {savingsAccounts.map((acc) => {
               const saved = getSavingsForAccount(acc.name);
               const goal = acc.monthlyGoal || 0;
               const pct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
               return (
-                <button
-                  key={acc.id}
-                  onClick={() => onOpenAccount(acc.id)}
+                <button key={acc.id} onClick={() => onOpenAccount(acc.id)}
                   className="w-full rounded-[12px] p-4 text-left active:scale-[0.98] transition-transform"
-                  style={{
-                    background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
-                    borderLeft: "3px solid hsl(162 100% 33%)",
-                  }}
-                >
+                  style={{ background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)", borderLeft: "3px solid hsl(162 100% 33%)" }}>
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-semibold text-foreground text-sm">{acc.name}</p>
                     <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(acc.balance)} ₸</p>
@@ -229,21 +213,11 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
             <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
               <input autoFocus placeholder="Название" value={newSavName} onChange={(e) => setNewSavName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
               <div className="relative">
-                <MoneyInput
-                  placeholder="Текущий баланс"
-                  value={newSavBalance}
-                  onChange={setNewSavBalance}
-                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
-                />
+                <MoneyInput placeholder="Текущий баланс" value={newSavBalance} onChange={setNewSavBalance} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
               </div>
               <div className="relative">
-                <MoneyInput
-                  placeholder="Цель в месяц"
-                  value={newSavGoal}
-                  onChange={setNewSavGoal}
-                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-12"
-                />
+                <MoneyInput placeholder="Цель в месяц" value={newSavGoal} onChange={setNewSavGoal} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-12" />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸/мес</span>
               </div>
               <div className="flex gap-2">
@@ -258,138 +232,82 @@ export default function Capital({ finance, onOpenAccount }: CapitalProps) {
           )}
         </div>
 
-        {/* ─── Obligations (redesigned to match savings style) ──────── */}
+        {/* ─── Obligations (redesigned — tappable cards, no inline editing) ──────── */}
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
             Обязательства
           </h2>
           <div className="space-y-2">
             {state.obligations.map((o) => {
-              const isInstallment = !!o.installments;
-              const totalRemaining = isInstallment
-                ? o.amount * o.installments!.remaining
-                : o.amount;
-              const paidCount = isInstallment
-                ? o.installments!.total - o.installments!.remaining
-                : 0;
-              const installmentPct = isInstallment
-                ? Math.round((paidCount / o.installments!.total) * 100)
-                : 0;
+              const isInstallment = o.totalAmount > o.monthlyPayment;
+              const totalMonths = isInstallment ? Math.ceil(o.totalAmount / o.monthlyPayment) : 1;
+              const pct = isInstallment ? Math.min(100, Math.round((o.paidMonths / totalMonths) * 100)) : 0;
+              const remaining = isInstallment ? totalMonths - o.paidMonths : 0;
 
               return (
-                <div
+                <button
                   key={o.id}
-                  className="rounded-[12px] p-4"
+                  onClick={() => onOpenObligation(o.id)}
+                  className="w-full rounded-[12px] p-4 text-left active:scale-[0.98] transition-transform"
                   style={{
                     background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
                     borderLeft: "3px solid hsl(38 100% 52%)",
                   }}
                 >
-                  {editingOblig === o.id ? (
-                    <div className="flex gap-2">
-                      <input autoFocus value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1 glass-input px-2 py-1.5 text-sm focus:outline-none" />
-                      <div className="relative w-28">
-                        <MoneyInput
-                          value={editAmount}
-                          onChange={setEditAmount}
-                          className="w-full glass-input px-2 py-1.5 text-sm focus:outline-none pr-5"
-                        />
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸</span>
-                      </div>
-                      <button onClick={() => { const amt = parseFloat(editAmount) || 0; if (amt && editName.trim()) updateObligation(o.id, editName.trim(), amt); setEditingOblig(null); }} className="px-2 py-1 rounded-lg text-xs font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>
-                        <Check size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      className="cursor-pointer"
-                      onClick={() => { setEditingOblig(o.id); setEditName(o.name); setEditAmount(o.amount.toString()); }}
-                    >
-                      <div className="flex items-start justify-between mb-1">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-sm font-semibold ${o.paid ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                              {o.name}
-                            </span>
-                            {o.paid && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold" style={{ background: "hsl(162 100% 33% / 0.15)", color: "hsl(162 100% 33%)" }}>
-                                Оплачено
-                              </span>
-                            )}
-                          </div>
-                          {isInstallment && (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Ежемесячно: {formatAmount(o.amount)} ₸
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg font-bold font-tabular text-foreground">
-                            {isInstallment ? formatAmount(totalRemaining) : formatAmount(o.amount)} ₸
-                          </span>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); deleteObligation(o.id); }}
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Progress bar for installments */}
-                      {isInstallment && (
-                        <div className="mt-2 space-y-1">
-                          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${installmentPct}%`, background: "hsl(38 100% 52%)" }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            {o.installments!.remaining} из {o.installments!.total} месяцев осталось
-                          </p>
-                        </div>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${o.paid ? "text-muted-foreground" : "text-foreground"}`}>
+                        {o.name}
+                      </span>
+                      {o.paid && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
+                          style={{ background: "hsl(162 100% 33% / 0.15)", color: "hsl(162 100% 33%)" }}>
+                          Оплачено
+                        </span>
                       )}
+                    </div>
+                    <ChevronRight size={16} className="text-muted-foreground" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formatAmount(o.monthlyPayment)} ₸ в месяц
+                  </p>
 
-                      {/* Paid toggle button */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleObligationPaid(o.id); }}
-                        className="mt-2 text-xs font-semibold px-3 py-1.5 rounded-[8px] transition-colors"
-                        style={{
-                          background: o.paid ? "hsl(162 100% 33% / 0.15)" : "hsl(0 0% 18%)",
-                          color: o.paid ? "hsl(162 100% 33%)" : "hsl(0 0% 60%)",
-                        }}
-                      >
-                        {o.paid ? "✓ Оплачено" : "Отметить оплату"}
-                      </button>
+                  {isInstallment && (
+                    <div className="mt-2 space-y-1">
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
+                        <div className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, background: "hsl(38 100% 52%)" }} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Осталось: {remaining} из {totalMonths} месяцев
+                      </p>
                     </div>
                   )}
-                </div>
+                </button>
               );
             })}
           </div>
 
-          {/* Unpaid summary */}
-          <div className="glass-card px-4 py-3 mt-2" style={{ background: "hsl(0 0% 9%)" }}>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Неоплачено в этом месяце</span>
-              <span className="font-bold font-tabular text-alert-orange">{formatAmount(remainingObligations)} ₸</span>
-            </div>
-          </div>
-
           {showAddOblig ? (
             <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
-              <input autoFocus placeholder="Название" value={newObligName} onChange={(e) => setNewObligName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
+              <input autoFocus placeholder="Название" value={newObligName} onChange={(e) => setNewObligName(e.target.value)}
+                className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
               <div className="relative">
-                <MoneyInput
-                  placeholder="0"
-                  value={newObligAmount}
-                  onChange={setNewObligAmount}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddObligation()}
-                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
-                />
+                <MoneyInput placeholder="Общая сумма" value={newObligTotal} onChange={setNewObligTotal}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
               </div>
+              <div className="relative">
+                <MoneyInput placeholder="Месячный платёж" value={newObligMonthly} onChange={setNewObligMonthly}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddObligation()}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
+              </div>
+              {autoMonths && (
+                <p className="text-xs text-muted-foreground px-1">
+                  Авто: {autoMonths} месяцев
+                </p>
+              )}
               <div className="flex gap-2">
                 <button onClick={() => setShowAddOblig(false)} className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Отмена</button>
                 <button onClick={handleAddObligation} className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>Добавить</button>

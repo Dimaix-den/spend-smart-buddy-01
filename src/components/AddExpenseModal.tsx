@@ -220,7 +220,7 @@ export default function AddExpenseModal({
                         : "bg-muted text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {o.name} ({formatAmount(o.amount)} ₸)
+                    {o.name} ({formatAmount(o.monthlyPayment)} ₸)
                   </button>
                 ))}
               </div>
