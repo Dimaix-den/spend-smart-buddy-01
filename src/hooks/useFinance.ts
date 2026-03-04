@@ -715,7 +715,6 @@ export function useFinance(userId?: string | null) {
           ...s,
           budgetPeriod: { ...s.budgetPeriod, currentDay: 1, startDate: today() },
           obligations: s.obligations.map((o) => ({ ...o, paid: false })),
-          expenses: [],
           monthStartBalances: balances,
           currentDate: today(),
         };
