@@ -209,27 +209,27 @@ export function useFinance(userId?: string | null) {
   const initialLoadDone = useRef(false);
 
   // Load from Firestore on mount if authenticated
-  useEffect(() => {
-    if (!userId) {
-      setFirestoreLoading(false);
-      return;
-    }
-    if (initialLoadDone.current) return;
-    initialLoadDone.current = true;
+useEffect(() => {
+  if (!userId) {
+    setFirestoreLoading(false);
+    return;
+  }
+  if (initialLoadDone.current) return;
+  initialLoadDone.current = true;
 
-    (async () => {
-      const firestoreData = await loadFromFirestore(userId);
-      if (firestoreData) {
-        const migrated = migrateState(firestoreData);
-        setState(maybeAdvanceDay(migrated));
-      } else {
-        // Migrate localStorage to Firestore
-        const localData = loadState();
-        await saveToFirestore(userId, localData);
-      }
-      setFirestoreLoading(false);
-    })();
-  }, [userId]);
+  (async () => {
+    const firestoreData = await loadFromFirestore(userId);
+    if (firestoreData) {
+      const migrated = migrateState(firestoreData);
+      setState(maybeAdvanceDay(migrated));
+    } else {
+      // Firestore пуст → отправляем текущий state (то, чем уже пользуется пользователь)
+      await saveToFirestore(userId, state);
+    }
+    setFirestoreLoading(false);
+  })();
+}, [userId, state]);
+
 
   // Save to localStorage + Firestore (debounced)
   useEffect(() => {
@@ -702,25 +702,27 @@ export function useFinance(userId?: string | null) {
     }
   }, []);
 
-  useEffect(() => {
-    const currentMonth = new Date().getMonth();
-    const startMonth = new Date(state.budgetPeriod.startDate).getMonth();
-    if (currentMonth !== startMonth) {
-      setState((s) => {
-        const balances: Record<string, number> = {};
-        s.accounts
-          .filter((a) => a.type === "active" && !a.isSystem)
-          .forEach((a) => { balances[a.id] = a.balance; });
-        return {
-          ...s,
-          budgetPeriod: { ...s.budgetPeriod, currentDay: 1, startDate: today() },
-          obligations: s.obligations.map((o) => ({ ...o, paid: false })),
-          monthStartBalances: balances,
-          currentDate: today(),
-        };
-      });
-    }
-  }, []);
+useEffect(() => {
+  const currentMonth = new Date().getMonth();
+  const startMonth = new Date(state.budgetPeriod.startDate).getMonth();
+  if (currentMonth !== startMonth) {
+    setState((s) => {
+      const balances: Record<string, number> = {};
+      s.accounts
+        .filter((a) => a.type === "active" && !a.isSystem)
+        .forEach((a) => { balances[a.id] = a.balance; });
+      return {
+        ...s,
+        budgetPeriod: { ...s.budgetPeriod, currentDay: 1, startDate: today() },
+        obligations: s.obligations.map((o) => ({ ...o, paid: false })),
+        // expenses не трогаем
+        monthStartBalances: balances,
+        currentDate: today(),
+      };
+    });
+  }
+}, []);
+
 
   return {
     state,
