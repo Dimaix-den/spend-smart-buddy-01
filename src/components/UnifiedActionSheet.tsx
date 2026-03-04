@@ -435,7 +435,7 @@ export default function UnifiedActionSheet({
                           : "hsl(0 0% 60%)",
                     }}
                   >
-                    {o.name} ({formatAmount(o.amount)} ₸)
+                    {o.name} ({formatAmount(o.monthlyPayment)} ₸)
                   </button>
                 ))}
               </div>
