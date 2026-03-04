@@ -117,7 +117,9 @@ function InfoPanel({
             </div>
             <div className="flex justify-between items-center border-t border-white/5 pt-1.5">
               <span className="text-foreground font-medium">= Можно потратить</span>
-              <span className="text-safe-green font-bold font-tabular text-lg">{formatAmount(Math.max(0, safeToSpend))} ₸</span>
+              <span className="text-safe-green font-bold font-tabular text-lg">
+                {formatAmount(Math.max(0, safeToSpend))} ₸
+              </span>
             </div>
           </div>
         </div>
@@ -142,7 +144,9 @@ function TransactionRow({
   const isIncome = expense.type === "income";
   const isTransfer = expense.type === "transfer" || expense.type === "savings";
 
-  const handleTouchStart = (e: React.TouchEvent) => { touchStartX.current = e.touches[0].clientX; };
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
   const handleTouchEnd = (e: React.TouchEvent) => {
     const diff = touchStartX.current - e.changedTouches[0].clientX;
     if (diff > 60) setSwiped(true);
@@ -156,13 +160,17 @@ function TransactionRow({
   return (
     <div className="relative overflow-hidden rounded-[12px]">
       {swiped && (
-        <button onClick={() => onDelete(expense.id)}
-          className="absolute right-0 top-0 bottom-0 w-20 bg-destructive flex items-center justify-center animate-swipe-reveal rounded-r-[12px]">
+        <button
+          onClick={() => onDelete(expense.id)}
+          className="absolute right-0 top-0 bottom-0 w-20 bg-destructive flex items-center justify-center animate-swipe-reveal rounded-r-[12px]"
+        >
           <Trash2 size={18} className="text-white" />
         </button>
       )}
       <div
-        className={`glass-card px-4 py-3 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 ${swiped ? "-translate-x-20" : "translate-x-0"}`}
+        className={`glass-card px-4 py-3 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all duration-200 ${
+          swiped ? "-translate-x-20" : "translate-x-0"
+        }`}
         style={{ transition: "transform 0.25s ease-out" }}
         onClick={() => !swiped && onEdit(expense)}
         onTouchStart={handleTouchStart}
@@ -178,7 +186,8 @@ function TransactionRow({
           </div>
         </div>
         <span className={`font-bold font-tabular text-sm ${color}`}>
-          {isIncome ? "+" : "−"}{formatAmount(expense.amount)} ₸
+          {isIncome ? "+" : "−"}
+          {formatAmount(expense.amount)} ₸
         </span>
       </div>
     </div>
@@ -234,7 +243,9 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
       ? "text-alert-orange"
       : "text-safe-green";
 
-  const sortedByDateDesc = [...state.expenses].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+  const sortedByDateDesc = [...state.expenses].sort((a, b) =>
+    a.date < b.date ? 1 : a.date > b.date ? -1 : 0
+  );
   const recentExpenses = sortedByDateDesc.slice(0, 6);
 
   const groupedRecent = new Map<string, Expense[]>();
@@ -260,16 +271,35 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
 
   return (
     <div className="flex flex-col min-h-screen pb-40">
-      {/* Hero section */}
+      {/* Hero */}
       <div className="px-5 pt-10 pb-6 text-center">
-        <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-3">
-          {heroLabel}
-        </p>
+        <div className="flex items-center justify-center gap-1 mb-2">
+          <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
+            {heroLabel}
+          </p>
+          <button
+            onClick={() => setShowInfo(true)}
+            className="inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <HelpCircle size={12} />
+          </button>
+        </div>
+
         <div className="flex items-end justify-center gap-2 mb-1">
-          <span className={`safe-number font-tabular ${isOverspent ? "text-destructive" : safeToSpendColor}`}>
+          <span
+            className={`safe-number font-tabular ${
+              isOverspent ? "text-destructive" : safeToSpendColor
+            }`}
+          >
             <AnimatedNumber value={displayAmount} />
           </span>
-          <span className={`text-4xl font-bold mb-1 opacity-80 ${isOverspent ? "text-destructive" : safeToSpendColor}`}>₸</span>
+          <span
+            className={`text-4xl font-bold mb-1 opacity-80 ${
+              isOverspent ? "text-destructive" : safeToSpendColor
+            }`}
+          >
+            ₸
+          </span>
         </div>
 
         {isOverspent && (
@@ -278,7 +308,6 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           </p>
         )}
 
-        {/* Plans indicator */}
         {usePlans && dailyBudget !== adjustedDailyBudget && (
           <p className="text-xs text-muted-foreground mt-1 font-tabular">
             (без планов: {formatAmount(Math.max(0, dailyBudget - spentToday))} ₸)
@@ -286,16 +315,23 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
         )}
 
         <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
-          <span>Лимит: <span className="text-foreground font-semibold">{formatAmount(effectiveDailyBudget)} ₸</span></span>
+          <span>
+            Лимит:{" "}
+            <span className="text-foreground font-semibold">
+              {formatAmount(effectiveDailyBudget)} ₸
+            </span>
+          </span>
           <span style={{ opacity: 0.3 }}>•</span>
-          <span>Потрачено: <span className="text-alert-orange font-semibold">{formatAmount(spentToday)} ₸</span></span>
+          <span>
+            Потрачено:{" "}
+            <span className="text-alert-orange font-semibold">
+              {formatAmount(spentToday)} ₸
+            </span>
+          </span>
         </div>
-
-        <button onClick={() => setShowInfo(true)} className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-          <HelpCircle size={12} /> Как считается?
-        </button>
       </div>
 
+      {/* Content */}
       <div className="flex-1 px-4 space-y-3">
         {/* Budget discipline chart */}
         <BudgetDiscipline
@@ -314,19 +350,33 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground/80">Выделено</span>
-              <span className="font-bold font-tabular text-foreground">{formatAmount(monthlyBudget)} ₸</span>
+              <span className="font-bold font-tabular text-foreground">
+                {formatAmount(monthlyBudget)} ₸
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground/80">Потрачено</span>
-              <span className="font-semibold font-tabular text-alert-orange">{formatAmount(spentThisMonth)} ₸</span>
+              <span className="font-semibold font-tabular text-alert-orange">
+                {formatAmount(spentThisMonth)} ₸
+              </span>
             </div>
             {monthlyBudget > 0 && (
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
-                <div className="h-full rounded-full transition-all duration-500"
+              <div
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ background: "hsl(0 0% 23%)" }}
+              >
+                <div
+                  className="h-full rounded-full transition-all duration-500"
                   style={{
                     width: `${Math.min(100, (spentThisMonth / monthlyBudget) * 100)}%`,
-                    background: budgetStatus === "critical" ? "hsl(0 76% 61%)" : budgetStatus === "warning" ? "hsl(38 100% 52%)" : "hsl(162 100% 33%)",
-                  }} />
+                    background:
+                      budgetStatus === "critical"
+                        ? "hsl(0 76% 61%)"
+                        : budgetStatus === "warning"
+                        ? "hsl(38 100% 52%)"
+                        : "hsl(162 100% 33%)",
+                  }}
+                />
               </div>
             )}
             <div className="flex items-center justify-between pt-1 border-t border-white/5">
@@ -344,9 +394,10 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <PiggyBank size={14} className="text-safe-green" />
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Цель сбережений</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Цель сбережений
+                </h3>
               </div>
-              <span className="text-xs font-bold text-safe-green">{savingsProgress}%</span>
             </div>
             <div className="space-y-3">
               {savingsAccounts.map((acc) => {
@@ -359,27 +410,60 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                       <span className="text-sm text-foreground">{acc.name}</span>
                       {editingGoalId === acc.id ? (
                         <div className="flex items-center gap-2">
-                          <MoneyInput autoFocus value={goalInput} onChange={setGoalInput}
-                            onKeyDown={(e) => { if (e.key === "Enter") { updateAccountGoal(acc.id, parseFloat(goalInput) || 0); setEditingGoalId(null); } }}
-                            className="w-24 glass-input px-2 py-1 text-xs font-tabular text-right focus:outline-none" />
-                          <button onClick={() => { updateAccountGoal(acc.id, parseFloat(goalInput) || 0); setEditingGoalId(null); }}
-                            className="text-xs text-safe-green font-bold">OK</button>
+                          <MoneyInput
+                            autoFocus
+                            value={goalInput}
+                            onChange={setGoalInput}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                updateAccountGoal(acc.id, parseFloat(goalInput) || 0);
+                                setEditingGoalId(null);
+                              }
+                            }}
+                            className="w-24 glass-input px-2 py-1 text-xs font-tabular text-right focus:outline-none"
+                          />
+                          <button
+                            onClick={() => {
+                              updateAccountGoal(acc.id, parseFloat(goalInput) || 0);
+                              setEditingGoalId(null);
+                            }}
+                            className="text-xs text-safe-green font-bold"
+                          >
+                            OK
+                          </button>
                         </div>
                       ) : (
-                        <button onClick={() => { setEditingGoalId(acc.id); setGoalInput((acc.monthlyGoal || 0).toString()); }}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                          {goal > 0 ? `${formatAmount(goal)} ₸/мес ✎` : "Задать цель ✎"}
+                        <button
+                          onClick={() => {
+                            setEditingGoalId(acc.id);
+                            setGoalInput((acc.monthlyGoal || 0).toString());
+                          }}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {goal > 0
+                            ? `${formatAmount(goal)} ₸/мес ✎`
+                            : "Задать цель ✎"}
                         </button>
                       )}
                     </div>
                     {goal > 0 && (
                       <>
-                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
-                          <div className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, background: "hsl(162 100% 33%)" }} />
+                        <div
+                          className="h-1.5 rounded-full overflow-hidden"
+                          style={{ background: "hsl(0 0% 23%)" }}
+                        >
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%`, background: "hsl(162 100% 33%)" }}
+                          />
                         </div>
                         <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>Отложено: <span className="text-safe-green font-semibold">{formatAmount(saved)} ₸</span></span>
+                          <span>
+                            Отложено:{" "}
+                            <span className="text-safe-green font-semibold">
+                              {formatAmount(saved)} ₸
+                            </span>
+                          </span>
                           <span>{pct}%</span>
                         </div>
                       </>
@@ -408,29 +492,47 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                   <div key={date}>
                     <div className="flex items-center justify-between mb-1 px-1">
                       <span className="text-xs text-muted-foreground">{date}</span>
-                      <span className={`text-xs font-bold font-tabular ${dayTotal >= 0 ? "text-safe-green" : "text-alert-orange"}`}>
-                        {dayTotal >= 0 ? "+" : ""}{formatAmount(dayTotal)} ₸
+                      <span
+                        className={`text-xs font-bold font-tabular ${
+                          dayTotal >= 0 ? "text-safe-green" : "text-alert-orange"
+                        }`}
+                      >
+                        {dayTotal >= 0 ? "+" : ""}
+                        {formatAmount(dayTotal)} ₸
                       </span>
                     </div>
                     <div className="space-y-1.5">
                       {txns.map((expense) => {
                         const isIncome = expense.type === "income";
-                        const isTransfer = expense.type === "transfer" || expense.type === "savings";
+                        const isTransfer =
+                          expense.type === "transfer" || expense.type === "savings";
                         const isObligation = expense.type === "obligation";
+
                         const label = isIncome
                           ? expense.note || "Доход"
                           : isTransfer
-                          ? expense.toAccount ? `→ ${expense.toAccount}` : "Перевод"
+                          ? expense.toAccount
+                            ? `→ ${expense.toAccount}`
+                            : "Перевод"
                           : isObligation
-                          ? state.obligations.find((o) => o.id === expense.obligationId)?.name ?? "Обязательство"
+                          ? state.obligations.find(
+                              (o) => o.id === expense.obligationId
+                            )?.name ?? "Обязательство"
                           : expense.note || expense.account;
+
                         return (
                           <TransactionRow
                             key={expense.id}
                             expense={expense}
                             label={label}
-                            onDelete={(id) => { deleteExpense(id); toast({ description: "🗑 Операция удалена", duration: 2000 }); }}
-                            onEdit={(exp) => { setEditingExpense(exp); setSheetOpen(true); }}
+                            onDelete={(id) => {
+                              deleteExpense(id);
+                              toast({ description: "🗑 Операция удалена", duration: 2000 });
+                            }}
+                            onEdit={(exp) => {
+                              setEditingExpense(exp);
+                              setSheetOpen(true);
+                            }}
                           />
                         );
                       })}
@@ -439,9 +541,11 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                 );
               })}
             </div>
-            <button onClick={onShowHistory}
+            <button
+              onClick={onShowHistory}
               className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-[12px] text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
-              style={{ background: "hsl(0 0% 11%)" }}>
+              style={{ background: "hsl(0 0% 11%)" }}
+            >
               Показать всю историю <ChevronRight size={16} />
             </button>
           </div>
@@ -450,25 +554,50 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
 
       {/* FAB */}
       <button
-        onClick={() => { setEditingExpense(null); setSheetOpen(true); }}
+        onClick={() => {
+          setEditingExpense(null);
+          setSheetOpen(true);
+        }}
         className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30 w-16 h-16 rounded-full flex items-center justify-center active:scale-90 transition-all duration-200"
-        style={{ background: "hsl(162 100% 33%)", boxShadow: "0 4px 16px rgba(0, 166, 118, 0.4)" }}>
-        <Plus size={28} strokeWidth={2.5} className="text-white transition-transform duration-300"
-          style={{ transform: sheetOpen ? "rotate(45deg)" : "rotate(0deg)" }} />
+        style={{
+          background: "hsl(162 100% 33%)",
+          boxShadow: "0 4px 16px rgba(0, 166, 118, 0.4)",
+        }}
+      >
+        <Plus
+          size={28}
+          strokeWidth={2.5}
+          className="text-white transition-transform duration-300"
+          style={{ transform: sheetOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+        />
       </button>
 
       {/* Unified Action Sheet */}
       <UnifiedActionSheet
         open={sheetOpen}
-        onClose={() => { setSheetOpen(false); setEditingExpense(null); }}
+        onClose={() => {
+          setSheetOpen(false);
+          setEditingExpense(null);
+        }}
         onSaveExpense={(amount, account, type, opts) => {
           addExpense(amount, account, type, opts);
-          const label = type === "savings" || type === "transfer" ? "💰 Переведено" : type === "obligation" ? "✅ Платёж" : "✅ Расход";
-          toast({ description: `${label}: ${formatAmount(amount)} ₸`, duration: 2000 });
+          const label =
+            type === "savings" || type === "transfer"
+              ? "💰 Переведено"
+              : type === "obligation"
+              ? "✅ Платёж"
+              : "✅ Расход";
+          toast({
+            description: `${label}: ${formatAmount(amount)} ₸`,
+            duration: 2000,
+          });
         }}
         onSaveIncome={(amount, account, note, date) => {
           addIncome(amount, account, note, date);
-          toast({ description: `💰 Доход: +${formatAmount(amount)} ₸`, duration: 2000 });
+          toast({
+            description: `💰 Доход: +${formatAmount(amount)} ₸`,
+            duration: 2000,
+          });
         }}
         onDeleteExpense={(id) => deleteExpense(id)}
         accounts={state.accounts}
