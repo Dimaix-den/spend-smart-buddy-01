@@ -308,12 +308,6 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           </p>
         )}
 
-        {usePlans && dailyBudget !== adjustedDailyBudget && (
-          <p className="text-xs text-muted-foreground mt-1 font-tabular">
-            (без планов: {formatAmount(Math.max(0, dailyBudget - spentToday))} ₸)
-          </p>
-        )}
-
         <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
           <span>
             Лимит:{" "}
