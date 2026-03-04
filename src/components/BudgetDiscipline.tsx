@@ -74,24 +74,6 @@ export default function BudgetDiscipline({
       });
     }
 
-    // Текущая серия
-    let streak = 0;
-    for (let i = daysList.length - 1; i >= 0; i--) {
-      if (daysList[i].hasData && daysList[i].withinBudget) streak++;
-      else break;
-    }
-
-    // Лучшая серия
-    let best = 0;
-    let current = 0;
-    for (const day of daysList) {
-      if (day.hasData && day.withinBudget) {
-        current++;
-        best = Math.max(best, current);
-      } else {
-        current = 0;
-      }
-    }
 
     return { days: daysList, currentStreak: streak, bestStreak: best };
   }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave]);
