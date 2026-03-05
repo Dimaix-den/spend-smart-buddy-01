@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, ChevronLeft, ChevronRight, X, Trash2 } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, X, Pencil, Trash2 } from "lucide-react";
 import { useFinance, PlannedExpense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import { toast } from "@/hooks/use-toast";
@@ -11,14 +11,21 @@ interface PlansProps {
 
 export default function Plans({ finance }: PlansProps) {
   const {
-    state, dailyBudget, adjustedDailyBudget, spentToday,
-    upcomingPlannedIncome, upcomingPlannedExpenses,
-    addPlannedExpense, updatePlannedExpense, deletePlannedExpense,
+    state,
+    dailyBudget,
+    adjustedDailyBudget,
+    spentToday,
+    upcomingPlannedIncome,
+    upcomingPlannedExpenses,
+    addPlannedExpense,
+    updatePlannedExpense,
+    deletePlannedExpense,
   } = finance;
 
   const plans = state.plannedExpenses || [];
   const todayStr = state.currentDate;
 
+  // Month navigation
   const [monthOffset, setMonthOffset] = useState(0);
   const viewDate = new Date();
   viewDate.setMonth(viewDate.getMonth() + monthOffset);
@@ -30,6 +37,7 @@ export default function Plans({ finance }: PlansProps) {
     "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
   ];
 
+  // Filter plans for this month
   const monthPlans = useMemo(() => {
     return plans
       .filter((p) => {
@@ -39,6 +47,7 @@ export default function Plans({ finance }: PlansProps) {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [plans, viewYear, viewMonth]);
 
+  // Add modal
   const [showAdd, setShowAdd] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PlannedExpense | null>(null);
   const [planType, setPlanType] = useState<"expense" | "income">("expense");
@@ -48,27 +57,54 @@ export default function Plans({ finance }: PlansProps) {
   const [planRecurring, setPlanRecurring] = useState(false);
 
   const openAdd = () => {
-    setEditingPlan(null); setPlanType("expense"); setPlanName(""); setPlanAmount("");
-    setPlanDate(todayStr); setPlanRecurring(false); setShowAdd(true);
+    setEditingPlan(null);
+    setPlanType("expense");
+    setPlanName("");
+    setPlanAmount("");
+    setPlanDate(todayStr);
+    setPlanRecurring(false);
+    setShowAdd(true);
   };
 
   const openEdit = (plan: PlannedExpense) => {
-    setEditingPlan(plan); setPlanType(plan.type); setPlanName(plan.name);
-    setPlanAmount(plan.amount.toString()); setPlanDate(plan.date);
-    setPlanRecurring(plan.recurring); setShowAdd(true);
+    setEditingPlan(plan);
+    setPlanType(plan.type);
+    setPlanName(plan.name);
+    setPlanAmount(plan.amount.toString());
+    setPlanDate(plan.date);
+    setPlanRecurring(plan.recurring);
+    setShowAdd(true);
   };
 
   const handleSave = () => {
     const amt = parseFloat(planAmount) || 0;
     if (!planName.trim() || !amt) return;
+
     if (editingPlan) {
-      updatePlannedExpense(editingPlan.id, { type: planType, name: planName.trim(), amount: amt, date: planDate, recurring: planRecurring });
+      updatePlannedExpense(editingPlan.id, {
+        type: planType,
+        name: planName.trim(),
+        amount: amt,
+        date: planDate,
+        recurring: planRecurring,
+      });
       toast({ description: "✅ План обновлён", duration: 2000 });
     } else {
-      addPlannedExpense({ type: planType, name: planName.trim(), amount: amt, date: planDate, recurring: planRecurring });
+      addPlannedExpense({
+        type: planType,
+        name: planName.trim(),
+        amount: amt,
+        date: planDate,
+        recurring: planRecurring,
+      });
       toast({ description: "✅ План добавлен", duration: 2000 });
     }
     setShowAdd(false);
+  };
+
+  const handleDeletePlan = (id: string) => {
+    deletePlannedExpense(id);
+    toast({ description: "🗑 План удалён", duration: 2000 });
   };
 
   const safeWithoutPlans = dailyBudget - spentToday;
@@ -76,63 +112,37 @@ export default function Plans({ finance }: PlansProps) {
 
   return (
     <div className="flex flex-col min-h-screen pb-28">
+      {/* Header */}
       <div className="px-5 pt-10 pb-6">
         <h1 className="text-2xl font-bold text-foreground mb-4">Планы</h1>
 
         {/* Month selector */}
-        <div className="flex items-center justify-between bg-card rounded-2xl px-4 py-3">
-          <button onClick={() => setMonthOffset((m) => m - 1)} className="p-2 text-muted-foreground hover:text-foreground active:scale-95 transition-all">
+        <div className="flex items-center justify-between">
+          <button onClick={() => setMonthOffset((m) => m - 1)} className="p-2 text-muted-foreground hover:text-foreground">
             <ChevronLeft size={20} />
           </button>
           <span className="text-sm font-semibold text-foreground">
             {monthNames[viewMonth]} {viewYear}
           </span>
-          <button onClick={() => setMonthOffset((m) => m + 1)} className="p-2 text-muted-foreground hover:text-foreground active:scale-95 transition-all">
+          <button onClick={() => setMonthOffset((m) => m + 1)} className="p-2 text-muted-foreground hover:text-foreground">
             <ChevronRight size={20} />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 px-5 space-y-5">
-        {/* Budget impact */}
+      <div className="flex-1 px-4 space-y-4">
+        {/* Upcoming plans */}
         <div>
-          <h2 className="section-header mb-3 px-1">💡 Влияние на бюджет</h2>
-          <div className="rounded-2xl p-4 space-y-2" style={{
-            background: "hsl(162 100% 33% / 0.05)",
-            border: "1px solid hsl(162 100% 33% / 0.2)",
-          }}>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Без учёта планов</span>
-              <span className="font-bold font-tabular text-foreground">{formatAmount(Math.max(0, safeWithoutPlans))} ₸/день</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">С учётом планов</span>
-              <span className={`font-bold font-tabular ${safeWithPlans >= 0 ? "text-primary" : "text-destructive"}`}>
-                {formatAmount(Math.max(0, safeWithPlans))} ₸/день
-              </span>
-            </div>
-            <div className="border-t border-border pt-2 space-y-1">
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Ожидаемые доходы</span>
-                <span className="text-safe-green font-semibold font-tabular">+{formatAmount(upcomingPlannedIncome)} ₸</span>
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">Ожидаемые расходы</span>
-                <span className="text-alert-orange font-semibold font-tabular">−{formatAmount(upcomingPlannedExpenses)} ₸</span>
-              </div>
-            </div>
-          </div>
-        </div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+            Предстоящие
+          </h2>
 
-        {/* Plans list */}
-        <div>
-          <h2 className="section-header mb-3 px-1">📋 Предстоящие</h2>
           {monthPlans.length === 0 ? (
-            <div className="bg-card rounded-2xl p-6 text-center">
+            <div className="glass-card p-6 text-center">
               <p className="text-sm text-muted-foreground">Нет планов на этот месяц</p>
             </div>
           ) : (
-            <div className="bg-card rounded-2xl overflow-hidden">
+            <div className="glass-card overflow-hidden">
               {monthPlans.map((plan, i) => {
                 const d = new Date(plan.date);
                 const dayLabel = `${d.getDate()} ${monthNames[d.getMonth()].toLowerCase().slice(0, 3)}`;
@@ -144,13 +154,13 @@ export default function Plans({ finance }: PlansProps) {
                   <div
                     key={plan.id}
                     className={`px-4 py-3 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform ${
-                      i < monthPlans.length - 1 ? "border-b border-border" : ""
+                      i < monthPlans.length - 1 ? "border-b border-white/5" : ""
                     } ${isPast ? "opacity-50" : ""}`}
                     onClick={() => openEdit(plan)}
                   >
                     <div className="flex items-center gap-3">
                       <div className="text-center min-w-[40px]">
-                        <span className={`text-xs font-bold ${isToday ? "text-primary" : "text-muted-foreground"}`}>
+                        <span className={`text-xs font-bold ${isToday ? "text-safe-green" : "text-muted-foreground"}`}>
                           {dayLabel}
                         </span>
                       </div>
@@ -166,7 +176,7 @@ export default function Plans({ finance }: PlansProps) {
                         {isIncome ? "+" : "−"}{formatAmount(plan.amount)} ₸
                       </span>
                       <button
-                        onClick={(e) => { e.stopPropagation(); deletePlannedExpense(plan.id); toast({ description: "🗑 План удалён", duration: 2000 }); }}
+                        onClick={(e) => { e.stopPropagation(); handleDeletePlan(plan.id); }}
                         className="text-muted-foreground hover:text-destructive transition-colors"
                       >
                         <Trash2 size={14} />
@@ -179,8 +189,41 @@ export default function Plans({ finance }: PlansProps) {
           )}
         </div>
 
-        <button onClick={openAdd}
-          className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-primary py-3 rounded-xl text-sm font-semibold transition-colors bg-card">
+        {/* Budget impact */}
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+            Влияние на бюджет
+          </h2>
+          <div className="glass-card p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Без учёта планов</span>
+              <span className="font-bold font-tabular text-foreground">{formatAmount(Math.max(0, safeWithoutPlans))} ₸/день</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">С учётом планов</span>
+              <span className={`font-bold font-tabular ${safeWithPlans >= 0 ? "text-safe-green" : "text-destructive"}`}>
+                {formatAmount(Math.max(0, safeWithPlans))} ₸/день
+              </span>
+            </div>
+            <div className="border-t border-white/5 pt-2 space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Ожидаемые доходы</span>
+                <span className="text-safe-green font-semibold font-tabular">+{formatAmount(upcomingPlannedIncome)} ₸</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">Ожидаемые расходы</span>
+                <span className="text-alert-orange font-semibold font-tabular">−{formatAmount(upcomingPlannedExpenses)} ₸</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Add button */}
+        <button
+          onClick={openAdd}
+          className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors"
+          style={{ background: "hsl(0 0% 11%)" }}
+        >
           <Plus size={16} /> Добавить план
         </button>
       </div>
@@ -189,15 +232,15 @@ export default function Plans({ finance }: PlansProps) {
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
           <div className="absolute inset-0 glass-overlay" onClick={() => setShowAdd(false)} />
-          <div className="relative w-full max-w-app glass-sheet rounded-t-[24px] modal-slide-up pb-8 max-h-[85vh] overflow-y-auto">
+          <div className="relative w-full max-w-app glass-sheet rounded-t-[20px] modal-slide-up pb-8 max-h-[85vh] overflow-y-auto">
             <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 rounded-full bg-border" />
+              <div className="w-10 h-1 rounded-full" style={{ background: "hsl(0 0% 30%)" }} />
             </div>
             <div className="flex items-center justify-between px-5 pt-2 pb-3">
               <h2 className="text-lg font-bold text-foreground">
                 {editingPlan ? "Редактировать план" : "Новый план"}
               </h2>
-              <button onClick={() => setShowAdd(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground bg-card">
+              <button onClick={() => setShowAdd(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground" style={{ background: "hsl(0 0% 23%)" }}>
                 <X size={16} />
               </button>
             </div>
@@ -205,52 +248,103 @@ export default function Plans({ finance }: PlansProps) {
             <div className="px-5 space-y-4">
               {/* Type */}
               <div className="space-y-1.5">
-                <label className="section-header">Тип</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Тип</label>
                 <div className="flex gap-2">
-                  {([{ value: "expense" as const, label: "Расход" }, { value: "income" as const, label: "Доход" }]).map((opt) => (
-                    <button key={opt.value} onClick={() => setPlanType(opt.value)}
-                      className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                        planType === opt.value
-                          ? opt.value === "income" ? "bg-primary/10 text-primary ring-1 ring-primary" : "bg-alert-orange/10 text-alert-orange ring-1 ring-alert-orange"
-                          : "bg-card text-muted-foreground"
-                      }`}>
+                  {[
+                    { value: "expense" as const, label: "Расход" },
+                    { value: "income" as const, label: "Доход" },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setPlanType(opt.value)}
+                      className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold transition-all"
+                      style={{
+                        background: planType === opt.value
+                          ? (opt.value === "income" ? "hsl(162 100% 33% / 0.15)" : "hsl(38 100% 52% / 0.15)")
+                          : "hsl(0 0% 18%)",
+                        color: planType === opt.value
+                          ? (opt.value === "income" ? "hsl(162 100% 33%)" : "hsl(38 100% 52%)")
+                          : "hsl(0 0% 60%)",
+                        boxShadow: planType === opt.value
+                          ? `inset 0 0 0 1.5px ${opt.value === "income" ? "hsl(162 100% 33%)" : "hsl(38 100% 52%)"}`
+                          : "none",
+                      }}
+                    >
                       {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* Name */}
               <div className="space-y-1.5">
-                <label className="section-header">Название</label>
-                <input value={planName} onChange={(e) => setPlanName(e.target.value)} placeholder="Зарплата / День рождения"
-                  className="w-full glass-input px-4 py-3 text-sm" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Название</label>
+                <input
+                  value={planName}
+                  onChange={(e) => setPlanName(e.target.value)}
+                  placeholder="Зарплата / День рождения"
+                  className="w-full glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none"
+                />
               </div>
 
+              {/* Amount */}
               <div className="space-y-1.5">
-                <label className="section-header">Сумма</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Сумма</label>
                 <div className="relative">
-                  <MoneyInput value={planAmount} onChange={setPlanAmount} placeholder="0"
-                    className="w-full glass-input px-4 py-3 text-xl font-bold font-tabular pr-8" />
+                  <MoneyInput
+                    value={planAmount}
+                    onChange={setPlanAmount}
+                    placeholder="0"
+                    className="w-full glass-input px-4 py-3 text-xl font-bold font-tabular placeholder:text-muted-foreground/40 focus:outline-none pr-8"
+                  />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-lg font-bold text-muted-foreground">₸</span>
                 </div>
               </div>
 
+              {/* Date */}
               <div className="space-y-1.5">
-                <label className="section-header">Дата</label>
-                <input type="date" value={planDate} onChange={(e) => setPlanDate(e.target.value)}
-                  className="w-full glass-input px-4 py-3 text-sm text-foreground" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Дата</label>
+                <input
+                  type="date"
+                  value={planDate}
+                  onChange={(e) => setPlanDate(e.target.value)}
+                  className="w-full glass-input px-4 py-3 text-sm text-foreground focus:outline-none"
+                />
               </div>
 
-              <button onClick={() => setPlanRecurring(!planRecurring)} className="flex items-center gap-3 w-full text-left">
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${planRecurring ? "border-primary bg-primary" : "border-border"}`}>
+              {/* Recurring */}
+              <button
+                onClick={() => setPlanRecurring(!planRecurring)}
+                className="flex items-center gap-3 w-full text-left"
+              >
+                <div
+                  className="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
+                  style={{
+                    borderColor: planRecurring ? "hsl(162 100% 33%)" : "hsl(0 0% 40%)",
+                    background: planRecurring ? "hsl(162 100% 33%)" : "transparent",
+                  }}
+                >
                   {planRecurring && <span className="text-white text-xs font-bold">✓</span>}
                 </div>
                 <span className="text-sm text-foreground">Повторять каждый месяц</span>
               </button>
 
+              {/* Actions */}
               <div className="flex gap-2 pt-2">
-                <button onClick={() => setShowAdd(false)} className="flex-1 py-3 rounded-xl text-sm font-semibold text-foreground bg-card">Отмена</button>
-                <button onClick={handleSave} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-primary">Сохранить</button>
+                <button
+                  onClick={() => setShowAdd(false)}
+                  className="flex-1 py-3 rounded-[10px] text-sm font-semibold text-foreground"
+                  style={{ background: "hsl(0 0% 23%)" }}
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex-1 py-3 rounded-[10px] text-sm font-bold text-white"
+                  style={{ background: "hsl(162 100% 33%)" }}
+                >
+                  Сохранить
+                </button>
               </div>
             </div>
           </div>
