@@ -4,59 +4,57 @@
 
 @layer base {
   :root {
-    /* Cal AI Light Theme for SANDA */
-    --background: 0 0% 100%;              /* #FFFFFF */
-    --foreground: 0 0% 11%;               /* #1D1D1F */
+    /* SANDA Brand - Dark Apple Theme */
+    --background: 0 0% 0%;               /* #000000 */
+    --foreground: 0 0% 100%;             /* #FFFFFF */
 
-    --card: 240 5% 96%;                   /* #F5F5F7 */
-    --card-foreground: 0 0% 11%;
-    --card-elevated: 0 0% 100%;           /* white */
+    --card: 0 0% 11%;                    /* #1C1C1E */
+    --card-foreground: 0 0% 100%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 11%;
+    --card-elevated: 0 0% 18%;           /* #2C2C2E */
 
-    --primary: 162 100% 33%;              /* #00A676 */
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 162 100% 33%;             /* #00A676 teal green */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 0 0% 11%;
+    --secondary: 0 0% 18%;
+    --secondary-foreground: 0 0% 92%;
 
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 56%;       /* #8E8E93 */
+    --muted: 0 0% 18%;
+    --muted-foreground: 240 6% 90% / 0.6; /* #EBEBF599 */
 
-    --accent: 240 5% 96%;
-    --accent-foreground: 0 0% 11%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;             /* #FF3B30 */
+    --destructive: 0 76% 61%;            /* #FF453A */
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 38 100% 52%;               /* #FF9F0A */
-    --warning-foreground: 0 0% 100%;
+    --warning: 38 100% 52%;              /* #FF9F0A */
+    --warning-foreground: 0 0% 0%;
 
-    --border: 240 6% 90%;
-    --input: 240 5% 96%;
+    --border: 0 0% 100% / 0.06;
+    --input: 0 0% 23%;                   /* #3A3A3C */
     --ring: 162 100% 33%;
 
     --radius: 0.75rem;
 
     /* Custom Sanda tokens */
-    --safe-green: 145 63% 42%;            /* #34C759 */
-    --sanda-green: 162 100% 33%;          /* #00A676 */
-    --alert-orange: 38 100% 52%;          /* #FF9F0A */
-    --income-blue: 211 100% 50%;
-    --surface: 240 5% 96%;               /* #F5F5F7 */
-    --surface-raised: 0 0% 100%;         /* white */
-    --text-primary: 0 0% 11%;            /* #1D1D1F */
-    --text-secondary: 240 4% 56%;        /* #8E8E93 */
+    --safe-green: 162 100% 33%;
+    --alert-orange: 38 100% 52%;
+    --income-blue: 211 100% 50%;         /* #0A84FF */
+    --surface: 0 0% 11%;
+    --surface-raised: 0 0% 18%;
 
-    /* Sidebar (required) */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 0 0% 11%;
+    /* Sidebar (not used but required) */
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 100%;
     --sidebar-primary: 162 100% 33%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 5% 96%;
-    --sidebar-accent-foreground: 0 0% 11%;
-    --sidebar-border: 240 6% 90%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100% / 0.06;
     --sidebar-ring: 162 100% 33%;
   }
 }
@@ -73,6 +71,7 @@
     overscroll-behavior: none;
   }
 
+  /* Scroll lock when popup is open */
   body.popup-open {
     overflow: hidden;
     position: fixed;
@@ -87,7 +86,7 @@
   }
 
   .safe-number {
-    font-size: clamp(2.5rem, 12vw, 4rem);
+    font-size: clamp(3rem, 14vw, 5rem);
     font-weight: 800;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -102,106 +101,58 @@
     display: none;
   }
 
-  /* Cal AI Cards */
-  .cal-card {
-    background: hsl(var(--card));
-    border-radius: 16px;
+  /* Dark Apple Cards — no borders, subtle inner glow */
+  .glass-card {
+    background: hsl(0 0% 11%);
     border: none;
+    box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.05);
+    border-radius: 12px;
   }
 
-  .cal-card-white {
-    background: hsl(var(--card-elevated));
-    border-radius: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  .glass-card-raised {
+    background: hsl(0 0% 18%);
+    border: none;
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255,255,255,0.08),
+      0 4px 16px rgba(0,0,0,0.4);
+    border-radius: 12px;
   }
 
-  /* Section header style */
-  .section-header {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: hsl(var(--muted-foreground));
-  }
-
-  /* Bottom nav glass */
+  /* НОВАЯ версия glass-nav в utilities */
   .glass-nav {
-    background: rgba(255, 255, 255, 0.92);
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border-radius: 24px;
-    box-shadow: 0 -2px 20px rgba(0,0,0,0.08);
+    background: rgba(28, 28, 30, 0.78);              /* тёмное, но прозрачное стекло */
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-radius: 18px;
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255,255,255,0.08),
+      0 10px 30px rgba(0,0,0,0.6);
+    border: 1px solid rgba(120, 120, 128, 0.4);
   }
 
   .glass-overlay {
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
 
   .glass-sheet {
-    background: hsl(0 0% 100%);
+    background: hsl(0 0% 11%);
     border: none;
-    border-radius: 24px 24px 0 0;
-    box-shadow: 0 -4px 30px rgba(0,0,0,0.12);
+    box-shadow:
+      inset 0 0 0 0.5px rgba(255,255,255,0.08),
+      0 -4px 20px rgba(0,0,0,0.5);
   }
 
   .glass-input {
-    background: hsl(var(--card));
-    border: 2px solid transparent;
-    border-radius: 12px;
-    color: hsl(var(--foreground));
-    transition: all 0.2s ease;
+    background: hsl(0 0% 23%);
+    border: none;
+    border-radius: 10px;
+    color: white;
   }
   .glass-input:focus {
     outline: none;
-    border-color: hsl(var(--sanda-green));
-    background: hsl(0 0% 100%);
-  }
-
-  /* Legacy compat */
-  .glass-card {
-    background: hsl(var(--card));
-    border: none;
-    border-radius: 16px;
-  }
-
-  .glass-card-raised {
-    background: hsl(0 0% 100%);
-    border: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    border-radius: 16px;
-  }
-
-  /* Hero gradient card */
-  .hero-gradient {
-    background: linear-gradient(135deg, hsl(162 100% 42%) 0%, hsl(162 100% 33%) 100%);
-    border-radius: 24px;
-    padding: 32px 24px;
-  }
-
-  /* Week day pill */
-  .week-day-pill {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 52px;
-    height: 72px;
-    border-radius: 16px;
-    flex-shrink: 0;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  /* Swipeable card container */
-  .swipe-container {
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-  }
-  .swipe-card {
-    scroll-snap-align: start;
-    flex-shrink: 0;
+    box-shadow: 0 0 0 2px hsl(162 100% 33%);
   }
 }
 
@@ -215,7 +166,7 @@
   animation: count-flash 0.5s ease-out;
 }
 
-/* Slide up modal */
+/* Slide up modal — smooth, no bounce */
 @keyframes slide-up {
   from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
