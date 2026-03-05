@@ -22,12 +22,16 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
   const [editPaidMonths, setEditPaidMonths] = useState(obligation?.paidMonths.toString() ?? "0");
 
   // Swipe-to-go-back
-  const swipeRef = useRef<{ startX: number; startY: number; swiping: boolean; dx: number }>({ startX: 0, startY: 0, swiping: false, dx: 0 });
+  const swipeRef = useRef<{ startX: number; startY: number; swiping: boolean; dx: number }>({
+    startX: 0, startY: 0, swiping: false, dx: 0,
+  });
   const [swipeDx, setSwipeDx] = useState(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
-    if (touch.clientX < 30) swipeRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: true, dx: 0 };
+    if (touch.clientX < 30) {
+      swipeRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: true, dx: 0 };
+    }
   };
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!swipeRef.current.swiping) return;
@@ -46,7 +50,7 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
     return (
       <div className="flex flex-col min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Обязательство не найдено</p>
-        <button onClick={onBack} className="mt-4 text-primary">← Назад</button>
+        <button onClick={onBack} className="mt-4 text-safe-green">← Назад</button>
       </div>
     );
   }
@@ -61,7 +65,12 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
     const monthly = parseFloat(editMonthly) || 0;
     const paid = parseInt(editPaidMonths) || 0;
     if (!editName.trim() || !monthly) return;
-    updateObligation(obligationId, { name: editName.trim(), totalAmount: total, monthlyPayment: monthly, paidMonths: paid });
+    updateObligation(obligationId, {
+      name: editName.trim(),
+      totalAmount: total,
+      monthlyPayment: monthly,
+      paidMonths: paid,
+    });
     setEditing(false);
     toast({ description: "✅ Обязательство обновлено", duration: 2000 });
   };
@@ -72,6 +81,12 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
     toast({ description: "🗑 Обязательство удалено", duration: 2000 });
   };
 
+  const handleMarkPayment = () => {
+    markObligationPayment(obligationId);
+    toast({ description: "✅ Платёж за месяц отмечен", duration: 2000 });
+  };
+
+  // Obligation-related transactions
   const obligationTxns = state.expenses
     .filter((e) => e.obligationId === obligationId)
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -88,17 +103,21 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
         opacity: swipeDx > 0 ? Math.max(0.5, 1 - swipeDx / 400) : 1,
       }}
     >
+      {/* Header */}
       <div className="px-5 pt-10 pb-4 flex items-center justify-between">
-        <button onClick={onBack} className="flex items-center gap-1 text-primary text-sm font-medium">
+        <button onClick={onBack} className="flex items-center gap-1 text-safe-green text-sm font-medium">
           <ChevronLeft size={20} /> Назад
         </button>
         <button
           onClick={() => {
             if (editing) { setEditing(false); return; }
-            setEditing(true); setEditName(obligation.name); setEditTotal(obligation.totalAmount.toString());
-            setEditMonthly(obligation.monthlyPayment.toString()); setEditPaidMonths(obligation.paidMonths.toString());
+            setEditing(true);
+            setEditName(obligation.name);
+            setEditTotal(obligation.totalAmount.toString());
+            setEditMonthly(obligation.monthlyPayment.toString());
+            setEditPaidMonths(obligation.paidMonths.toString());
           }}
-          className="text-primary text-sm font-medium flex items-center gap-1"
+          className="text-safe-green text-sm font-medium flex items-center gap-1"
         >
           <Pencil size={14} /> {editing ? "Отмена" : "Изменить"}
         </button>
@@ -108,33 +127,40 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
         {editing ? (
           <div className="space-y-4">
             <div>
-              <label className="section-header mb-1 block">Название</label>
-              <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full glass-input px-4 py-3 text-foreground font-semibold" />
+              <label className="text-xs text-muted-foreground mb-1 block">Название</label>
+              <input value={editName} onChange={(e) => setEditName(e.target.value)}
+                className="w-full glass-input px-4 py-3 text-foreground font-semibold focus:outline-none" />
             </div>
             <div>
-              <label className="section-header mb-1 block">Общая сумма</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Общая сумма</label>
               <div className="relative">
-                <MoneyInput value={editTotal} onChange={setEditTotal} className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular pr-8" />
+                <MoneyInput value={editTotal} onChange={setEditTotal}
+                  className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-8" />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₸</span>
               </div>
             </div>
             <div>
-              <label className="section-header mb-1 block">Месячный платёж</label>
+              <label className="text-xs text-muted-foreground mb-1 block">Месячный платёж</label>
               <div className="relative">
-                <MoneyInput value={editMonthly} onChange={setEditMonthly} className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular pr-8" />
+                <MoneyInput value={editMonthly} onChange={setEditMonthly}
+                  className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-8" />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₸</span>
               </div>
             </div>
             {isInstallment && (
               <div>
-                <label className="section-header mb-1 block">Оплачено месяцев</label>
+                <label className="text-xs text-muted-foreground mb-1 block">Оплачено месяцев</label>
                 <input type="number" value={editPaidMonths} onChange={(e) => setEditPaidMonths(e.target.value)}
-                  className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular" />
+                  className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none" />
               </div>
             )}
             <div className="flex gap-3 pt-2">
-              <button onClick={handleDelete} className="flex-1 py-3 rounded-xl text-sm font-bold text-destructive bg-destructive/5">Удалить</button>
-              <button onClick={handleSave} className="flex-1 py-3 rounded-xl text-sm font-bold text-white bg-primary">Сохранить</button>
+              <button onClick={handleDelete}
+                className="flex-1 py-3 rounded-[10px] text-sm font-bold text-destructive"
+                style={{ background: "hsl(0 0% 18%)" }}>Удалить</button>
+              <button onClick={handleSave}
+                className="flex-1 py-3 rounded-[10px] text-sm font-bold text-white"
+                style={{ background: "hsl(162 100% 33%)" }}>Сохранить</button>
             </div>
           </div>
         ) : (
@@ -142,64 +168,88 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-1">Обязательство</p>
               <h2 className="text-2xl font-bold text-foreground mb-2">{obligation.name}</h2>
-              <p className="text-3xl font-bold font-tabular text-foreground">{formatAmount(obligation.totalAmount)} ₸</p>
             </div>
 
-            <div className="bg-card rounded-2xl p-4 space-y-3">
+            {/* Monthly payment */}
+            <div className="glass-card p-4 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Месячный платёж</span>
                 <span className="font-bold font-tabular text-foreground">{formatAmount(obligation.monthlyPayment)} ₸</span>
               </div>
               {isInstallment && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Осталось выплатить</span>
-                  <span className="font-bold font-tabular text-alert-orange">{formatAmount(remainingAmount)} ₸</span>
-                </div>
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Общая сумма</span>
+                    <span className="font-bold font-tabular text-foreground">{formatAmount(obligation.totalAmount)} ₸</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Осталось выплатить</span>
+                    <span className="font-bold font-tabular text-alert-orange">{formatAmount(remainingAmount)} ₸</span>
+                  </div>
+                </>
               )}
             </div>
 
+            {/* Progress */}
             {isInstallment && (
-              <div className="bg-card rounded-2xl p-4 space-y-3">
-                <h3 className="section-header">Прогресс</h3>
+              <div className="glass-card p-4 space-y-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Прогресс</h3>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-foreground">Выплачено: {obligation.paidMonths} из {totalMonths} мес.</span>
                   <span className="font-bold text-alert-orange">{progressPct}%</span>
                 </div>
-                <div className="h-2 rounded-full overflow-hidden bg-border">
-                  <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progressPct}%`, background: "hsl(var(--warning))" }} />
+                <div className="h-2 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
+                  <div className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${progressPct}%`, background: "hsl(38 100% 52%)" }} />
                 </div>
               </div>
             )}
 
-            <div className="bg-card rounded-2xl p-4">
+            {/* Payment status */}
+            <div className="glass-card p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium text-foreground">
-                  {obligation.paid ? "✓ Оплачено в этом месяце" : "Не оплачено в этом месяце"}
-                </p>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    {obligation.paid ? "✓ Оплачено в этом месяце" : "Не оплачено в этом месяце"}
+                  </p>
+                </div>
                 {!obligation.paid && (
-                  <button onClick={() => { markObligationPayment(obligationId); toast({ description: "✅ Платёж за месяц отмечен", duration: 2000 }); }}
-                    className="px-4 py-2 rounded-xl text-sm font-bold text-white bg-primary">
+                  <button
+                    onClick={handleMarkPayment}
+                    className="px-4 py-2 rounded-[10px] text-sm font-bold text-white"
+                    style={{ background: "hsl(162 100% 33%)" }}
+                  >
                     Отметить платёж
                   </button>
                 )}
               </div>
             </div>
 
+            {/* Payment history */}
             {obligationTxns.length > 0 && (
               <div>
-                <h3 className="section-header mb-3">История платежей</h3>
-                <div className="bg-card rounded-2xl overflow-hidden">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  История платежей
+                </h3>
+                <div className="glass-card overflow-hidden">
                   {obligationTxns.map((t, i) => (
-                    <div key={t.id} className={`px-4 py-3 flex items-center justify-between ${i < obligationTxns.length - 1 ? "border-b border-border" : ""}`}>
+                    <div key={t.id} className={`px-4 py-3 flex items-center justify-between ${i < obligationTxns.length - 1 ? "border-b border-white/5" : ""}`}>
                       <span className="text-sm text-muted-foreground">{t.date}</span>
-                      <span className="font-bold font-tabular text-sm text-alert-orange">−{formatAmount(t.amount)} ₸</span>
+                      <span className="font-bold font-tabular text-sm text-alert-orange">
+                        −{formatAmount(t.amount)} ₸
+                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <button onClick={handleDelete} className="w-full py-3 rounded-xl text-sm font-bold text-destructive bg-destructive/5 mt-4">
+            {/* Delete */}
+            <button
+              onClick={handleDelete}
+              className="w-full py-3 rounded-[10px] text-sm font-bold text-destructive mt-4"
+              style={{ background: "hsl(0 0% 12%)" }}
+            >
               Удалить обязательство
             </button>
           </>
