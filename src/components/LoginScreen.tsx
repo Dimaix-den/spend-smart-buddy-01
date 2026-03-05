@@ -21,17 +21,10 @@ export default function LoginScreen({ onSignIn }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6"
-      style={{
-        background: "linear-gradient(180deg, hsl(0 0% 0%) 0%, hsl(0 0% 8%) 100%)",
-      }}
-    >
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       {/* Logo */}
       <div className="mb-8 text-center">
-        <h1
-          className="text-5xl font-extrabold tracking-tight mb-3"
-          style={{ color: "hsl(162 100% 33%)" }}
-        >
+        <h1 className="text-5xl font-extrabold tracking-tight mb-3 text-primary">
           SANDA
         </h1>
         <p className="text-sm text-muted-foreground max-w-[260px]">
@@ -40,22 +33,14 @@ export default function LoginScreen({ onSignIn }: LoginScreenProps) {
       </div>
 
       {/* Decorative element */}
-      <div
-        className="w-20 h-1 rounded-full mb-10"
-        style={{ background: "linear-gradient(90deg, transparent, hsl(162 100% 33%), transparent)" }}
-      />
+      <div className="w-20 h-1 rounded-full mb-10 bg-primary/30" />
 
       {/* Google Sign-In Button */}
       <button
         onClick={handleSignIn}
         disabled={loading}
-        className="flex items-center gap-3 px-6 py-3.5 rounded-full font-semibold text-sm transition-all duration-200 active:scale-95 disabled:opacity-50"
-        style={{
-          background: "white",
-          color: "#1f1f1f",
-          boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
-          minWidth: 260,
-        }}
+        className="flex items-center gap-3 px-6 py-3.5 rounded-2xl font-semibold text-sm transition-all duration-200 active:scale-95 disabled:opacity-50 bg-foreground text-background"
+        style={{ minWidth: 260, boxShadow: "0 4px 16px rgba(0,0,0,0.12)" }}
       >
         {/* Google Logo SVG */}
         <svg width="20" height="20" viewBox="0 0 24 24">
@@ -64,19 +49,13 @@ export default function LoginScreen({ onSignIn }: LoginScreenProps) {
           <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
           <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
         </svg>
-        {loading ? (
-          <span>Входим...</span>
-        ) : (
-          <span>Войти через Google</span>
-        )}
+        {loading ? <span>Входим...</span> : <span>Войти через Google</span>}
       </button>
 
-      {/* Error */}
       {error && (
         <p className="mt-4 text-sm text-destructive animate-fade-in-up">{error}</p>
       )}
 
-      {/* Footer */}
       <p className="mt-12 text-xs text-muted-foreground/50">
         v2.0.0 • Личный финансовый помощник
       </p>

@@ -18,48 +18,41 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
   return (
     <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40">
       <div
-        className="glass-nav flex items-center rounded-full shadow-lg"
+        className="glass-nav flex items-center rounded-full"
         style={{
           minWidth: 320,
           maxWidth: 420,
-          padding: "8px 6px",
-          paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+          padding: "6px 8px",
+          paddingBottom: "calc(6px + env(safe-area-inset-bottom))",
         }}
       >
-        {tabs.map(({ id, label, Icon }, index) => {
+        {tabs.map(({ id, label, Icon }) => {
           const isActive = active === id;
-          const isLast = index === tabs.length - 1;
-
           return (
-            <div key={id} className="flex-1 flex items-center justify-center relative">
-              <button
-                onClick={() => onChange(id)}
-                className={`flex flex-col items-center gap-1 py-1.5 px-2 transition-all duration-200 ease-out active:scale-95 ${
-                  isActive ? "text-safe-green" : "text-muted-foreground"
-                }`}
+            <button
+              key={id}
+              onClick={() => onChange(id)}
+              className={`flex-1 flex flex-col items-center gap-1 py-2 px-2 rounded-2xl transition-all duration-200 ease-out active:scale-95 ${
+                isActive ? "bg-primary/10" : ""
+              }`}
+            >
+              <Icon
+                size={18}
+                strokeWidth={isActive ? 2.4 : 1.8}
+                className="transition-all duration-200"
+                style={{ color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))" }}
+              />
+              <span
+                className="tracking-wider transition-all duration-150"
                 style={{
-                  transform: isActive ? "translateY(-1px) scale(1.02)" : "translateY(0) scale(1)",
+                  fontSize: "8px",
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
                 }}
               >
-                <Icon
-                  size={18}
-                  strokeWidth={isActive ? 2.4 : 1.8}
-                  className="transition-all duration-200"
-                  style={{ transform: isActive ? "scale(1.06)" : "scale(1)" }}
-                />
-                <span
-                  className={`tracking-wider transition-all duration-150 ${
-                    isActive ? "font-semibold" : "font-medium"
-                  }`}
-                  style={{ fontSize: "8px" }}
-                >
-                  {label}
-                </span>
-              </button>
-              {!isLast && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 h-6 w-px bg-white/15" />
-              )}
-            </div>
+                {label}
+              </span>
+            </button>
           );
         })}
       </div>
