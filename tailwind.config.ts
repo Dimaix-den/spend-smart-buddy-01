@@ -55,6 +55,7 @@ export default {
           raised: "hsl(var(--surface-raised))",
         },
         "safe-green": "hsl(var(--safe-green))",
+        "sanda-green": "hsl(var(--sanda-green))",
         "alert-orange": "hsl(var(--alert-orange))",
         "income-blue": "hsl(var(--income-blue))",
         sidebar: {
