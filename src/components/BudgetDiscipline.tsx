@@ -12,17 +12,13 @@ interface BudgetDisciplineProps {
 export default function BudgetDiscipline({
   expenses,
   dailyBudget,
-  activeBalance,
-  remainingObligations,
-  stillNeedToSave,
 }: BudgetDisciplineProps) {
-  const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
   const weekDaysShort = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
-  const { days } = useMemo(() => {
+  const days = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const todayY = today.getFullYear();
     const todayM = today.getMonth();
     const todayD = today.getDate();
@@ -37,13 +33,24 @@ export default function BudgetDiscipline({
 
     const todayStr = formatLocalDate(today);
 
-    // Найти самую первую транзакцию (день начала использования)
-    const allTransactions = expenses.filter((e) => e.date);
-    
-    const firstTransaction = allTransactions
-      .sort((a, b) => a.date.localeCompare(b.date))[0];
-    
-    const firstDate = firstTransaction ? new Date(firstTransaction.date + 'T00:00:00') : null;
+    // Find first transaction date
+    const allDates = expenses.filter((e) => e.date).map((e) => e.date);
+    const firstDateStr = allDates.length > 0 ? allDates.sort()[0] : null;
+    const firstDate = firstDateStr ? new Date(firstDateStr + "T00:00:00") : null;
+
+    // Build spending map for the week (only regular expenses)
+    const spendingByDate = new Map<string, number>();
+    for (const e of expenses) {
+      if (e.type === "regular" && e.date) {
+        spendingByDate.set(e.date, (spendingByDate.get(e.date) || 0) + e.amount);
+      }
+    }
+
+    // Find Monday of current week
+    const currentDayOfWeek = today.getDay();
+    const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+    const monday = new Date(todayY, todayM, todayD - daysFromMonday);
+    monday.setHours(0, 0, 0, 0);
 
     type DayItem = {
       dateStr: string;
@@ -57,18 +64,10 @@ export default function BudgetDiscipline({
 
     const daysList: DayItem[] = [];
 
-    // Находим понедельник текущей недели
-    const currentDayOfWeek = today.getDay();
-    const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
-    
-    const monday = new Date(todayY, todayM, todayD - daysFromMonday);
-    monday.setHours(0, 0, 0, 0);
-
-    // Генерируем 7 дней с понедельника
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
       d.setHours(0, 0, 0, 0);
-      
+
       const dateStr = formatLocalDate(d);
       const dayNum = d.getDate();
       const jsDay = d.getDay();
@@ -76,45 +75,16 @@ export default function BudgetDiscipline({
 
       const dTime = d.getTime();
       const todayTime = today.getTime();
-      
-      let status: "no-data" | "within-budget" | "exceeded" | "future";
-      let spent = 0;
-      let limitForDay = dailyBudget;
+
+      let status: DayItem["status"];
+      const spent = spendingByDate.get(dateStr) || 0;
 
       if (dTime > todayTime) {
-        // Будущий день
         status = "future";
       } else if (!firstDate || dTime < firstDate.getTime()) {
-        // День ДО начала использования
         status = "no-data";
-      } else if (dateStr === todayStr) {
-        // СЕГОДНЯ - считаем в реальном времени
-        spent = expenses
-          .filter((e) => e.type === "regular" && e.date === dateStr)
-          .reduce((sum, e) => sum + e.amount, 0);
-        
-        status = spent <= limitForDay ? "within-budget" : "exceeded";
       } else {
-        // ПРОШЛЫЙ ДЕНЬ - берём сохранённый статус
-        // Сначала проверяем есть ли сохранённый статус в localStorage
-        const savedStatus = localStorage.getItem(`day_status_${dateStr}`);
-        
-        if (savedStatus) {
-          // Используем сохранённый статус
-          status = savedStatus as "within-budget" | "exceeded";
-          
-          // Загружаем сохранённые траты (для отображения, если нужно)
-          const savedSpent = localStorage.getItem(`day_spent_${dateStr}`);
-          spent = savedSpent ? parseFloat(savedSpent) : 0;
-        } else {
-          // Если статус не сохранён (старые дни до внедрения фичи)
-          // Считаем по текущим данным
-          spent = expenses
-            .filter((e) => e.type === "regular" && e.date === dateStr)
-            .reduce((sum, e) => sum + e.amount, 0);
-          
-          status = spent <= limitForDay ? "within-budget" : "exceeded";
-        }
+        status = spent <= dailyBudget ? "within-budget" : "exceeded";
       }
 
       daysList.push({
@@ -122,79 +92,34 @@ export default function BudgetDiscipline({
         dayNum,
         weekDay,
         spent,
-        limit: limitForDay,
+        limit: dailyBudget,
         isToday: dateStr === todayStr,
         status,
       });
     }
 
-    return { days: daysList };
-  }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave]);
-
-  // Сохраняем статус вчерашнего дня в конце дня (в полночь)
-  // Это нужно делать в useEffect, который отслеживает смену дня
-  // Добавь этот код в родительский компонент или здесь через useEffect:
-  /*
-  useEffect(() => {
-    const checkAndSaveYesterday = () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      const yesterdayStr = formatLocalDate(yesterday);
-      
-      // Проверяем сохранён ли уже статус вчерашнего дня
-      const savedStatus = localStorage.getItem(`day_status_${yesterdayStr}`);
-      
-      if (!savedStatus) {
-        // Считаем траты за вчера
-        const spent = expenses
-          .filter((e) => e.type === "regular" && e.date === yesterdayStr)
-          .reduce((sum, e) => sum + e.amount, 0);
-        
-        // Определяем статус
-        const status = spent <= dailyBudget ? "within-budget" : "exceeded";
-        
-        // Сохраняем
-        localStorage.setItem(`day_status_${yesterdayStr}`, status);
-        localStorage.setItem(`day_spent_${yesterdayStr}`, spent.toString());
-      }
-    };
-    
-    // Проверяем при загрузке компонента
-    checkAndSaveYesterday();
-    
-    // Проверяем каждую минуту (чтобы поймать полночь)
-    const interval = setInterval(checkAndSaveYesterday, 60000);
-    
-    return () => clearInterval(interval);
+    return daysList;
   }, [expenses, dailyBudget]);
-  */
 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {
-          const dateObj = new Date(d.dateStr + 'T00:00:00');
-          const label = `${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
-
           let borderColor: string;
           let textColor: string;
           let borderStyle: "solid" | "dashed" = "solid";
-          
+
           if (d.status === "no-data" || d.status === "future") {
-            borderColor = "hsl(0 0% 30%)";
-            textColor = "hsl(0 0% 50%)";
+            borderColor = "hsl(var(--muted-foreground) / 0.3)";
+            textColor = "hsl(var(--muted-foreground))";
           } else if (d.status === "exceeded") {
-            borderColor = "hsl(0 76% 61%)";
-            textColor = "hsl(0 76% 61%)";
+            borderColor = "hsl(var(--destructive))";
+            textColor = "hsl(var(--destructive))";
           } else {
-            borderColor = "hsl(162 100% 33%)";
-            textColor = "hsl(162 100% 33%)";
+            borderColor = "hsl(var(--accent))";
+            textColor = "hsl(var(--accent))";
           }
-          
+
           if (d.isToday) {
             borderStyle = "dashed";
           }
@@ -203,7 +128,6 @@ export default function BudgetDiscipline({
             <div
               key={d.dateStr}
               className="flex flex-col items-center justify-center"
-              aria-label={label}
             >
               <span className="text-[9px] text-muted-foreground leading-none mb-1">
                 {weekDaysShort[d.weekDay]}
@@ -215,8 +139,8 @@ export default function BudgetDiscipline({
                   height: 38,
                   borderRadius: "999px",
                   borderWidth: 2,
-                  borderStyle: borderStyle,
-                  borderColor: borderColor,
+                  borderStyle,
+                  borderColor,
                   background: "transparent",
                 }}
               >
