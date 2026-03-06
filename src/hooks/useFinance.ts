@@ -200,48 +200,63 @@ function maybeAdvanceDay(state: FinanceState): FinanceState {
 }
 
 export function useFinance(userId?: string | null) {
-  const [state, setState] = useState<FinanceState>(() => {
-    const loaded = loadState();
-    return maybeAdvanceDay(loaded);
-  });
-  const [firestoreLoading, setFirestoreLoading] = useState(!!userId);
+  const [state, setState] = useState<FinanceState>(DEFAULT_STATE);
+  const [firestoreLoading, setFirestoreLoading] = useState(true);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const initialLoadDone = useRef(false);
+  const loadedUserRef = useRef<string | null>(null);
+  const readyToSave = useRef(false);
 
-  // Load from Firestore on mount if authenticated
-useEffect(() => {
-  if (!userId) {
-    setFirestoreLoading(false);
-    return;
-  }
-  if (initialLoadDone.current) return;
-  initialLoadDone.current = true;
-
-  (async () => {
-    const firestoreData = await loadFromFirestore(userId);
-    if (firestoreData) {
-      const migrated = migrateState(firestoreData);
-      setState(maybeAdvanceDay(migrated));
-    } else {
-      // Firestore пуст → отправляем текущий state (то, чем уже пользуется пользователь)
-      await saveToFirestore(userId, state);
-    }
-    setFirestoreLoading(false);
-  })();
-}, [userId, state]);
-
-
-  // Save to localStorage + Firestore (debounced)
+  // Load from Firestore when userId changes (or localStorage if no user)
   useEffect(() => {
+    readyToSave.current = false;
+
+    if (!userId) {
+      // Not authenticated — load from localStorage
+      const loaded = loadState();
+      setState(maybeAdvanceDay(loaded));
+      setFirestoreLoading(false);
+      loadedUserRef.current = null;
+      readyToSave.current = true;
+      return;
+    }
+
+    // Already loaded for this user
+    if (loadedUserRef.current === userId) return;
+
+    setFirestoreLoading(true);
+
+    (async () => {
+      const firestoreData = await loadFromFirestore(userId);
+      if (firestoreData) {
+        const migrated = migrateState(firestoreData);
+        setState(maybeAdvanceDay(migrated));
+      } else {
+        // Firestore empty — migrate localStorage data to cloud
+        const localData = loadState();
+        const migrated = maybeAdvanceDay(localData);
+        setState(migrated);
+        await saveToFirestore(userId, migrated);
+      }
+      loadedUserRef.current = userId;
+      setFirestoreLoading(false);
+      readyToSave.current = true;
+    })();
+  }, [userId]);
+
+  // Save to Firestore (debounced) — only after initial load is complete
+  useEffect(() => {
+    if (!readyToSave.current) return;
+
+    // Save to localStorage as backup
     saveState(state);
 
-    if (userId && !firestoreLoading) {
+    if (userId) {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         saveToFirestore(userId, state);
       }, 1000);
     }
-  }, [state, userId, firestoreLoading]);
+  }, [state, userId]);
 
   // ─── Derived: accounts by type (excluding system) ─────────────
   const activeAccounts = state.accounts.filter((a) => a.type === "active" && !a.isSystem);
