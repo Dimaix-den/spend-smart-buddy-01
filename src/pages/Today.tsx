@@ -82,14 +82,14 @@ function InfoPanel({
     <div className="fixed inset-0 z-40 flex items-end justify-center" onClick={onClose}>
       <div className="absolute inset-0 glass-overlay" />
       <div
-        className="relative w-full max-w-app glass-sheet rounded-t-[20px] p-5 modal-slide-up mb-20"
+        className="relative w-full max-w-app glass-sheet rounded-t-[20px] p-4 modal-slide-up mb-20"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">
           <div className="w-10 h-1 rounded-full" style={{ background: "hsl(0 0% 30%)" }} />
         </div>
         <h3 className="text-sm font-bold text-foreground mb-3">Как рассчитывается?</h3>
-        <div className="space-y-2 text-sm">
+        <div className="space-y-4 text-sm">
           <div className="flex justify-between text-foreground/80">
             <span>Доступно на счетах</span>
             <span className="font-tabular font-semibold">{formatAmount(activeBalance)} ₸</span>
@@ -102,11 +102,11 @@ function InfoPanel({
             <span>− Осталось сберечь</span>
             <span className="font-tabular font-semibold">−{formatAmount(stillNeedToSave)} ₸</span>
           </div>
-          <div className="border-t border-white/5 pt-2 flex justify-between text-foreground">
+          <div className="border-t border-white/5 pt-4 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
-          <div className="rounded-[12px] p-3 mt-1 space-y-1.5" style={{ background: "hsl(0 0% 18%)" }}>
+          <div className="rounded-[12px] p-3 mt-1 space-y-4" style={{ background: "hsl(0 0% 18%)" }}>
             <div className="flex justify-between">
               <span className="text-foreground/80">= Дневной лимит</span>
               <span className="text-foreground font-semibold font-tabular">{formatAmount(dailyBudget)} ₸</span>
@@ -269,10 +269,11 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
   const [goalInput, setGoalInput] = useState("");
 
-  return (
-    <div className="flex flex-col min-h-screen pb-40">
-      {/* Hero */}
-      <div className="px-5 pt-10 pb-6 text-center">
+      return (
+        <div className="flex flex-col min-h-screen pb-40">
+        
+        {/* Hero */}
+      <div className="px-5 pt-20 pb-10 text-center">
         <div className="flex items-center justify-center gap-1 mb-2">
           <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
             {heroLabel}
@@ -326,7 +327,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-4 space-y-3">
+      <div className="flex-1 px-4 space-y-5">
         {/* Budget discipline chart */}
         <BudgetDiscipline
           expenses={state.expenses}
