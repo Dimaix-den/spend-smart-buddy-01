@@ -262,7 +262,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
   return (
     <div className="flex flex-col min-h-screen pb-40">
       {/* Hero */}
-      <div className="px-5 pt-20 pb-10 text-center">
+      <div className="px-5 pt-20 pb-8 text-center">
         <div className="flex items-center justify-center gap-1 mb-2">
           <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
             {heroLabel}
@@ -316,7 +316,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-4 space-y-5 mt-5">
+      <div className="flex-1 px-4 space-y-10 mt-5">
         {/* 1. Дисциплина бюджета */}
         <BudgetDiscipline
           expenses={state.expenses}
