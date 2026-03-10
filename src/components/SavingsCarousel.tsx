@@ -29,11 +29,7 @@ function ObligationsBlock({ obligations }: { obligations: Obligation[] }) {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  const currentObligations = obligations.filter((o) => {
-    if (!o.dueDate) return true;
-    const d = new Date(o.dueDate);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
+  const currentObligations = obligations;
 
   const monthlyTotal = currentObligations.reduce(
     (sum, o) => sum + o.monthlyPayment,
