@@ -18,15 +18,19 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
     savingsAccounts,
     inactiveAccounts,
     totalDebt,
+    totalAssetsValue,
     getSavingsForAccount,
     addAccount,
     addObligation,
+    addAsset,
+    deleteAsset,
   } = finance;
 
   const [showInactive, setShowInactive] = useState(false);
   const [showAddAccount, setShowAddAccount] = useState(false);
   const [showAddSavings, setShowAddSavings] = useState(false);
   const [showAddOblig, setShowAddOblig] = useState(false);
+  const [showAddAsset, setShowAddAsset] = useState(false);
 
   // Add account form
   const [newAccName, setNewAccName] = useState("");
@@ -42,9 +46,17 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
   const [newObligTotal, setNewObligTotal] = useState("");
   const [newObligMonthly, setNewObligMonthly] = useState("");
 
-  const totalAssets = state.accounts
+  // Add asset form
+  const [newAssetName, setNewAssetName] = useState("");
+  const [newAssetValue, setNewAssetValue] = useState("");
+
+  // Asset detail
+  const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+
+  const accountsTotal = state.accounts
     .filter(a => (a.type === "active" || a.type === "savings") && !a.isSystem)
     .reduce((s, a) => s + a.balance, 0);
+  const totalAssets = accountsTotal + totalAssetsValue;
   const netWorth = totalAssets - totalDebt;
 
   const handleAddAccount = () => {
@@ -74,6 +86,21 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
     toast({ description: "✅ Обязательство добавлено", duration: 2000 });
   };
 
+  const handleAddAsset = () => {
+    if (!newAssetName.trim()) return;
+    const val = parseFloat(newAssetValue) || 0;
+    if (!val) return;
+    addAsset(newAssetName.trim(), val);
+    setNewAssetName(""); setNewAssetValue(""); setShowAddAsset(false);
+    toast({ description: "✅ Имущество добавлено", duration: 2000 });
+  };
+
+  const handleDeleteAsset = (id: string) => {
+    deleteAsset(id);
+    setSelectedAssetId(null);
+    toast({ description: "🗑 Имущество удалено", duration: 2000 });
+  };
+
   const autoMonths = (() => {
     const total = parseFloat(newObligTotal) || 0;
     const monthly = parseFloat(newObligMonthly) || 0;
@@ -82,6 +109,8 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
     }
     return null;
   })();
+
+  const assets = state.assets || [];
 
   return (
     <div className="flex flex-col min-h-screen pb-28">
@@ -232,7 +261,7 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
           )}
         </div>
 
-        {/* ─── Obligations (redesigned — tappable cards, no inline editing) ──────── */}
+        {/* ─── Obligations (redesigned — matches Savings style) ──────── */}
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
             Обязательства
@@ -243,6 +272,9 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
               const totalMonths = isInstallment ? Math.ceil(o.totalAmount / o.monthlyPayment) : 1;
               const pct = isInstallment ? Math.min(100, Math.round((o.paidMonths / totalMonths) * 100)) : 0;
               const remaining = isInstallment ? totalMonths - o.paidMonths : 0;
+              const remainingAmount = isInstallment
+                ? Math.max(0, o.totalAmount - o.monthlyPayment * o.paidMonths)
+                : o.monthlyPayment;
 
               return (
                 <button
@@ -255,25 +287,21 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
                   }}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-semibold ${o.paid ? "text-muted-foreground" : "text-foreground"}`}>
-                        {o.name}
-                      </span>
-                      {o.paid && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-semibold"
-                          style={{ background: "hsl(162 100% 33% / 0.15)", color: "hsl(162 100% 33%)" }}>
-                          Оплачено
-                        </span>
-                      )}
-                    </div>
-                    <ChevronRight size={16} className="text-muted-foreground" />
+                    <span className="text-sm font-semibold text-foreground">{o.name}</span>
+                    <span className="text-lg font-bold font-tabular text-foreground">
+                      {formatAmount(remainingAmount)} ₸
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {formatAmount(o.monthlyPayment)} ₸ в месяц
                   </p>
 
                   {isInstallment && (
-                    <div className="mt-2 space-y-1">
+                    <div className="mt-2 space-y-1.5">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Прогресс</span>
+                        <span className="text-alert-orange font-semibold">{pct}%</span>
+                      </div>
                       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
                         <div className="h-full rounded-full transition-all duration-500"
                           style={{ width: `${pct}%`, background: "hsl(38 100% 52%)" }} />
@@ -316,6 +344,65 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
           ) : (
             <button onClick={() => setShowAddOblig(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 11%)" }}>
               <Plus size={16} /> Добавить обязательство
+            </button>
+          )}
+        </div>
+
+        {/* ─── Assets (Имущество) ──────── */}
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+            Имущество
+          </h2>
+          <div className="space-y-2">
+            {assets.map((asset) => (
+              <button
+                key={asset.id}
+                onClick={() => setSelectedAssetId(selectedAssetId === asset.id ? null : asset.id)}
+                className="w-full rounded-[12px] p-4 flex items-center justify-between active:scale-[0.98] transition-transform"
+                style={{
+                  background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
+                  borderLeft: "3px solid hsl(162 100% 33%)",
+                }}
+              >
+                <p className="font-semibold text-foreground text-sm">{asset.name}</p>
+                <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(asset.value)} ₸</p>
+              </button>
+            ))}
+
+            {/* Inline asset detail */}
+            {selectedAssetId && (
+              <div className="glass-card-raised p-4 space-y-3 animate-fade-in-up">
+                <p className="text-sm font-semibold text-foreground text-center">
+                  {assets.find(a => a.id === selectedAssetId)?.name}
+                </p>
+                <p className="text-2xl font-bold font-tabular text-foreground text-center">
+                  {formatAmount(assets.find(a => a.id === selectedAssetId)?.value || 0)} ₸
+                </p>
+                <div className="flex gap-2">
+                  <button onClick={() => setSelectedAssetId(null)} className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Закрыть</button>
+                  <button onClick={() => handleDeleteAsset(selectedAssetId)} className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-destructive" style={{ background: "hsl(0 0% 18%)" }}>Удалить</button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {showAddAsset ? (
+            <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
+              <input autoFocus placeholder="Название (Квартира, Машина...)" value={newAssetName} onChange={(e) => setNewAssetName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
+              <div className="relative">
+                <MoneyInput placeholder="Стоимость" value={newAssetValue} onChange={setNewAssetValue}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddAsset()}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setShowAddAsset(false)} className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Отмена</button>
+                <button onClick={handleAddAsset} className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>Добавить</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowAddAsset(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 11%)" }}>
+              <Plus size={16} /> Добавить имущество
             </button>
           )}
         </div>
