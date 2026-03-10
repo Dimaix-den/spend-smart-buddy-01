@@ -551,7 +551,27 @@ export function useFinance(userId?: string | null) {
     setState((s) => ({ ...s, obligations: s.obligations.filter((o) => o.id !== id) }));
   }, []);
 
-  // ─── Planned expenses actions ──────────────────────────────────
+  // ─── Asset actions ─────────────────────────────────────────────
+  const addAsset = useCallback((name: string, value: number) => {
+    setState((s) => ({
+      ...s,
+      assets: [...(s.assets || []), { id: Date.now().toString(), name, value }],
+    }));
+  }, []);
+
+  const updateAsset = useCallback((id: string, updates: Partial<Pick<Asset, "name" | "value">>) => {
+    setState((s) => ({
+      ...s,
+      assets: (s.assets || []).map((a) => a.id === id ? { ...a, ...updates } : a),
+    }));
+  }, []);
+
+  const deleteAsset = useCallback((id: string) => {
+    setState((s) => ({ ...s, assets: (s.assets || []).filter((a) => a.id !== id) }));
+  }, []);
+
+  const totalAssetsValue = (state.assets || []).reduce((sum, a) => sum + a.value, 0);
+
   const addPlannedExpense = useCallback(
     (plan: Omit<PlannedExpense, "id">) => {
       setState((s) => ({
