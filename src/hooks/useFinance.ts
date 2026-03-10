@@ -24,6 +24,12 @@ export interface Obligation {
   paid: boolean; // paid this month
 }
 
+export interface Asset {
+  id: string;
+  name: string;
+  value: number;
+}
+
 export interface PlannedExpense {
   id: string;
   type: "expense" | "income";
