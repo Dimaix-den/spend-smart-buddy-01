@@ -205,25 +205,12 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
               </div>
             )}
 
-            {/* Payment status */}
-            <div className="glass-card p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    {obligation.paid ? "✓ Оплачено в этом месяце" : "Не оплачено в этом месяце"}
-                  </p>
-                </div>
-                {!obligation.paid && (
-                  <button
-                    onClick={handleMarkPayment}
-                    className="px-4 py-2 rounded-[10px] text-sm font-bold text-white"
-                    style={{ background: "hsl(162 100% 33%)" }}
-                  >
-                    Отметить платёж
-                  </button>
-                )}
+            {/* Status badge */}
+            {obligation.paid && (
+              <div className="glass-card p-4">
+                <p className="text-sm font-medium text-safe-green text-center">✓ Оплачено в этом месяце</p>
               </div>
-            </div>
+            )}
 
             {/* Payment history */}
             {obligationTxns.length > 0 && (

@@ -24,6 +24,12 @@ export interface Obligation {
   paid: boolean; // paid this month
 }
 
+export interface Asset {
+  id: string;
+  name: string;
+  value: number;
+}
+
 export interface PlannedExpense {
   id: string;
   type: "expense" | "income";
@@ -55,6 +61,7 @@ export interface BudgetPeriod {
 export interface FinanceState {
   accounts: Account[];
   obligations: Obligation[];
+  assets: Asset[];
   savingsGoal: number;
   budgetPeriod: BudgetPeriod;
   expenses: Expense[];
@@ -86,6 +93,7 @@ const DEFAULT_STATE: FinanceState = {
     { id: "4", name: "Подписки", totalAmount: 5000, monthlyPayment: 5000, paidMonths: 0, paid: false },
   ],
   savingsGoal: 150000,
+  assets: [],
   budgetPeriod: { totalDays: 30, currentDay: 12, startDate: "2025-11-01" },
   expenses: [],
   currentDate: today(),
@@ -159,6 +167,7 @@ function migrateState(parsed: any): FinanceState {
   if (!parsed.salaryDay) parsed.salaryDay = 15;
   if (!parsed.plannedExpenses) parsed.plannedExpenses = [];
   if (parsed.includePlansInCalculation === undefined) parsed.includePlansInCalculation = true;
+  if (!parsed.assets) parsed.assets = [];
   return parsed as FinanceState;
 }
 
@@ -542,7 +551,27 @@ export function useFinance(userId?: string | null) {
     setState((s) => ({ ...s, obligations: s.obligations.filter((o) => o.id !== id) }));
   }, []);
 
-  // ─── Planned expenses actions ──────────────────────────────────
+  // ─── Asset actions ─────────────────────────────────────────────
+  const addAsset = useCallback((name: string, value: number) => {
+    setState((s) => ({
+      ...s,
+      assets: [...(s.assets || []), { id: Date.now().toString(), name, value }],
+    }));
+  }, []);
+
+  const updateAsset = useCallback((id: string, updates: Partial<Pick<Asset, "name" | "value">>) => {
+    setState((s) => ({
+      ...s,
+      assets: (s.assets || []).map((a) => a.id === id ? { ...a, ...updates } : a),
+    }));
+  }, []);
+
+  const deleteAsset = useCallback((id: string) => {
+    setState((s) => ({ ...s, assets: (s.assets || []).filter((a) => a.id !== id) }));
+  }, []);
+
+  const totalAssetsValue = (state.assets || []).reduce((sum, a) => sum + a.value, 0);
+
   const addPlannedExpense = useCallback(
     (plan: Omit<PlannedExpense, "id">) => {
       setState((s) => ({
@@ -780,6 +809,10 @@ useEffect(() => {
     markObligationPayment,
     toggleObligationPaid,
     deleteObligation,
+    addAsset,
+    updateAsset,
+    deleteAsset,
+    totalAssetsValue,
     addPlannedExpense,
     updatePlannedExpense,
     deletePlannedExpense,
