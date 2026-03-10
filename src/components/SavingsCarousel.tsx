@@ -15,7 +15,7 @@ interface Obligation {
   totalAmount: number;
   monthlyPayment: number;
   paidMonths: number;
-  dueDate: string; // если есть
+  paid: boolean;
 }
 
 interface SavingsCarouselProps {
