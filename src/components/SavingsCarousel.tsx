@@ -25,10 +25,6 @@ interface SavingsCarouselProps {
 }
 
 function ObligationsBlock({ obligations }: { obligations: Obligation[] }) {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
   const currentObligations = obligations;
 
   const monthlyTotal = currentObligations.reduce(
