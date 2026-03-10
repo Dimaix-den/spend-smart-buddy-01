@@ -93,6 +93,7 @@ const DEFAULT_STATE: FinanceState = {
     { id: "4", name: "Подписки", totalAmount: 5000, monthlyPayment: 5000, paidMonths: 0, paid: false },
   ],
   savingsGoal: 150000,
+  assets: [],
   budgetPeriod: { totalDays: 30, currentDay: 12, startDate: "2025-11-01" },
   expenses: [],
   currentDate: today(),
