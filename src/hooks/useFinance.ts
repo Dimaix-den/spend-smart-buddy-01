@@ -61,6 +61,7 @@ export interface BudgetPeriod {
 export interface FinanceState {
   accounts: Account[];
   obligations: Obligation[];
+  assets: Asset[];
   savingsGoal: number;
   budgetPeriod: BudgetPeriod;
   expenses: Expense[];
