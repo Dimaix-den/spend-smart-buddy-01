@@ -5,7 +5,6 @@ import {
   TrendingDown,
   TrendingUp,
   ArrowRightLeft,
-  PiggyBank,
   Trash2,
   ChevronRight,
 } from "lucide-react";
@@ -14,7 +13,7 @@ import { formatAmount } from "@/lib/formatAmount";
 import UnifiedActionSheet from "@/components/UnifiedActionSheet";
 import BudgetDiscipline from "@/components/BudgetDiscipline";
 import { toast } from "@/hooks/use-toast";
-import MoneyInput from "@/components/MoneyInput";
+import SavingsCarousel from "@/components/SavingsCarousel";
 
 interface TodayProps {
   finance: ReturnType<typeof useFinance>;
@@ -92,28 +91,41 @@ function InfoPanel({
         <div className="space-y-4 text-sm">
           <div className="flex justify-between text-foreground/80">
             <span>Доступно на счетах</span>
-            <span className="font-tabular font-semibold">{formatAmount(activeBalance)} ₸</span>
+            <span className="font-tabular font-semibold">
+              {formatAmount(activeBalance)} ₸
+            </span>
           </div>
           <div className="flex justify-between text-alert-orange">
             <span>− Неоплаченные обязательства</span>
-            <span className="font-tabular font-semibold">−{formatAmount(remainingObligations)} ₸</span>
+            <span className="font-tabular font-semibold">
+              −{formatAmount(remainingObligations)} ₸
+            </span>
           </div>
           <div className="flex justify-between text-muted-foreground">
             <span>− Осталось сберечь</span>
-            <span className="font-tabular font-semibold">−{formatAmount(stillNeedToSave)} ₸</span>
+            <span className="font-tabular font-semibold">
+              −{formatAmount(stillNeedToSave)} ₸
+            </span>
           </div>
           <div className="border-t border-white/5 pt-4 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
-          <div className="rounded-[12px] p-3 mt-1 space-y-4" style={{ background: "hsl(0 0% 18%)" }}>
+          <div
+            className="rounded-[12px] p-3 mt-1 space-y-4"
+            style={{ background: "hsl(0 0% 18%)" }}
+          >
             <div className="flex justify-between">
               <span className="text-foreground/80">= Дневной лимит</span>
-              <span className="text-foreground font-semibold font-tabular">{formatAmount(dailyBudget)} ₸</span>
+              <span className="text-foreground font-semibold font-tabular">
+                {formatAmount(dailyBudget)} ₸
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-foreground/80">− Потрачено сегодня</span>
-              <span className="text-alert-orange font-semibold font-tabular">{formatAmount(spentToday)} ₸</span>
+              <span className="text-alert-orange font-semibold font-tabular">
+                {formatAmount(spentToday)} ₸
+              </span>
             </div>
             <div className="flex justify-between items-center border-t border-white/5 pt-1.5">
               <span className="text-foreground font-medium">= Можно потратить</span>
@@ -209,37 +221,18 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
     daysLeft,
     dailyBudget,
     effectiveDailyBudget,
-    adjustedDailyBudget,
     spentToday,
-    monthlyBudget,
-    spentThisMonth,
-    budgetRemaining,
-    budgetStatus,
-    alreadySaved,
-    savingsProgress,
-    plannedSavings,
     savingsAccounts,
     getSavingsForAccount,
-    updateAccountGoal,
     addExpense,
     addIncome,
     deleteExpense,
-    updateExpense,
   } = finance;
-
-  const usePlans = state.includePlansInCalculation ?? true;
 
   const safeToSpendColor =
     safeToSpendStatus === "overspent"
       ? "text-destructive"
       : safeToSpendStatus === "warning"
-      ? "text-alert-orange"
-      : "text-safe-green";
-
-  const budgetColor =
-    budgetStatus === "critical"
-      ? "text-destructive"
-      : budgetStatus === "warning"
       ? "text-alert-orange"
       : "text-safe-green";
 
@@ -266,13 +259,9 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
       ? "ПОЧТИ ИСЧЕРПАН ЛИМИТ"
       : "МОЖЕШЬ ПОТРАТИТЬ СЕГОДНЯ";
 
-  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
-  const [goalInput, setGoalInput] = useState("");
-
-      return (
-        <div className="flex flex-col min-h-screen pb-40">
-        
-        {/* Hero */}
+  return (
+    <div className="flex flex-col min-h-screen pb-40">
+      {/* Hero */}
       <div className="px-5 pt-20 pb-10 text-center">
         <div className="flex items-center justify-center gap-1 mb-2">
           <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
@@ -327,8 +316,8 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-4 space-y-5">
-        {/* Budget discipline chart */}
+      <div className="flex-1 px-4 space-y-5 mt-5">
+        {/* 1. Дисциплина бюджета */}
         <BudgetDiscipline
           expenses={state.expenses}
           dailyBudget={dailyBudget}
@@ -337,97 +326,19 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
           stillNeedToSave={stillNeedToSave}
         />
 
-        {/* Savings progress */}
-        {savingsAccounts.length > 0 && (
-          <div className="glass-card p-4 animate-fade-in-up" style={{ animationDelay: "0.08s" }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <PiggyBank size={14} className="text-safe-green" />
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Цель сбережений
-                </h3>
-              </div>
-            </div>
-            <div className="space-y-3">
-              {savingsAccounts.map((acc) => {
-                const saved = getSavingsForAccount(acc.name);
-                const goal = acc.monthlyGoal || 0;
-                const pct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
-                return (
-                  <div key={acc.id}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-foreground">{acc.name}</span>
-                      {editingGoalId === acc.id ? (
-                        <div className="flex items-center gap-2">
-                          <MoneyInput
-                            autoFocus
-                            value={goalInput}
-                            onChange={setGoalInput}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                updateAccountGoal(acc.id, parseFloat(goalInput) || 0);
-                                setEditingGoalId(null);
-                              }
-                            }}
-                            className="w-24 glass-input px-2 py-1 text-xs font-tabular text-right focus:outline-none"
-                          />
-                          <button
-                            onClick={() => {
-                              updateAccountGoal(acc.id, parseFloat(goalInput) || 0);
-                              setEditingGoalId(null);
-                            }}
-                            className="text-xs text-safe-green font-bold"
-                          >
-                            OK
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => {
-                            setEditingGoalId(acc.id);
-                            setGoalInput((acc.monthlyGoal || 0).toString());
-                          }}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {goal > 0
-                            ? `${formatAmount(goal)} ₸/мес ✎`
-                            : "Задать цель ✎"}
-                        </button>
-                      )}
-                    </div>
-                    {goal > 0 && (
-                      <>
-                        <div
-                          className="h-1.5 rounded-full overflow-hidden"
-                          style={{ background: "hsl(0 0% 23%)" }}
-                        >
-                          <div
-                            className="h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%`, background: "hsl(162 100% 33%)" }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                          <span>
-                            Отложено:{" "}
-                            <span className="text-safe-green font-semibold">
-                              {formatAmount(saved)} ₸
-                            </span>
-                          </span>
-                          <span>{pct}%</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* 2. Слайдер сразу после блока дисциплины */}
+        {savingsAccounts.length > 0 || state.obligations.length > 0 ? (
+          <SavingsCarousel
+            savingsAccounts={savingsAccounts}
+            getSavingsForAccount={getSavingsForAccount}
+            obligations={state.obligations}
+          />
+        ) : null}
 
-        {/* Recent transactions */}
+        {/* 3. Последние операции */}
         {recentExpenses.length > 0 && (
-          <div className="animate-fade-in-up mt-8" style={{ animationDelay: "0.12s" }}>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+          <div className="animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
+            <h3 className="text-lg font-semibold tracking-wider text-white mb-4 px-1">
               Последние операции
             </h3>
             <div className="space-y-3">
@@ -476,7 +387,10 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
                             label={label}
                             onDelete={(id) => {
                               deleteExpense(id);
-                              toast({ description: "🗑 Операция удалена", duration: 2000 });
+                              toast({
+                                description: "🗑 Операция удалена",
+                                duration: 2000,
+                              });
                             }}
                             onEdit={(exp) => {
                               setEditingExpense(exp);
@@ -493,7 +407,7 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
             <button
               onClick={onShowHistory}
               className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-[12px] text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
-              style={{ background: "hsl(0 0% 11%)" }}
+              style={{ background: "hsl(0 0% 6%)" }}
             >
               Показать всю историю <ChevronRight size={16} />
             </button>
@@ -521,7 +435,6 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
         />
       </button>
 
-      {/* Unified Action Sheet */}
       <UnifiedActionSheet
         open={sheetOpen}
         onClose={() => {
