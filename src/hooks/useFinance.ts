@@ -167,6 +167,7 @@ function migrateState(parsed: any): FinanceState {
   if (!parsed.salaryDay) parsed.salaryDay = 15;
   if (!parsed.plannedExpenses) parsed.plannedExpenses = [];
   if (parsed.includePlansInCalculation === undefined) parsed.includePlansInCalculation = true;
+  if (!parsed.assets) parsed.assets = [];
   return parsed as FinanceState;
 }
 
