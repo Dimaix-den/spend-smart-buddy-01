@@ -20,7 +20,6 @@ interface TodayProps {
   onShowHistory: () => void;
   onOpenSheet: (expense?: Expense) => void;
 }
-}
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
   const [display, setDisplay] = useState(value);
