@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import BottomNav from "@/components/BottomNav";
-import Today from "@/pages/Today";
+import Today, { TodayFAB } from "@/pages/Today";
 import Plans from "@/pages/Plans";
 import Capital from "@/pages/Capital";
 import AccountDetail from "@/pages/AccountDetail";
@@ -8,9 +8,12 @@ import ObligationDetail from "@/pages/ObligationDetail";
 import History from "@/pages/History";
 import Settings from "@/pages/Settings";
 import LoginScreen from "@/components/LoginScreen";
-import { useFinance } from "@/hooks/useFinance";
+import UnifiedActionSheet from "@/components/UnifiedActionSheet";
+import { useFinance, Expense } from "@/hooks/useFinance";
 import { useAuth } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/toaster";
+import { toast } from "@/hooks/use-toast";
+import { formatAmount } from "@/lib/formatAmount";
 
 type Tab = "today" | "plans" | "capital" | "settings";
 
@@ -26,6 +29,10 @@ const Index = () => {
   const prevTabRef = useRef<Tab>("today");
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [tabKey, setTabKey] = useState(0);
+
+  // FAB & action sheet state (lifted from Today)
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const handleTabChange = (newTab: Tab) => {
     if (newTab === activeTab) return;
@@ -116,7 +123,14 @@ const Index = () => {
             className={slideDirection === "left" ? "tab-slide-left" : "tab-slide-right"}
           >
             {activeTab === "today" && (
-              <Today finance={finance} onShowHistory={() => setShowHistory(true)} />
+              <Today
+                finance={finance}
+                onShowHistory={() => setShowHistory(true)}
+                onOpenSheet={(expense) => {
+                  setEditingExpense(expense || null);
+                  setSheetOpen(true);
+                }}
+              />
             )}
             {activeTab === "plans" && (
               <Plans finance={finance} />
@@ -135,6 +149,51 @@ const Index = () => {
         </div>
         <BottomNav active={activeTab} onChange={handleTabChange} />
       </div>
+
+      {/* FAB — outside animated container */}
+      {activeTab === "today" && (
+        <TodayFAB
+          onClick={() => {
+            setEditingExpense(null);
+            setSheetOpen(true);
+          }}
+          isOpen={sheetOpen}
+        />
+      )}
+
+      {/* Action Sheet — outside animated container */}
+      <UnifiedActionSheet
+        open={sheetOpen}
+        onClose={() => {
+          setSheetOpen(false);
+          setEditingExpense(null);
+        }}
+        onSaveExpense={(amount, account, type, opts) => {
+          finance.addExpense(amount, account, type, opts);
+          const label =
+            type === "savings" || type === "transfer"
+              ? "💰 Переведено"
+              : type === "obligation"
+              ? "✅ Платёж"
+              : "✅ Расход";
+          toast({
+            description: `${label}: ${formatAmount(amount)} ₸`,
+            duration: 2000,
+          });
+        }}
+        onSaveIncome={(amount, account, note, date) => {
+          finance.addIncome(amount, account, note, date);
+          toast({
+            description: `💰 Доход: +${formatAmount(amount)} ₸`,
+            duration: 2000,
+          });
+        }}
+        onDeleteExpense={(id) => finance.deleteExpense(id)}
+        accounts={finance.state.accounts}
+        obligations={finance.state.obligations}
+        editingExpense={editingExpense}
+      />
+
       <Toaster />
     </div>
   );
