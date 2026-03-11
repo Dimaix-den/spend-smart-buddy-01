@@ -10,14 +10,14 @@ import {
 } from "lucide-react";
 import { useFinance, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
+import UnifiedActionSheet from "@/components/UnifiedActionSheet";
 import BudgetDiscipline from "@/components/BudgetDiscipline";
-import SavingsCarousel from "@/components/SavingsCarousel";
 import { toast } from "@/hooks/use-toast";
+import SavingsCarousel from "@/components/SavingsCarousel";
 
 interface TodayProps {
   finance: ReturnType<typeof useFinance>;
   onShowHistory: () => void;
-  onOpenSheet: (expense?: Expense) => void;
 }
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
@@ -206,7 +206,9 @@ function TransactionRow({
   );
 }
 
-export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProps) {
+export default function Today({ finance, onShowHistory }: TodayProps) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [showInfo, setShowInfo] = useState(false);
 
   const {
@@ -260,7 +262,7 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
   return (
     <div className="flex flex-col min-h-screen pb-40">
       {/* Hero */}
-      <div className="px-5 pt-20 pb-8 text-center">
+      <div className="px-5 pt-12 pb-8 text-center">
         <div className="flex items-center justify-center gap-1 mb-2">
           <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
             {heroLabel}
@@ -391,7 +393,8 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
                               });
                             }}
                             onEdit={(exp) => {
-                              onOpenSheet(exp);
+                              setEditingExpense(exp);
+                              setSheetOpen(true);
                             }}
                           />
                         );
@@ -412,27 +415,70 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
         )}
       </div>
 
-    </div>
-  );
-}
+      {/* FAB */}
+      <button
+        onClick={() => {
+          setEditingExpense(null);
+          setSheetOpen(true);
+        }}
+        className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30 w-16 h-16 rounded-full flex items-center justify-center active:scale-90 transition-all duration-200"
+        style={{
+          background: "hsl(162 100% 33%)",
+          boxShadow: "0 4px 16px rgba(0, 166, 118, 0.4)",
+        }}
+      >
+        <Plus
+          size={28}
+          strokeWidth={2.5}
+          className="text-white transition-transform duration-300"
+          style={{ transform: sheetOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+        />
+      </button>
 
-// Exported sub-components for portal rendering outside animated containers
-export function TodayFAB({ onClick, isOpen }: { onClick: () => void; isOpen: boolean }) {
-  return (
-    <button
-      onClick={onClick}
-      className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30 w-16 h-16 rounded-full flex items-center justify-center active:scale-90 transition-all duration-200"
-      style={{
-        background: "hsl(162 100% 33%)",
-        boxShadow: "0 4px 16px rgba(0, 166, 118, 0.4)",
-      }}
-    >
-      <Plus
-        size={28}
-        strokeWidth={2.5}
-        className="text-white transition-transform duration-300"
-        style={{ transform: isOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+      <UnifiedActionSheet
+        open={sheetOpen}
+        onClose={() => {
+          setSheetOpen(false);
+          setEditingExpense(null);
+        }}
+        onSaveExpense={(amount, account, type, opts) => {
+          addExpense(amount, account, type, opts);
+          const label =
+            type === "savings" || type === "transfer"
+              ? "💰 Переведено"
+              : type === "obligation"
+              ? "✅ Платёж"
+              : "✅ Расход";
+          toast({
+            description: `${label}: ${formatAmount(amount)} ₸`,
+            duration: 2000,
+          });
+        }}
+        onSaveIncome={(amount, account, note, date) => {
+          addIncome(amount, account, note, date);
+          toast({
+            description: `💰 Доход: +${formatAmount(amount)} ₸`,
+            duration: 2000,
+          });
+        }}
+        onDeleteExpense={(id) => deleteExpense(id)}
+        accounts={state.accounts}
+        obligations={state.obligations}
+        editingExpense={editingExpense}
       />
-    </button>
+
+      {showInfo && (
+        <InfoPanel
+          onClose={() => setShowInfo(false)}
+          activeBalance={activeBalance}
+          remainingObligations={remainingObligations}
+          stillNeedToSave={stillNeedToSave}
+          daysLeft={daysLeft}
+          dailyBudget={effectiveDailyBudget}
+          spentToday={spentToday}
+          safeToSpend={safeToSpend}
+        />
+      )}
+    </div>
   );
 }
