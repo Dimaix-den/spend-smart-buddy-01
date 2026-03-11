@@ -175,7 +175,7 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowAddAccount(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 11%)" }}>
+            <button onClick={() => setShowAddAccount(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 5%)" }}>
               <Plus size={16} /> Добавить счёт
             </button>
           )}
@@ -255,7 +255,7 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowAddSavings(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 11%)" }}>
+            <button onClick={() => setShowAddSavings(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 5%)" }}>
               <Plus size={16} /> Добавить сбережение
             </button>
           )}
@@ -342,7 +342,7 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowAddOblig(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 11%)" }}>
+            <button onClick={() => setShowAddOblig(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 5%)" }}>
               <Plus size={16} /> Добавить обязательство
             </button>
           )}
@@ -401,7 +401,7 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowAddAsset(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 11%)" }}>
+            <button onClick={() => setShowAddAsset(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 5%)" }}>
               <Plus size={16} /> Добавить имущество
             </button>
           )}
