@@ -20,7 +20,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
       <div
         className="glass-nav flex items-center rounded-full shadow-lg"
         style={{
-          minWidth: 320,
+          minWidth: 450,
           maxWidth: 420,
           padding: "8px 6px",
           paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
