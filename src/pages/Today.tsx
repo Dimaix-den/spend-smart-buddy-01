@@ -10,9 +10,7 @@ import {
 } from "lucide-react";
 import { useFinance, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
-import UnifiedActionSheet from "@/components/UnifiedActionSheet";
 import BudgetDiscipline from "@/components/BudgetDiscipline";
-import { toast } from "@/hooks/use-toast";
 import SavingsCarousel from "@/components/SavingsCarousel";
 
 interface TodayProps {
