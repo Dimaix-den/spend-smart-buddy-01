@@ -22,7 +22,7 @@ export default function BudgetDiscipline({
   const { days } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const todayY = today.getFullYear();
     const todayM = today.getMonth();
     const todayD = today.getDate();
@@ -37,13 +37,9 @@ export default function BudgetDiscipline({
 
     const todayStr = formatLocalDate(today);
 
-    // Найти самую первую транзакцию (день начала использования)
     const allTransactions = expenses.filter((e) => e.date);
-    
-    const firstTransaction = allTransactions
-      .sort((a, b) => a.date.localeCompare(b.date))[0];
-    
-    const firstDate = firstTransaction ? new Date(firstTransaction.date + 'T00:00:00') : null;
+    const firstTransaction = allTransactions.sort((a, b) => a.date.localeCompare(b.date))[0];
+    const firstDate = firstTransaction ? new Date(firstTransaction.date + "T00:00:00") : null;
 
     type DayItem = {
       dateStr: string;
@@ -57,18 +53,15 @@ export default function BudgetDiscipline({
 
     const daysList: DayItem[] = [];
 
-    // Находим понедельник текущей недели
     const currentDayOfWeek = today.getDay();
     const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
-    
     const monday = new Date(todayY, todayM, todayD - daysFromMonday);
     monday.setHours(0, 0, 0, 0);
 
-    // Генерируем 7 дней с понедельника
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
       d.setHours(0, 0, 0, 0);
-      
+
       const dateStr = formatLocalDate(d);
       const dayNum = d.getDate();
       const jsDay = d.getDay();
@@ -76,43 +69,34 @@ export default function BudgetDiscipline({
 
       const dTime = d.getTime();
       const todayTime = today.getTime();
-      
+
       let status: "no-data" | "within-budget" | "exceeded" | "future";
       let spent = 0;
-      let limitForDay = dailyBudget;
+      const limitForDay = dailyBudget;
 
       if (dTime > todayTime) {
-        // Будущий день
         status = "future";
       } else if (!firstDate || dTime < firstDate.getTime()) {
-        // День ДО начала использования
         status = "no-data";
       } else if (dateStr === todayStr) {
-        // СЕГОДНЯ - считаем в реальном времени
         spent = expenses
           .filter((e) => e.type === "regular" && e.date === dateStr)
           .reduce((sum, e) => sum + e.amount, 0);
-        
+
         status = spent <= limitForDay ? "within-budget" : "exceeded";
       } else {
-        // ПРОШЛЫЙ ДЕНЬ - берём сохранённый статус
-        // Сначала проверяем есть ли сохранённый статус в localStorage
         const savedStatus = localStorage.getItem(`day_status_${dateStr}`);
-        
+
         if (savedStatus) {
-          // Используем сохранённый статус
           status = savedStatus as "within-budget" | "exceeded";
-          
-          // Загружаем сохранённые траты (для отображения, если нужно)
+
           const savedSpent = localStorage.getItem(`day_spent_${dateStr}`);
           spent = savedSpent ? parseFloat(savedSpent) : 0;
         } else {
-          // Если статус не сохранён (старые дни до внедрения фичи)
-          // Считаем по текущим данным
           spent = expenses
             .filter((e) => e.type === "regular" && e.date === dateStr)
             .reduce((sum, e) => sum + e.amount, 0);
-          
+
           status = spent <= limitForDay ? "within-budget" : "exceeded";
         }
       }
@@ -131,72 +115,84 @@ export default function BudgetDiscipline({
     return { days: daysList };
   }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave]);
 
-  // Сохраняем статус вчерашнего дня в конце дня (в полночь)
-  // Это нужно делать в useEffect, который отслеживает смену дня
-  // Добавь этот код в родительский компонент или здесь через useEffect:
-  /*
-  useEffect(() => {
-    const checkAndSaveYesterday = () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      const yesterdayStr = formatLocalDate(yesterday);
-      
-      // Проверяем сохранён ли уже статус вчерашнего дня
-      const savedStatus = localStorage.getItem(`day_status_${yesterdayStr}`);
-      
-      if (!savedStatus) {
-        // Считаем траты за вчера
-        const spent = expenses
-          .filter((e) => e.type === "regular" && e.date === yesterdayStr)
-          .reduce((sum, e) => sum + e.amount, 0);
-        
-        // Определяем статус
-        const status = spent <= dailyBudget ? "within-budget" : "exceeded";
-        
-        // Сохраняем
-        localStorage.setItem(`day_status_${yesterdayStr}`, status);
-        localStorage.setItem(`day_spent_${yesterdayStr}`, spent.toString());
-      }
-    };
-    
-    // Проверяем при загрузке компонента
-    checkAndSaveYesterday();
-    
-    // Проверяем каждую минуту (чтобы поймать полночь)
-    const interval = setInterval(checkAndSaveYesterday, 60000);
-    
-    return () => clearInterval(interval);
-  }, [expenses, dailyBudget]);
-  */
-
   return (
     <div className="space-y-2 ">
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {
-          const dateObj = new Date(d.dateStr + 'T00:00:00');
+          const dateObj = new Date(d.dateStr + "T00:00:00");
           const label = `${dateObj.getDate()} ${months[dateObj.getMonth()]}`;
 
-          let borderColor: string;
-          let textColor: string;
-          let borderStyle: "solid" | "dashed" = "solid";
-          
-          if (d.status === "no-data" || d.status === "future") {
-            borderColor = "hsl(0 0% 15%)";
-            textColor = "hsl(0 0% 50%)";
-          } else if (d.status === "exceeded") {
-            borderColor = "hsl(0 76% 61%)";
-            textColor = "hsl(0 76% 61%)";
+          const isFuture = d.status === "future";
+          const isNoData = d.status === "no-data";
+
+          const grayColor = "hsl(0 0% 25%)";
+          const greenColor = "hsl(162 100% 45%)";
+          const redColor = "hsl(0 76% 61%)";
+
+          const dayTextColor =
+            isFuture || isNoData ? "hsl(0 0% 50%)" : "#ffffff";
+
+          let wrapperStyle: React.CSSProperties;
+
+          if (isFuture) {
+            // Будущие дни: пунктирный серый бордер, без прогресса
+            wrapperStyle = {
+              width: 38,
+              height: 38,
+              borderRadius: "999px",
+              borderWidth: 2,
+              borderStyle: "dashed",
+              borderColor: grayColor,
+              backgroundColor: "transparent",
+            };
           } else {
-            borderColor = "hsl(162 100% 33%)";
-            textColor = "hsl(162 100% 33%)";
-          }
-          
-          if (d.isToday) {
-            borderStyle = "dashed";
+            // Прошлые / сегодня: прогресс‑бордер
+            const ratio = d.limit > 0 && !isNoData ? d.spent / d.limit : 0;
+
+            // 0–1: зелёное кольцо уменьшается, серое растёт
+            const greenRatio = Math.max(0, Math.min(1 - ratio, 1));
+            const greenDeg = greenRatio * 360;
+
+            // >1–2: поверх серого добавляется красное кольцо
+            const overRatio = ratio > 1 ? Math.min(ratio - 1, 1) : 0;
+            const redDeg = overRatio * 360;
+
+            let backgroundImage: string;
+
+            if (isNoData) {
+              backgroundImage = `conic-gradient(${grayColor} 0deg 360deg)`;
+            } else {
+              backgroundImage = `
+                conic-gradient(
+                  ${greenColor} 0deg ${greenDeg}deg,
+                  ${grayColor} ${greenDeg}deg 360deg
+                )
+              `;
+
+              if (redDeg > 0) {
+                backgroundImage = `
+                  conic-gradient(
+                    ${redColor} 0deg ${redDeg}deg,
+                    transparent ${redDeg}deg 360deg
+                  ),
+                  conic-gradient(
+                    ${grayColor} 0deg 360deg
+                  )
+                `;
+              }
+            }
+
+            wrapperStyle = {
+              width: 38,
+              height: 38,
+              borderRadius: "999px",
+              borderWidth: 2,
+              borderStyle: "solid",
+              borderColor: "transparent",
+              backgroundImage,
+              backgroundOrigin: "border-box",
+              backgroundClip: "border-box",
+            };
           }
 
           return (
@@ -208,24 +204,24 @@ export default function BudgetDiscipline({
               <span className="text-[9px] text-muted-foreground leading-none mb-1">
                 {weekDaysShort[d.weekDay]}
               </span>
-              <div
-                className="flex items-center justify-center"
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: "999px",
-                  borderWidth: 2,
-                  borderStyle: borderStyle,
-                  borderColor: borderColor,
-                  background: "transparent",
-                }}
-              >
-                <span
-                  className="text-[14px] font-semibold leading-none"
-                  style={{ color: "#ffffff" }}
+
+              <div className="flex items-center justify-center" style={wrapperStyle}>
+                <div
+                  className="flex items-center justify-center"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: "999px",
+                    backgroundColor: "hsl(222 0% 0%)",
+                  }}
                 >
-                  {d.dayNum}
-                </span>
+                  <span
+                    className="text-[16px] font-regular leading-none"
+                    style={{ color: dayTextColor }}
+                  >
+                    {d.dayNum}
+                  </span>
+                </div>
               </div>
             </div>
           );
