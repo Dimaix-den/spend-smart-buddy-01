@@ -1,5 +1,5 @@
 // components/Carousel.tsx
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface CarouselProps {
   children: React.ReactNode;
@@ -7,19 +7,38 @@ interface CarouselProps {
   showDots?: boolean;
 }
 
-const DEAD_ZONE = 12; // px — минимальное движение, чтобы вообще начать свайп
-const SWIPE_THRESHOLD = 60; // px — порог смены слайда (чуть больше, чтобы не дёргалось)
+const DEAD_ZONE = 12;
+const SWIPE_THRESHOLD = 60;
+const GAP_PX = 12;
 
-export default function Carousel({ children, className = "", showDots = true }: CarouselProps) {
+export default function Carousel({
+  children,
+  className = "",
+  showDots = true,
+}: CarouselProps) {
   const items = Array.isArray(children) ? children : [children];
   const [index, setIndex] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const hasLockedDirection = useRef(false);
   const isHorizontalGesture = useRef(false);
+
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
@@ -37,7 +56,6 @@ export default function Carousel({ children, className = "", showDots = true }: 
     const deltaX = t.clientX - touchStartX.current;
     const deltaY = t.clientY - touchStartY.current;
 
-    // 1. Мёртвая зона: пока меньше DEAD_ZONE по обеим осям — вообще ничего не делаем
     if (
       !hasLockedDirection.current &&
       Math.abs(deltaX) < DEAD_ZONE &&
@@ -46,20 +64,17 @@ export default function Carousel({ children, className = "", showDots = true }: 
       return;
     }
 
-    // 2. Как только вышли из мёртвой зоны — один раз определяем направление
     if (!hasLockedDirection.current) {
       hasLockedDirection.current = true;
       isHorizontalGesture.current = Math.abs(deltaX) > Math.abs(deltaY);
     }
 
-    // 3. Вертикальный жест — отдаём странице
     if (hasLockedDirection.current && !isHorizontalGesture.current) {
       setIsDragging(false);
       setDragOffset(0);
       return;
     }
 
-    // 4. Горизонтальный свайп — блокируем вертикальный скролл и двигаем слайды за пальцем
     if (isHorizontalGesture.current) {
       e.preventDefault();
       setDragOffset(deltaX);
@@ -84,13 +99,15 @@ export default function Carousel({ children, className = "", showDots = true }: 
     isHorizontalGesture.current = false;
   };
 
-  const baseTranslate = -index * 100;
-  const dragTranslate =
-    (dragOffset / (typeof window !== "undefined" ? window.innerWidth || 1 : 1)) * 100;
-  const totalTranslate = baseTranslate + dragTranslate;
+  const slideWidth = containerWidth;
+  
+  // Учитываем marginLeft второго слайда в базовом сдвиге
+  const baseTranslateX = -index * (slideWidth + GAP_PX);
+  const totalTranslateX = baseTranslateX + dragOffset;
 
   return (
     <div
+      ref={containerRef}
       className={`overflow-hidden ${className}`}
       style={{ touchAction: "pan-y" }}
       onTouchStart={handleTouchStart}
@@ -99,12 +116,18 @@ export default function Carousel({ children, className = "", showDots = true }: 
     >
       <div
         className={`flex ${isDragging ? "" : "transition-transform duration-300"}`}
-        style={{ transform: `translateX(${totalTranslate}%)` }}
+        style={{
+          transform: `translateX(${totalTranslateX}px)`,
+        }}
       >
         {items.map((child, i) => (
           <div
             key={i}
-            className={`w-full flex-shrink-0 ${i !== items.length - 1 ? "pr-3" : ""}`}
+            className="flex-shrink-0"
+            style={{
+              width: slideWidth,
+              marginLeft: i === 0 ? 0 : GAP_PX,
+            }}
           >
             {child}
           </div>
@@ -127,4 +150,3 @@ export default function Carousel({ children, className = "", showDots = true }: 
     </div>
   );
 }
-    
