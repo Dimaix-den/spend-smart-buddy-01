@@ -438,3 +438,4 @@ export function TodayFAB({ onClick, isOpen }: { onClick: () => void; isOpen: boo
       />
     </button>
   );
+}
