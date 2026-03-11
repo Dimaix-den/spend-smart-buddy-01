@@ -2,20 +2,12 @@
 import { PiggyBank } from "lucide-react";
 import Carousel from "@/components/Carousel";
 import { formatAmount } from "@/lib/formatAmount";
+import { Obligation } from "@/hooks/useFinance";
 
 interface SavingsAccount {
   id: string;
   name: string;
   monthlyGoal?: number | null;
-}
-
-interface Obligation {
-  id: string;
-  name: string;
-  totalAmount: number;
-  monthlyPayment: number;
-  paidMonths: number;
-  dueDate: string; // если есть
 }
 
 interface SavingsCarouselProps {
@@ -25,15 +17,7 @@ interface SavingsCarouselProps {
 }
 
 function ObligationsBlock({ obligations }: { obligations: Obligation[] }) {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  const currentObligations = obligations.filter((o) => {
-    if (!o.dueDate) return true;
-    const d = new Date(o.dueDate);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
-  });
+  const currentObligations = obligations.filter((o) => !o.paid);
 
   const monthlyTotal = currentObligations.reduce(
     (sum, o) => sum + o.monthlyPayment,

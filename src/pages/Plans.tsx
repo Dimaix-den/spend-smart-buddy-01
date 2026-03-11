@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { Plus, ChevronLeft, ChevronRight, X, Trash2 } from "lucide-react";
-import { useFinance, PlannedExpense } from "@/hooks/useFinance";
+import { Plus, ChevronLeft, ChevronRight, X, Trash2, Check } from "lucide-react";
+import { useFinance, PlannedExpense, RecurrenceType, getPlansForMonth, isPlanPaidInMonth } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import { toast } from "@/hooks/use-toast";
 import MoneyInput from "@/components/MoneyInput";
@@ -15,6 +15,7 @@ export default function Plans({ finance }: PlansProps) {
     addPlannedExpense,
     updatePlannedExpense,
     deletePlannedExpense,
+    togglePlanPaidInMonth,
   } = finance;
 
   const plans = state.plannedExpenses || [];
@@ -28,42 +29,27 @@ export default function Plans({ finance }: PlansProps) {
   const viewMonth = viewDate.getMonth();
 
   const monthNames = [
-    "Январь",
-    "Февраль",
-    "Март",
-    "Апрель",
-    "Май",
-    "Июнь",
-    "Июль",
-    "Август",
-    "Сентябрь",
-    "Октябрь",
-    "Ноябрь",
-    "Декабрь",
+    "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+    "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь",
   ];
 
-  // Filter plans for this month
+  // Filter plans for this month (including recurring projections)
   const monthPlans = useMemo(() => {
-    return plans
-      .filter((p) => {
-        const d = new Date(p.date);
-        return d.getFullYear() === viewYear && d.getMonth() === viewMonth;
-      })
-      .sort((a, b) => a.date.localeCompare(b.date));
+    return getPlansForMonth(plans, viewYear, viewMonth);
   }, [plans, viewYear, viewMonth]);
 
-  // Monthly income / expenses only for current month
+  // Monthly income / expenses (exclude paid plans)
   const { incomeForMonth, expensesForMonth } = useMemo(() => {
     const income = monthPlans
-      .filter((p) => p.type === "income")
+      .filter((p) => p.type === "income" && !isPlanPaidInMonth(p, viewYear, viewMonth))
       .reduce((sum, p) => sum + p.amount, 0);
 
     const expenses = monthPlans
-      .filter((p) => p.type === "expense")
+      .filter((p) => p.type === "expense" && !isPlanPaidInMonth(p, viewYear, viewMonth))
       .reduce((sum, p) => sum + p.amount, 0);
 
     return { incomeForMonth: income, expensesForMonth: expenses };
-  }, [monthPlans]);
+  }, [monthPlans, viewYear, viewMonth]);
 
   // Add modal
   const [showAdd, setShowAdd] = useState(false);
@@ -72,7 +58,7 @@ export default function Plans({ finance }: PlansProps) {
   const [planName, setPlanName] = useState("");
   const [planAmount, setPlanAmount] = useState("");
   const [planDate, setPlanDate] = useState(todayStr);
-  const [planRecurring, setPlanRecurring] = useState(false);
+  const [planRecurrence, setPlanRecurrence] = useState<RecurrenceType>("none");
 
   const openAdd = () => {
     setEditingPlan(null);
@@ -80,7 +66,7 @@ export default function Plans({ finance }: PlansProps) {
     setPlanName("");
     setPlanAmount("");
     setPlanDate(todayStr);
-    setPlanRecurring(false);
+    setPlanRecurrence("none");
     setShowAdd(true);
   };
 
@@ -90,7 +76,7 @@ export default function Plans({ finance }: PlansProps) {
     setPlanName(plan.name);
     setPlanAmount(plan.amount.toString());
     setPlanDate(plan.date);
-    setPlanRecurring(plan.recurring);
+    setPlanRecurrence(plan.recurrence || "none");
     setShowAdd(true);
   };
 
@@ -104,7 +90,8 @@ export default function Plans({ finance }: PlansProps) {
         name: planName.trim(),
         amount: amt,
         date: planDate,
-        recurring: planRecurring,
+        recurring: planRecurrence !== "none",
+        recurrence: planRecurrence,
       });
       toast({ description: "✅ План обновлён", duration: 2000 });
     } else {
@@ -113,7 +100,9 @@ export default function Plans({ finance }: PlansProps) {
         name: planName.trim(),
         amount: amt,
         date: planDate,
-        recurring: planRecurring,
+        recurring: planRecurrence !== "none",
+        recurrence: planRecurrence,
+        paidInMonths: [],
       });
       toast({ description: "✅ План добавлен", duration: 2000 });
     }
@@ -124,6 +113,16 @@ export default function Plans({ finance }: PlansProps) {
     deletePlannedExpense(id);
     toast({ description: "🗑 План удалён", duration: 2000 });
   };
+
+  const handleTogglePaid = (planId: string) => {
+    togglePlanPaidInMonth(planId, viewYear, viewMonth);
+  };
+
+  const recurrenceOptions: { value: RecurrenceType; label: string }[] = [
+    { value: "none", label: "Не повторять" },
+    { value: "monthly", label: "Каждый месяц" },
+    { value: "yearly", label: "Каждый год" },
+  ];
 
   return (
     <div className="flex flex-col min-h-screen pb-32">
@@ -169,25 +168,53 @@ export default function Plans({ finance }: PlansProps) {
           ) : (
             <div className="glass-card overflow-hidden">
               {monthPlans.map((plan, i) => {
-                const d = new Date(plan.date);
+                const d = new Date(plan.virtualDate);
                 const dayLabel = `${d.getDate()} ${monthNames[d.getMonth()]
                   .toLowerCase()
                   .slice(0, 3)}`;
-                const isPast = plan.date < todayStr;
-                const isToday = plan.date === todayStr;
+                const isPast = plan.virtualDate < todayStr;
+                const isToday = plan.virtualDate === todayStr;
                 const isIncome = plan.type === "income";
+                const isPaid = isPlanPaidInMonth(plan, viewYear, viewMonth);
 
                 return (
                   <div
-                    key={plan.id}
-                    className={`px-4 py-3 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-transform ${
+                    key={`${plan.id}-${plan.virtualDate}`}
+                    className={`px-4 py-3 flex items-center justify-between ${
                       i < monthPlans.length - 1
                         ? "border-b border-white/5"
                         : ""
-                    } ${isPast ? "opacity-50" : ""}`}
-                    onClick={() => openEdit(plan)}
+                    } ${isPaid ? "opacity-40" : isPast ? "opacity-50" : ""}`}
                   >
-                    <div className="flex items-center gap-3">
+                    {/* Checkbox */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTogglePaid(plan.id);
+                      }}
+                      className="flex-shrink-0 mr-3"
+                    >
+                      <div
+                        className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
+                        style={{
+                          borderColor: isPaid
+                            ? "hsl(162 100% 33%)"
+                            : "hsl(0 0% 40%)",
+                          background: isPaid
+                            ? "hsl(162 100% 33%)"
+                            : "transparent",
+                        }}
+                      >
+                        {isPaid && (
+                          <Check size={12} className="text-white" strokeWidth={3} />
+                        )}
+                      </div>
+                    </button>
+
+                    <div
+                      className="flex-1 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
+                      onClick={() => openEdit(plan)}
+                    >
                       <div className="text-center min-w-[40px]">
                         <span
                           className={`text-xs font-bold ${
@@ -200,12 +227,12 @@ export default function Plans({ finance }: PlansProps) {
                         </span>
                       </div>
                       <div>
-                        <p className="text-sm font-medium text-foreground">
+                        <p className={`text-sm font-medium ${isPaid ? "line-through text-muted-foreground" : "text-foreground"}`}>
                           {plan.name}
                         </p>
-                        {plan.recurring && (
+                        {plan.recurrence && plan.recurrence !== "none" && (
                           <p className="text-[10px] text-muted-foreground">
-                            Ежемесячно
+                            {plan.recurrence === "monthly" ? "Ежемесячно" : "Ежегодно"}
                           </p>
                         )}
                       </div>
@@ -213,7 +240,9 @@ export default function Plans({ finance }: PlansProps) {
                     <div className="flex items-center gap-2">
                       <span
                         className={`font-bold font-tabular text-sm ${
-                          isIncome ? "text-safe-green" : "text-alert-orange"
+                          isPaid
+                            ? "text-muted-foreground"
+                            : isIncome ? "text-safe-green" : "text-alert-orange"
                         }`}
                       >
                         {isIncome ? "+" : "−"}
@@ -269,7 +298,7 @@ export default function Plans({ finance }: PlansProps) {
 
       {/* Add/Edit Modal */}
       {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center">
           <div
             className="absolute inset-0 glass-overlay"
             onClick={() => setShowAdd(false)}
@@ -380,34 +409,29 @@ export default function Plans({ finance }: PlansProps) {
                   type="date"
                   value={planDate}
                   onChange={(e) => setPlanDate(e.target.value)}
-                  className="w-full glass-input px-4 py-3 text-sm text-foreground focus:outline-none"
+                  className="w-full glass-input px-4 py-3 text-sm text-foreground focus:outline-none box-border"
+                  style={{ maxWidth: "100%" }}
                 />
               </div>
 
-              {/* Recurring */}
-              <button
-                onClick={() => setPlanRecurring(!planRecurring)}
-                className="flex items-center gap-3 w-full text-left"
-              >
-                <div
-                  className="w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0"
-                  style={{
-                    borderColor: planRecurring
-                      ? "hsl(162 100% 33%)"
-                      : "hsl(0 0% 40%)",
-                    background: planRecurring
-                      ? "hsl(162 100% 33%)"
-                      : "transparent",
-                  }}
+              {/* Recurrence dropdown */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Повторять
+                </label>
+                <select
+                  value={planRecurrence}
+                  onChange={(e) => setPlanRecurrence(e.target.value as RecurrenceType)}
+                  className="w-full glass-input px-4 py-3 text-sm text-foreground focus:outline-none appearance-none bg-transparent"
+                  style={{ background: "hsl(0 0% 18%)", borderRadius: "10px", border: "1px solid hsl(0 0% 25%)" }}
                 >
-                  {planRecurring && (
-                    <span className="text-white text-xs font-bold">✓</span>
-                  )}
-                </div>
-                <span className="text-sm text-foreground">
-                  Повторять каждый месяц
-                </span>
-              </button>
+                  {recurrenceOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value} style={{ background: "hsl(0 0% 12%)" }}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Actions */}
               <div className="flex gap-2 pt-2">

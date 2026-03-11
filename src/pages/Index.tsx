@@ -181,8 +181,8 @@ const Index = () => {
             duration: 2000,
           });
         }}
-        onSaveIncome={(amount, account, note, date) => {
-          finance.addIncome(amount, account, note, date);
+        onSaveIncome={(amount, account, note, date, plannedExpenseId) => {
+          finance.addIncome(amount, account, note, date, plannedExpenseId);
           toast({
             description: `💰 Доход: +${formatAmount(amount)} ₸`,
             duration: 2000,
@@ -192,6 +192,7 @@ const Index = () => {
         accounts={finance.state.accounts}
         obligations={finance.state.obligations}
         editingExpense={editingExpense}
+        plannedExpenses={finance.state.plannedExpenses || []}
       />
 
       <Toaster />
