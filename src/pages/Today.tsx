@@ -415,70 +415,29 @@ export default function Today({ finance, onShowHistory }: TodayProps) {
         )}
       </div>
 
-      {/* FAB */}
-      <button
-        onClick={() => {
-          setEditingExpense(null);
-          setSheetOpen(true);
-        }}
-        className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30 w-16 h-16 rounded-full flex items-center justify-center active:scale-90 transition-all duration-200"
-        style={{
-          background: "hsl(162 100% 33%)",
-          boxShadow: "0 4px 16px rgba(0, 166, 118, 0.4)",
-        }}
-      >
-        <Plus
-          size={28}
-          strokeWidth={2.5}
-          className="text-white transition-transform duration-300"
-          style={{ transform: sheetOpen ? "rotate(45deg)" : "rotate(0deg)" }}
-        />
-      </button>
-
-      <UnifiedActionSheet
-        open={sheetOpen}
-        onClose={() => {
-          setSheetOpen(false);
-          setEditingExpense(null);
-        }}
-        onSaveExpense={(amount, account, type, opts) => {
-          addExpense(amount, account, type, opts);
-          const label =
-            type === "savings" || type === "transfer"
-              ? "💰 Переведено"
-              : type === "obligation"
-              ? "✅ Платёж"
-              : "✅ Расход";
-          toast({
-            description: `${label}: ${formatAmount(amount)} ₸`,
-            duration: 2000,
-          });
-        }}
-        onSaveIncome={(amount, account, note, date) => {
-          addIncome(amount, account, note, date);
-          toast({
-            description: `💰 Доход: +${formatAmount(amount)} ₸`,
-            duration: 2000,
-          });
-        }}
-        onDeleteExpense={(id) => deleteExpense(id)}
-        accounts={state.accounts}
-        obligations={state.obligations}
-        editingExpense={editingExpense}
-      />
-
-      {showInfo && (
-        <InfoPanel
-          onClose={() => setShowInfo(false)}
-          activeBalance={activeBalance}
-          remainingObligations={remainingObligations}
-          stillNeedToSave={stillNeedToSave}
-          daysLeft={daysLeft}
-          dailyBudget={effectiveDailyBudget}
-          spentToday={spentToday}
-          safeToSpend={safeToSpend}
-        />
-      )}
     </div>
+  );
+}
+
+// Exported sub-components for portal rendering outside animated containers
+export function TodayFAB({ onClick, isOpen }: { onClick: () => void; isOpen: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      className="fixed bottom-28 left-1/2 -translate-x-1/2 z-30 w-16 h-16 rounded-full flex items-center justify-center active:scale-90 transition-all duration-200"
+      style={{
+        background: "hsl(162 100% 33%)",
+        boxShadow: "0 4px 16px rgba(0, 166, 118, 0.4)",
+      }}
+    >
+      <Plus
+        size={28}
+        strokeWidth={2.5}
+        className="text-white transition-transform duration-300"
+        style={{ transform: isOpen ? "rotate(45deg)" : "rotate(0deg)" }}
+      />
+    </button>
+  );
+}
   );
 }
