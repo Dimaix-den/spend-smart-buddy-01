@@ -207,9 +207,7 @@ function TransactionRow({
   );
 }
 
-export default function Today({ finance, onShowHistory }: TodayProps) {
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProps) {
   const [showInfo, setShowInfo] = useState(false);
 
   const {
