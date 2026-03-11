@@ -247,7 +247,7 @@ export default function Plans({ finance }: PlansProps) {
       </div>
 
       {/* Month selector fixed at bottom */}
-      <div className="fixed bottom-24 left-0 right-0 z-20 px-4">
+      <div className="fixed bottom-28 left-0 right-0 z-20 px-4">
         <div className="glass-card px-4 py-2 flex items-center justify-between rounded-[16px]">
           <button
             onClick={() => setMonthOffset((m) => m - 1)}
@@ -255,7 +255,7 @@ export default function Plans({ finance }: PlansProps) {
           >
             <ChevronLeft size={18} />
           </button>
-          <span className="text-xs font-semibold text-foreground">
+          <span className="text-s font-semibold text-foreground">
             {monthNames[viewMonth]} {viewYear}
           </span>
           <button
