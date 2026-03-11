@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
-import { X } from "lucide-react";
-import { Account, Obligation, ExpenseType, Expense } from "@/hooks/useFinance";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { X, Check } from "lucide-react";
+import { Account, Obligation, ExpenseType, Expense, PlannedExpense, getPlansForMonth, isPlanPaidInMonth } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import MoneyInput from "@/components/MoneyInput";
 
@@ -13,13 +13,14 @@ interface UnifiedActionSheetProps {
     amount: number,
     account: string,
     type: ExpenseType,
-    opts?: { obligationId?: string; toAccount?: string; note?: string; date?: string }
+    opts?: { obligationId?: string; toAccount?: string; note?: string; date?: string; plannedExpenseId?: string }
   ) => void;
-  onSaveIncome: (amount: number, account: string, note?: string, date?: string) => void;
+  onSaveIncome: (amount: number, account: string, note?: string, date?: string, plannedExpenseId?: string) => void;
   onDeleteExpense: (id: string) => void;
   accounts: Account[];
   obligations: Obligation[];
   editingExpense?: Expense | null;
+  plannedExpenses?: PlannedExpense[];
 }
 
 // Sort accounts by usage frequency
@@ -43,6 +44,7 @@ export default function UnifiedActionSheet({
   accounts,
   obligations,
   editingExpense,
+  plannedExpenses = [],
 }: UnifiedActionSheetProps) {
   const isEditing = !!editingExpense;
 
@@ -58,21 +60,34 @@ export default function UnifiedActionSheet({
   const [amount, setAmount] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("");
   const [note, setNote] = useState("");
-  const [expenseType, setExpenseType] = useState<"regular" | "obligation">("regular");
+  const [expenseType, setExpenseType] = useState<"regular" | "obligation" | "planned">("regular");
   const [selectedObligId, setSelectedObligId] = useState("");
+  const [selectedPlanId, setSelectedPlanId] = useState("");
   const [toAccount, setToAccount] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Дата операции (YYYY-MM-DD)
   const [operationDate, setOperationDate] = useState(
     new Date().toISOString().split("T")[0]
   );
 
-  // Filter out system accounts, include both active and savings for transfers
+  // Filter out system accounts
   const nonSystemAccounts = accounts.filter((a) => !a.isSystem);
   const activeAccounts = sortByUsage(nonSystemAccounts.filter((a) => a.type === "active"));
   const transferableAccounts = sortByUsage(nonSystemAccounts.filter((a) => a.type === "active" || a.type === "savings"));
   const unpaidObligations = obligations.filter((o) => !o.paid);
+
+  // Get current month's unpaid plans
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+
+  const currentMonthPlans = useMemo(() => {
+    return getPlansForMonth(plannedExpenses, currentYear, currentMonth)
+      .filter((p) => !isPlanPaidInMonth(p, currentYear, currentMonth));
+  }, [plannedExpenses, currentYear, currentMonth]);
+
+  const expensePlans = currentMonthPlans.filter((p) => p.type === "expense");
+  const incomePlans = currentMonthPlans.filter((p) => p.type === "income");
 
   // Scroll lock
   useEffect(() => {
@@ -84,12 +99,11 @@ export default function UnifiedActionSheet({
     return () => document.body.classList.remove("popup-open");
   }, [open]);
 
-  // Заполнение формы при открытии / редактировании
+  // Fill form on open/edit
   useEffect(() => {
     if (open) {
       if (editingExpense) {
         const exp = editingExpense;
-
         const t: ActionTab =
           exp.type === "income"
             ? "income"
@@ -121,12 +135,14 @@ export default function UnifiedActionSheet({
         } else {
           setToAccount("");
         }
+        setSelectedPlanId("");
       } else {
         setTab("expense");
         setAmount("");
         setNote("");
         setExpenseType("regular");
         setSelectedObligId("");
+        setSelectedPlanId("");
         setToAccount("");
         if (activeAccounts.length > 0) setSelectedAccount(activeAccounts[0].name);
         setOperationDate(new Date().toISOString().split("T")[0]);
@@ -153,7 +169,8 @@ export default function UnifiedActionSheet({
     }
 
     if (tab === "income") {
-      onSaveIncome(num, selectedAccount, note || undefined, operationDate);
+      const planId = expenseType === "planned" && selectedPlanId ? selectedPlanId : undefined;
+      onSaveIncome(num, selectedAccount, note || undefined, operationDate, planId);
     } else if (tab === "transfer") {
       if (!toAccount) return;
       const targetAcc = accounts.find((a) => a.name === toAccount);
@@ -165,19 +182,37 @@ export default function UnifiedActionSheet({
         date: operationDate,
       });
     } else {
-      const type: ExpenseType =
-        expenseType === "obligation" ? "obligation" : "regular";
-      const opts: { obligationId?: string; note?: string; date?: string } = {
-        note,
-        date: operationDate,
-      };
-      if (type === "obligation" && selectedObligId) {
-        opts.obligationId = selectedObligId;
+      if (expenseType === "planned" && selectedPlanId) {
+        onSaveExpense(num, selectedAccount, "regular", {
+          note,
+          date: operationDate,
+          plannedExpenseId: selectedPlanId,
+        });
+      } else {
+        const type: ExpenseType =
+          expenseType === "obligation" ? "obligation" : "regular";
+        const opts: { obligationId?: string; note?: string; date?: string } = {
+          note,
+          date: operationDate,
+        };
+        if (type === "obligation" && selectedObligId) {
+          opts.obligationId = selectedObligId;
+        }
+        onSaveExpense(num, selectedAccount, type, opts);
       }
-      onSaveExpense(num, selectedAccount, type, opts);
     }
 
     onClose();
+  };
+
+  // When selecting a plan, auto-fill amount and note
+  const handleSelectPlan = (planId: string) => {
+    setSelectedPlanId(planId);
+    const plan = currentMonthPlans.find((p) => p.id === planId);
+    if (plan) {
+      setAmount(plan.amount.toString());
+      setNote(plan.name);
+    }
   };
 
   const tabs: { id: ActionTab; label: string }[] = [
@@ -206,11 +241,13 @@ export default function UnifiedActionSheet({
 
   const accentColor = tabColors[tab].accent;
 
-  // Choose which accounts to show based on tab
   const sourceAccounts = tab === "transfer" ? sortByUsage(transferableAccounts) : activeAccounts;
   const targetAccounts = sortByUsage(
     transferableAccounts.filter((a) => a.name !== selectedAccount)
   );
+
+  // Determine which plans to show based on tab
+  const relevantPlans = tab === "income" ? incomePlans : expensePlans;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -250,7 +287,11 @@ export default function UnifiedActionSheet({
               return (
                 <button
                   key={t.id}
-                  onClick={() => setTab(t.id)}
+                  onClick={() => {
+                    setTab(t.id);
+                    setExpenseType("regular");
+                    setSelectedPlanId("");
+                  }}
                   className={`flex-1 py-2 rounded-[10px] text-sm font-semibold transition-all duration-300 ${
                     isActive ? "" : "text-muted-foreground hover:text-foreground"
                   }`}
@@ -284,7 +325,7 @@ export default function UnifiedActionSheet({
             </div>
           </div>
 
-          {/* Account selector — "Откуда" / "На какой счёт" */}
+          {/* Account selector */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               {tab === "income" ? "На какой счёт" : "Откуда"}
@@ -330,7 +371,7 @@ export default function UnifiedActionSheet({
             </div>
           </div>
 
-          {/* Transfer target — "Куда" */}
+          {/* Transfer target */}
           {tab === "transfer" && (
             <div className="space-y-1.5 animate-fade-in-up">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -377,39 +418,81 @@ export default function UnifiedActionSheet({
             </div>
           )}
 
-          {/* Expense-specific: type selector */}
-          {tab === "expense" && (
+          {/* Expense type selector (expense & income tabs) */}
+          {tab !== "transfer" && (
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Тип
               </label>
               <div className="flex gap-2">
-                {[
-                  { value: "regular" as const, label: "Обычный" },
-                  { value: "obligation" as const, label: "Обязательный" },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setExpenseType(opt.value)}
-                    className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold transition-all duration-200"
-                    style={{
-                      background:
-                        expenseType === opt.value
-                          ? "hsl(38 100% 52% / 0.15)"
-                          : "hsl(0 0% 18%)",
-                      boxShadow:
-                        expenseType === opt.value
-                          ? "inset 0 0 0 1.5px hsl(38 100% 52%)"
-                          : "none",
-                      color:
-                        expenseType === opt.value
-                          ? "hsl(38 100% 52%)"
-                          : "hsl(0 0% 60%)",
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                {tab === "expense" ? (
+                  <>
+                    {[
+                      { value: "regular" as const, label: "Обычный" },
+                      { value: "obligation" as const, label: "Обязательный" },
+                      ...(expensePlans.length > 0 ? [{ value: "planned" as const, label: "По плану" }] : []),
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                          setExpenseType(opt.value);
+                          setSelectedPlanId("");
+                          setSelectedObligId("");
+                        }}
+                        className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold transition-all duration-200"
+                        style={{
+                          background:
+                            expenseType === opt.value
+                              ? "hsl(38 100% 52% / 0.15)"
+                              : "hsl(0 0% 18%)",
+                          boxShadow:
+                            expenseType === opt.value
+                              ? "inset 0 0 0 1.5px hsl(38 100% 52%)"
+                              : "none",
+                          color:
+                            expenseType === opt.value
+                              ? "hsl(38 100% 52%)"
+                              : "hsl(0 0% 60%)",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  /* Income tab */
+                  <>
+                    {[
+                      { value: "regular" as const, label: "Обычный" },
+                      ...(incomePlans.length > 0 ? [{ value: "planned" as const, label: "По плану" }] : []),
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => {
+                          setExpenseType(opt.value);
+                          setSelectedPlanId("");
+                        }}
+                        className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold transition-all duration-200"
+                        style={{
+                          background:
+                            expenseType === opt.value
+                              ? "hsl(162 100% 33% / 0.15)"
+                              : "hsl(0 0% 18%)",
+                          boxShadow:
+                            expenseType === opt.value
+                              ? "inset 0 0 0 1.5px hsl(162 100% 33%)"
+                              : "none",
+                          color:
+                            expenseType === opt.value
+                              ? "hsl(162 100% 33%)"
+                              : "hsl(0 0% 60%)",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -441,6 +524,56 @@ export default function UnifiedActionSheet({
               </div>
             )}
 
+          {/* Planned expense selector */}
+          {expenseType === "planned" && relevantPlans.length > 0 && (
+            <div className="space-y-2 animate-fade-in-up">
+              {relevantPlans.map((p) => {
+                const isSelected = selectedPlanId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => handleSelectPlan(p.id)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-[10px] text-left transition-all"
+                    style={{
+                      background: isSelected
+                        ? tab === "income"
+                          ? "hsl(162 100% 33% / 0.15)"
+                          : "hsl(38 100% 52% / 0.15)"
+                        : "hsl(0 0% 18%)",
+                      boxShadow: isSelected
+                        ? `inset 0 0 0 1.5px ${tab === "income" ? "hsl(162 100% 33%)" : "hsl(38 100% 52%)"}`
+                        : "none",
+                    }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                        style={{
+                          borderColor: isSelected
+                            ? tab === "income" ? "hsl(162 100% 33%)" : "hsl(38 100% 52%)"
+                            : "hsl(0 0% 40%)",
+                        }}
+                      >
+                        {isSelected && (
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{
+                              background: tab === "income" ? "hsl(162 100% 33%)" : "hsl(38 100% 52%)",
+                            }}
+                          />
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-foreground">{p.name}</span>
+                    </div>
+                    <span className="text-sm font-bold font-tabular text-muted-foreground">
+                      {formatAmount(p.amount)} ₸
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Note */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -461,7 +594,7 @@ export default function UnifiedActionSheet({
             />
           </div>
 
-          {/* Дата операции */}
+          {/* Date */}
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Дата операции
@@ -471,7 +604,8 @@ export default function UnifiedActionSheet({
                 type="date"
                 value={operationDate}
                 onChange={(e) => setOperationDate(e.target.value)}
-                className="glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none flex-1"
+                className="glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none flex-1 box-border"
+                style={{ maxWidth: "100%" }}
               />
             </div>
           </div>

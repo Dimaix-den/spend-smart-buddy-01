@@ -30,13 +30,17 @@ export interface Asset {
   value: number;
 }
 
+export type RecurrenceType = "none" | "monthly" | "yearly";
+
 export interface PlannedExpense {
   id: string;
   type: "expense" | "income";
   name: string;
   amount: number;
   date: string;
-  recurring: boolean;
+  recurring: boolean; // kept for backward compat migration
+  recurrence: RecurrenceType;
+  paidInMonths?: string[]; // ["2026-03", "2026-04"] — months where marked as done
 }
 
 export type ExpenseType = "regular" | "obligation" | "savings" | "income" | "transfer";
@@ -50,6 +54,7 @@ export interface Expense {
   obligationId?: string | null;
   toAccount?: string | null;
   note?: string;
+  plannedExpenseId?: string | null;
 }
 
 export interface BudgetPeriod {
@@ -125,12 +130,10 @@ function migrateState(parsed: any): FinanceState {
 
   if (parsed.obligations) {
     parsed.obligations = parsed.obligations.map((o: any) => {
-      // Migrate from old format (amount + installments) to new (totalAmount + monthlyPayment + paidMonths)
       if (o.totalAmount === undefined) {
         if (o.installments) {
           return {
-            id: o.id,
-            name: o.name,
+            id: o.id, name: o.name,
             totalAmount: o.amount * o.installments.total,
             monthlyPayment: o.amount,
             paidMonths: o.installments.total - o.installments.remaining,
@@ -138,12 +141,9 @@ function migrateState(parsed: any): FinanceState {
           };
         } else {
           return {
-            id: o.id,
-            name: o.name,
-            totalAmount: o.amount,
-            monthlyPayment: o.amount,
-            paidMonths: 0,
-            paid: o.paid ?? false,
+            id: o.id, name: o.name,
+            totalAmount: o.amount, monthlyPayment: o.amount,
+            paidMonths: 0, paid: o.paid ?? false,
           };
         }
       }
@@ -158,6 +158,16 @@ function migrateState(parsed: any): FinanceState {
       obligationId: e.obligationId ?? null,
       toAccount: e.toAccount ?? null,
       note: e.note ?? "",
+    }));
+  }
+
+  // Migrate planned expenses: recurring bool → recurrence string
+  if (parsed.plannedExpenses) {
+    parsed.plannedExpenses = parsed.plannedExpenses.map((p: any) => ({
+      ...p,
+      recurrence: p.recurrence || (p.recurring ? "monthly" : "none"),
+      recurring: p.recurring ?? false,
+      paidInMonths: p.paidInMonths || [],
     }));
   }
 
@@ -208,6 +218,52 @@ function maybeAdvanceDay(state: FinanceState): FinanceState {
   };
 }
 
+/** Get plans visible in a given month, including recurring projections */
+export function getPlansForMonth(
+  plans: PlannedExpense[],
+  year: number,
+  month: number
+): (PlannedExpense & { virtualDate: string })[] {
+  const result: (PlannedExpense & { virtualDate: string })[] = [];
+  const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+  for (const p of plans) {
+    const d = new Date(p.date);
+    const pYear = d.getFullYear();
+    const pMonth = d.getMonth();
+    const pDay = d.getDate();
+
+    if (pYear === year && pMonth === month) {
+      // Original month — always show
+      result.push({ ...p, virtualDate: p.date });
+    } else if (p.recurrence === "monthly") {
+      // Show in every month on or after the original date's month
+      const origMs = new Date(pYear, pMonth, 1).getTime();
+      const viewMs = new Date(year, month, 1).getTime();
+      if (viewMs > origMs) {
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const day = Math.min(pDay, lastDay);
+        const vDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        result.push({ ...p, virtualDate: vDate });
+      }
+    } else if (p.recurrence === "yearly") {
+      if (pMonth === month && year > pYear) {
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const day = Math.min(pDay, lastDay);
+        const vDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        result.push({ ...p, virtualDate: vDate });
+      }
+    }
+  }
+
+  return result.sort((a, b) => a.virtualDate.localeCompare(b.virtualDate));
+}
+
+export function isPlanPaidInMonth(plan: PlannedExpense, year: number, month: number): boolean {
+  const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+  return (plan.paidInMonths || []).includes(monthKey);
+}
+
 export function useFinance(userId?: string | null) {
   const [state, setState] = useState<FinanceState>(DEFAULT_STATE);
   const [firestoreLoading, setFirestoreLoading] = useState(true);
@@ -220,7 +276,6 @@ export function useFinance(userId?: string | null) {
     readyToSave.current = false;
 
     if (!userId) {
-      // Not authenticated — load from localStorage
       const loaded = loadState();
       setState(maybeAdvanceDay(loaded));
       setFirestoreLoading(false);
@@ -229,7 +284,6 @@ export function useFinance(userId?: string | null) {
       return;
     }
 
-    // Already loaded for this user
     if (loadedUserRef.current === userId) return;
 
     setFirestoreLoading(true);
@@ -240,7 +294,6 @@ export function useFinance(userId?: string | null) {
         const migrated = migrateState(firestoreData);
         setState(maybeAdvanceDay(migrated));
       } else {
-        // Firestore empty — migrate localStorage data to cloud
         const localData = loadState();
         const migrated = maybeAdvanceDay(localData);
         setState(migrated);
@@ -252,13 +305,10 @@ export function useFinance(userId?: string | null) {
     })();
   }, [userId]);
 
-  // Save to Firestore (debounced) — only after initial load is complete
+  // Save to Firestore (debounced)
   useEffect(() => {
     if (!readyToSave.current) return;
-
-    // Save to localStorage as backup
     saveState(state);
-
     if (userId) {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
@@ -267,12 +317,11 @@ export function useFinance(userId?: string | null) {
     }
   }, [state, userId]);
 
-  // ─── Derived: accounts by type (excluding system) ─────────────
+  // ─── Derived ───────────────────────────────────────────────────
   const activeAccounts = state.accounts.filter((a) => a.type === "active" && !a.isSystem);
   const savingsAccounts = state.accounts.filter((a) => a.type === "savings" && !a.isSystem);
   const inactiveAccounts = state.accounts.filter((a) => a.type === "inactive" && !a.isSystem);
 
-  // ─── Core calculations ─────────────────────────────────────────
   const activeBalance = activeAccounts.reduce((sum, a) => sum + a.balance, 0);
 
   const remainingObligations = state.obligations
@@ -281,13 +330,12 @@ export function useFinance(userId?: string | null) {
 
   const totalObligations = state.obligations.reduce((sum, o) => sum + o.monthlyPayment, 0);
 
-  // Total debt for net worth: remaining amount for installments only
   const totalDebt = state.obligations.reduce((sum, o) => {
     const isInstallment = o.totalAmount > o.monthlyPayment;
     if (isInstallment) {
       return sum + Math.max(0, o.totalAmount - o.monthlyPayment * o.paidMonths);
     }
-    return sum; // recurring obligations don't count as debt in net worth
+    return sum;
   }, 0);
 
   const plannedSavings = savingsAccounts.reduce(
@@ -322,7 +370,6 @@ export function useFinance(userId?: string | null) {
 
   const stillNeedToSave = Math.max(0, plannedSavings - alreadySaved);
 
-  // ✅ Days left — respects budget period type
   const now = new Date(state.currentDate);
   const year = now.getFullYear();
   const month = now.getMonth();
@@ -352,13 +399,23 @@ export function useFinance(userId?: string | null) {
     .filter((e) => e.date === todayStr && e.type === "regular")
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // ─── Plans impact ──────────────────────────────────────────────
+  // ─── Plans impact (exclude paid plans) ─────────────────────────
   const plans = state.plannedExpenses || [];
+  const currentMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+
   const upcomingPlannedIncome = plans
-    .filter((p) => p.type === "income" && p.date >= todayStr)
+    .filter((p) => {
+      if (p.type !== "income" || p.date < todayStr) return false;
+      const isPaid = (p.paidInMonths || []).includes(currentMonthKey);
+      return !isPaid;
+    })
     .reduce((sum, p) => sum + p.amount, 0);
   const upcomingPlannedExpenses = plans
-    .filter((p) => p.type === "expense" && p.date >= todayStr)
+    .filter((p) => {
+      if (p.type !== "expense" || p.date < todayStr) return false;
+      const isPaid = (p.paidInMonths || []).includes(currentMonthKey);
+      return !isPaid;
+    })
     .reduce((sum, p) => sum + p.amount, 0);
 
   const adjustedAvailable = available + upcomingPlannedIncome - upcomingPlannedExpenses;
@@ -572,13 +629,14 @@ export function useFinance(userId?: string | null) {
 
   const totalAssetsValue = (state.assets || []).reduce((sum, a) => sum + a.value, 0);
 
+  // ─── Planned expense actions ───────────────────────────────────
   const addPlannedExpense = useCallback(
     (plan: Omit<PlannedExpense, "id">) => {
       setState((s) => ({
         ...s,
         plannedExpenses: [
           ...(s.plannedExpenses || []),
-          { ...plan, id: Date.now().toString() },
+          { ...plan, id: Date.now().toString(), paidInMonths: plan.paidInMonths || [] },
         ],
       }));
     },
@@ -604,6 +662,22 @@ export function useFinance(userId?: string | null) {
     }));
   }, []);
 
+  const togglePlanPaidInMonth = useCallback((id: string, year: number, month: number) => {
+    const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+    setState((s) => ({
+      ...s,
+      plannedExpenses: (s.plannedExpenses || []).map((p) => {
+        if (p.id !== id) return p;
+        const paidInMonths = p.paidInMonths || [];
+        if (paidInMonths.includes(monthKey)) {
+          return { ...p, paidInMonths: paidInMonths.filter((m) => m !== monthKey) };
+        } else {
+          return { ...p, paidInMonths: [...paidInMonths, monthKey] };
+        }
+      }),
+    }));
+  }, []);
+
   // ─── Settings actions ──────────────────────────────────────────
   const setSavingsGoal = useCallback((goal: number) => {
     setState((s) => ({ ...s, savingsGoal: goal }));
@@ -623,7 +697,7 @@ export function useFinance(userId?: string | null) {
       amount: number,
       accountName: string,
       type: ExpenseType,
-      opts?: { obligationId?: string; toAccount?: string; note?: string; date?: string }
+      opts?: { obligationId?: string; toAccount?: string; note?: string; date?: string; plannedExpenseId?: string }
     ) => {
       setState((s) => {
         const opDate = opts?.date || s.currentDate;
@@ -645,6 +719,20 @@ export function useFinance(userId?: string | null) {
                 o.id === opts.obligationId ? { ...o, paid: true } : o
               )
             : s.obligations;
+
+        // If linked to a planned expense, mark it as paid for the current month
+        let updatedPlans = s.plannedExpenses || [];
+        if (opts?.plannedExpenseId) {
+          const now = new Date(opDate);
+          const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          updatedPlans = updatedPlans.map((p) => {
+            if (p.id !== opts.plannedExpenseId) return p;
+            const paidInMonths = p.paidInMonths || [];
+            if (paidInMonths.includes(monthKey)) return p;
+            return { ...p, paidInMonths: [...paidInMonths, monthKey] };
+          });
+        }
+
         const expense: Expense = {
           id: Date.now().toString(),
           date: opDate,
@@ -654,15 +742,16 @@ export function useFinance(userId?: string | null) {
           obligationId: opts?.obligationId ?? null,
           toAccount: opts?.toAccount ?? null,
           note: opts?.note ?? "",
+          plannedExpenseId: opts?.plannedExpenseId ?? null,
         };
-        return { ...s, accounts: updatedAccounts, obligations: updatedObligations, expenses: [expense, ...s.expenses] };
+        return { ...s, accounts: updatedAccounts, obligations: updatedObligations, plannedExpenses: updatedPlans, expenses: [expense, ...s.expenses] };
       });
     },
     []
   );
 
   const addIncome = useCallback(
-    (amount: number, accountName: string, note?: string, date?: string) => {
+    (amount: number, accountName: string, note?: string, date?: string, plannedExpenseId?: string) => {
       setState((s) => {
         const opDate = date || s.currentDate;
         const updatedAccounts = s.accounts.map((a) =>
@@ -670,6 +759,19 @@ export function useFinance(userId?: string | null) {
             ? { ...a, balance: a.balance + amount, usageCount: (a.usageCount || 0) + 1, lastUsed: new Date().toISOString() }
             : a
         );
+
+        let updatedPlans = s.plannedExpenses || [];
+        if (plannedExpenseId) {
+          const now = new Date(opDate);
+          const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          updatedPlans = updatedPlans.map((p) => {
+            if (p.id !== plannedExpenseId) return p;
+            const paidInMonths = p.paidInMonths || [];
+            if (paidInMonths.includes(monthKey)) return p;
+            return { ...p, paidInMonths: [...paidInMonths, monthKey] };
+          });
+        }
+
         const income: Expense = {
           id: Date.now().toString(),
           date: opDate,
@@ -677,8 +779,9 @@ export function useFinance(userId?: string | null) {
           account: accountName,
           type: "income",
           note: note ?? "",
+          plannedExpenseId: plannedExpenseId ?? null,
         };
-        return { ...s, accounts: updatedAccounts, expenses: [income, ...s.expenses] };
+        return { ...s, accounts: updatedAccounts, plannedExpenses: updatedPlans, expenses: [income, ...s.expenses] };
       });
     },
     []
@@ -746,27 +849,25 @@ export function useFinance(userId?: string | null) {
     }
   }, []);
 
-useEffect(() => {
-  const currentMonth = new Date().getMonth();
-  const startMonth = new Date(state.budgetPeriod.startDate).getMonth();
-  if (currentMonth !== startMonth) {
-    setState((s) => {
-      const balances: Record<string, number> = {};
-      s.accounts
-        .filter((a) => a.type === "active" && !a.isSystem)
-        .forEach((a) => { balances[a.id] = a.balance; });
-      return {
-        ...s,
-        budgetPeriod: { ...s.budgetPeriod, currentDay: 1, startDate: today() },
-        obligations: s.obligations.map((o) => ({ ...o, paid: false })),
-        // expenses не трогаем
-        monthStartBalances: balances,
-        currentDate: today(),
-      };
-    });
-  }
-}, []);
-
+  useEffect(() => {
+    const currentMonth = new Date().getMonth();
+    const startMonth = new Date(state.budgetPeriod.startDate).getMonth();
+    if (currentMonth !== startMonth) {
+      setState((s) => {
+        const balances: Record<string, number> = {};
+        s.accounts
+          .filter((a) => a.type === "active" && !a.isSystem)
+          .forEach((a) => { balances[a.id] = a.balance; });
+        return {
+          ...s,
+          budgetPeriod: { ...s.budgetPeriod, currentDay: 1, startDate: today() },
+          obligations: s.obligations.map((o) => ({ ...o, paid: false })),
+          monthStartBalances: balances,
+          currentDate: today(),
+        };
+      });
+    }
+  }, []);
 
   return {
     state,
@@ -816,6 +917,7 @@ useEffect(() => {
     addPlannedExpense,
     updatePlannedExpense,
     deletePlannedExpense,
+    togglePlanPaidInMonth,
     setSavingsGoal,
     updateBudgetPeriod,
     updateSettings,
