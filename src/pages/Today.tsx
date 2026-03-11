@@ -18,6 +18,8 @@ import SavingsCarousel from "@/components/SavingsCarousel";
 interface TodayProps {
   finance: ReturnType<typeof useFinance>;
   onShowHistory: () => void;
+  onOpenSheet: (expense?: Expense) => void;
+}
 }
 
 function AnimatedNumber({ value, className }: { value: number; className?: string }) {
