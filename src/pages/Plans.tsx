@@ -240,7 +240,7 @@ export default function Plans({ finance }: PlansProps) {
         <button
           onClick={openAdd}
           className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors"
-          style={{ background: "hsl(0 0% 11%)" }}
+          style={{ background: "hsl(0 0% 5%)" }}
         >
           <Plus size={16} /> Добавить план
         </button>
