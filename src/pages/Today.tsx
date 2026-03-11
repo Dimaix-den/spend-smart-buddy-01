@@ -12,6 +12,7 @@ import { useFinance, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import BudgetDiscipline from "@/components/BudgetDiscipline";
 import SavingsCarousel from "@/components/SavingsCarousel";
+import { toast } from "@/hooks/use-toast";
 
 interface TodayProps {
   finance: ReturnType<typeof useFinance>;
