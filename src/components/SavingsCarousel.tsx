@@ -15,7 +15,7 @@ interface Obligation {
   totalAmount: number;
   monthlyPayment: number;
   paidMonths: number;
-  paid: boolean;
+  dueDate: string; // если есть
 }
 
 interface SavingsCarouselProps {
@@ -25,7 +25,15 @@ interface SavingsCarouselProps {
 }
 
 function ObligationsBlock({ obligations }: { obligations: Obligation[] }) {
-  const currentObligations = obligations;
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  const currentObligations = obligations.filter((o) => {
+    if (!o.dueDate) return true;
+    const d = new Date(o.dueDate);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  });
 
   const monthlyTotal = currentObligations.reduce(
     (sum, o) => sum + o.monthlyPayment,
@@ -173,7 +181,7 @@ export default function SavingsCarousel({
   if (!savingsAccounts.length && !obligations.length) return null;
 
   return (
-    <Carousel className="animate-fade-in-up px-4" showDots>
+    <Carousel className="animate-fade-in-up px-0" showDots>
       {savingsAccounts.length > 0 && (
         <SavingsBlock
           title="Цель сбережений"
