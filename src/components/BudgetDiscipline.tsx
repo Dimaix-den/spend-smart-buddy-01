@@ -174,7 +174,7 @@ export default function BudgetDiscipline({
   */
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 ">
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {
           const dateObj = new Date(d.dateStr + 'T00:00:00');
@@ -222,7 +222,7 @@ export default function BudgetDiscipline({
               >
                 <span
                   className="text-[14px] font-semibold leading-none"
-                  style={{ color: textColor }}
+                  style={{ color: "#ffffff" }}
                 >
                   {d.dayNum}
                 </span>
