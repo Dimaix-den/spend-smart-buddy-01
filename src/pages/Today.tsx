@@ -392,8 +392,7 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
                               });
                             }}
                             onEdit={(exp) => {
-                              setEditingExpense(exp);
-                              setSheetOpen(true);
+                              onOpenSheet(exp);
                             }}
                           />
                         );
