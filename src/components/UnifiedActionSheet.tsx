@@ -147,8 +147,6 @@ export default function UnifiedActionSheet({
         if (activeAccounts.length > 0) setSelectedAccount(activeAccounts[0].name);
         setOperationDate(new Date().toISOString().split("T")[0]);
       }
-
-      setTimeout(() => inputRef.current?.focus(), 200);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editingExpense]);
@@ -156,8 +154,8 @@ export default function UnifiedActionSheet({
   if (!open) return null;
 
   const parseAmount = () => {
-    const num = parseFloat(amount.replace(/[^\d.]/g, ""));
-    return num && num > 0 ? num : 0;
+  const num = parseFloat(amount.replace(/\s/g, "").replace(/[^\d]/g, ""));
+  return num && num > 0 ? num : 0;
   };
 
   const handleSave = () => {
@@ -315,6 +313,7 @@ export default function UnifiedActionSheet({
                 ref={inputRef as any}
                 value={amount}
                 onChange={setAmount}
+                autoFocus={true}
                 placeholder="0"
                 className="w-full glass-input px-4 py-3.5 text-3xl font-bold tabular-nums placeholder:text-muted-foreground/40 focus:outline-none"
                 style={amount ? { boxShadow: `0 0 0 2px ${accentColor}` } : {}}
