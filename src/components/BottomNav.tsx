@@ -94,7 +94,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
                   <Icon
                     size={22}
                     strokeWidth={isActive ? 2.2 : 1.6}
-                    color={isActive ? "hsl(162 100% 40%)" : "rgba(255,255,255,0.45)"}
+                    color={isActive ? "hsl(0 0% 100%)" : "rgba(255,255,255,0.45)"}
                   />
                 </div>
                 <span
@@ -103,7 +103,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
                     fontSize: "9.5px",
                     fontWeight: isActive ? 600 : 400,
                     letterSpacing: "0.01em",
-                    color: isActive ? "hsl(162 100% 40%)" : "rgba(255,255,255,0.4)",
+                    color: isActive ? "hsl(0 0% 100%)" : "rgba(255,255,255,0.4)",
                     fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
                     transition: "color 0.2s ease",
                   }}
