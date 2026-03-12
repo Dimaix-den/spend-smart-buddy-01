@@ -135,7 +135,7 @@ export default function Carousel({
       </div>
 
       {showDots && items.length > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
+        <div className="flex justify-center gap-2 mt-6">
           {items.map((_, i) => (
             <button
               key={i}
