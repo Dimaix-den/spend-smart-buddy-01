@@ -201,7 +201,7 @@ export default function BudgetDiscipline({
               className="flex flex-col items-center justify-center"
               aria-label={label}
             >
-              <span className="text-[9px] text-muted-foreground leading-none mb-1">
+              <span className="text-[14px] text-muted-foreground leading-none mb-2">
                 {weekDaysShort[d.weekDay]}
               </span>
 
