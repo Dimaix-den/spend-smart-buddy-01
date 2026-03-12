@@ -259,19 +259,33 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
 
   return (
     <div className="flex flex-col min-h-screen pb-40">
+
       {/* Hero */}
-      <div className="px-5 pt-20 pb-8 text-center">
-        <div className="flex items-center justify-center gap-1 mb-2">
-          <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground">
-            {heroLabel}
-          </p>
-          <button
-            onClick={() => setShowInfo(true)}
-            className="inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <HelpCircle size={12} />
-          </button>
-        </div>
+      <div className="px-5 pt-10 pb-10 text-center">
+
+      {/* 1. Дисциплина бюджета */}
+      <BudgetDiscipline
+        expenses={state.expenses}
+        dailyBudget={dailyBudget}
+        activeBalance={activeBalance}
+        remainingObligations={remainingObligations}
+        stillNeedToSave={stillNeedToSave}
+      />
+
+      <div className="px-5 pt-5 pb-5 text-center"></div>
+
+    <div className="flex items-center justify-center gap-1 mb-2">
+      <p className="text-xs font-semibold tracking-widest uppercase text-white">
+        {heroLabel}
+      </p>
+      <button
+        onClick={() => setShowInfo(true)}
+        className="inline-flex items-center justify-center text-white/70 hover:text-white transition-colors"
+      >
+        <HelpCircle size={12} />
+      </button>
+    </div>
+
 
         <div className="flex items-end justify-center gap-2 mb-1">
           <span
@@ -314,15 +328,8 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
       </div>
 
       {/* Content */}
-      <div className="flex-1 px-4 space-y-10 mt-5">
-        {/* 1. Дисциплина бюджета */}
-        <BudgetDiscipline
-          expenses={state.expenses}
-          dailyBudget={dailyBudget}
-          activeBalance={activeBalance}
-          remainingObligations={remainingObligations}
-          stillNeedToSave={stillNeedToSave}
-        />
+      <div className="flex-1 px-4 space-y-10 mt-2">
+
 
         {/* 2. Слайдер сразу после блока дисциплины */}
         {savingsAccounts.length > 0 || state.obligations.length > 0 ? (
