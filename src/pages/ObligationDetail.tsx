@@ -21,29 +21,29 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
   const [editMonthly, setEditMonthly] = useState(obligation?.monthlyPayment.toString() ?? "");
   const [editPaidMonths, setEditPaidMonths] = useState(obligation?.paidMonths.toString() ?? "0");
 
-  // Swipe-to-go-back
   const swipeRef = useRef<{ startX: number; startY: number; swiping: boolean; dx: number }>({
     startX: 0, startY: 0, swiping: false, dx: 0,
   });
-  const [swipeDx, setSwipeDx] = useState(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
-    if (touch.clientX < 30) {
+    if (touch.clientX < 40) {
       swipeRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: true, dx: 0 };
     }
   };
+
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!swipeRef.current.swiping) return;
     const dx = e.touches[0].clientX - swipeRef.current.startX;
     const dy = Math.abs(e.touches[0].clientY - swipeRef.current.startY);
-    if (dy > 50) { swipeRef.current.swiping = false; setSwipeDx(0); return; }
-    if (dx > 0) { setSwipeDx(dx); swipeRef.current.dx = dx; }
+    if (dy > 50) { swipeRef.current.swiping = false; return; }
+    if (dx > 0) swipeRef.current.dx = dx;
   };
+
   const handleTouchEnd = () => {
-    if (swipeRef.current.swiping && swipeRef.current.dx > 100) onBack();
+    if (swipeRef.current.swiping && swipeRef.current.dx > 80) onBack();
     swipeRef.current.swiping = false;
-    setSwipeDx(0);
+    swipeRef.current.dx = 0;
   };
 
   if (!obligation) {
@@ -65,12 +65,7 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
     const monthly = parseFloat(editMonthly) || 0;
     const paid = parseInt(editPaidMonths) || 0;
     if (!editName.trim() || !monthly) return;
-    updateObligation(obligationId, {
-      name: editName.trim(),
-      totalAmount: total,
-      monthlyPayment: monthly,
-      paidMonths: paid,
-    });
+    updateObligation(obligationId, { name: editName.trim(), totalAmount: total, monthlyPayment: monthly, paidMonths: paid });
     setEditing(false);
     toast({ description: "✅ Обязательство обновлено", duration: 2000 });
   };
@@ -81,12 +76,6 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
     toast({ description: "🗑 Обязательство удалено", duration: 2000 });
   };
 
-  const handleMarkPayment = () => {
-    markObligationPayment(obligationId);
-    toast({ description: "✅ Платёж за месяц отмечен", duration: 2000 });
-  };
-
-  // Obligation-related transactions
   const obligationTxns = state.expenses
     .filter((e) => e.obligationId === obligationId)
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -97,13 +86,7 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{
-        transform: swipeDx > 0 ? `translateX(${swipeDx}px)` : undefined,
-        transition: swipeDx > 0 ? "none" : "transform 0.3s ease-out",
-        opacity: swipeDx > 0 ? Math.max(0.5, 1 - swipeDx / 400) : 1,
-      }}
     >
-      {/* Header */}
       <div className="px-5 pt-10 pb-4 flex items-center justify-between">
         <button onClick={onBack} className="flex items-center gap-1 text-safe-green text-sm font-medium">
           <ChevronLeft size={20} /> Назад
@@ -155,12 +138,8 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
               </div>
             )}
             <div className="flex gap-3 pt-2">
-              <button onClick={handleDelete}
-                className="flex-1 py-3 rounded-[10px] text-sm font-bold text-destructive"
-                style={{ background: "hsl(0 0% 18%)" }}>Удалить</button>
-              <button onClick={handleSave}
-                className="flex-1 py-3 rounded-[10px] text-sm font-bold text-white"
-                style={{ background: "hsl(162 100% 33%)" }}>Сохранить</button>
+              <button onClick={handleDelete} className="flex-1 py-3 rounded-[10px] text-sm font-bold text-destructive" style={{ background: "hsl(0 0% 18%)" }}>Удалить</button>
+              <button onClick={handleSave} className="flex-1 py-3 rounded-[10px] text-sm font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>Сохранить</button>
             </div>
           </div>
         ) : (
@@ -170,7 +149,6 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
               <h2 className="text-2xl font-bold text-foreground mb-2">{obligation.name}</h2>
             </div>
 
-            {/* Monthly payment */}
             <div className="glass-card p-4 space-y-3">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Месячный платёж</span>
@@ -190,7 +168,6 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
               )}
             </div>
 
-            {/* Progress */}
             {isInstallment && (
               <div className="glass-card p-4 space-y-3">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Прогресс</h3>
@@ -205,38 +182,21 @@ export default function ObligationDetail({ finance, obligationId, onBack }: Obli
               </div>
             )}
 
-            {/* Status badge */}
-            {obligation.paid && (
-              <div className="glass-card p-4">
-                <p className="text-sm font-medium text-safe-green text-center">✓ Оплачено в этом месяце</p>
-              </div>
-            )}
-
-            {/* Payment history */}
             {obligationTxns.length > 0 && (
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                  История платежей
-                </h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">История платежей</h3>
                 <div className="glass-card overflow-hidden">
                   {obligationTxns.map((t, i) => (
                     <div key={t.id} className={`px-4 py-3 flex items-center justify-between ${i < obligationTxns.length - 1 ? "border-b border-white/5" : ""}`}>
                       <span className="text-sm text-muted-foreground">{t.date}</span>
-                      <span className="font-bold font-tabular text-sm text-alert-orange">
-                        −{formatAmount(t.amount)} ₸
-                      </span>
+                      <span className="font-bold font-tabular text-sm text-alert-orange">−{formatAmount(t.amount)} ₸</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Delete */}
-            <button
-              onClick={handleDelete}
-              className="w-full py-3 rounded-[10px] text-sm font-bold text-destructive mt-4"
-              style={{ background: "hsl(0 0% 12%)" }}
-            >
+            <button onClick={handleDelete} className="w-full py-3 rounded-[10px] text-sm font-bold text-destructive mt-4" style={{ background: "hsl(0 0% 12%)" }}>
               Удалить обязательство
             </button>
           </>
