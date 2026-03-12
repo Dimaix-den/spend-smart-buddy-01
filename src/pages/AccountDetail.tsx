@@ -37,14 +37,8 @@ function ToggleSwitch({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 export default function AccountDetail({ finance, accountId, onBack }: AccountDetailProps) {
   const {
-    state,
-    getSavingsForAccount,
-    updateAccountBalance,
-    updateAccountName,
-    updateAccountType,
-    updateAccountGoal,
-    deleteAccount,
-    toggleAccount,
+    state, getSavingsForAccount, updateAccountBalance, updateAccountName,
+    updateAccountType, updateAccountGoal, deleteAccount, toggleAccount,
   } = finance;
 
   const account = state.accounts.find((a) => a.id === accountId);
@@ -54,15 +48,13 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
   const [editType, setEditType] = useState<AccountType>(account?.type ?? "active");
   const [editGoal, setEditGoal] = useState(account?.monthlyGoal?.toString() ?? "");
 
-  // Swipe-to-go-back
   const swipeRef = useRef<{ startX: number; startY: number; swiping: boolean; dx: number }>({
     startX: 0, startY: 0, swiping: false, dx: 0,
   });
-  const [swipeDx, setSwipeDx] = useState(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     const touch = e.touches[0];
-    if (touch.clientX < 30) {
+    if (touch.clientX < 40) {
       swipeRef.current = { startX: touch.clientX, startY: touch.clientY, swiping: true, dx: 0 };
     }
   };
@@ -71,19 +63,14 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
     if (!swipeRef.current.swiping) return;
     const dx = e.touches[0].clientX - swipeRef.current.startX;
     const dy = Math.abs(e.touches[0].clientY - swipeRef.current.startY);
-    if (dy > 50) { swipeRef.current.swiping = false; setSwipeDx(0); return; }
-    if (dx > 0) {
-      setSwipeDx(dx);
-      swipeRef.current.dx = dx;
-    }
+    if (dy > 50) { swipeRef.current.swiping = false; return; }
+    if (dx > 0) swipeRef.current.dx = dx;
   };
 
   const handleTouchEnd = () => {
-    if (swipeRef.current.swiping && swipeRef.current.dx > 100) {
-      onBack();
-    }
+    if (swipeRef.current.swiping && swipeRef.current.dx > 80) onBack();
     swipeRef.current.swiping = false;
-    setSwipeDx(0);
+    swipeRef.current.dx = 0;
   };
 
   if (!account) {
@@ -103,7 +90,6 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
   const goal = account.monthlyGoal || 0;
   const pct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
 
-  // Group transactions by date
   const grouped = new Map<string, typeof accountTransactions>();
   accountTransactions.forEach((t) => {
     const arr = grouped.get(t.date) || [];
@@ -116,9 +102,7 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
     const bal = parseFloat(editBalance) || 0;
     updateAccountBalance(accountId, bal);
     updateAccountType(accountId, editType);
-    if (editType === "savings") {
-      updateAccountGoal(accountId, parseFloat(editGoal) || 0);
-    }
+    if (editType === "savings") updateAccountGoal(accountId, parseFloat(editGoal) || 0);
     setEditing(false);
     toast({ description: "✅ Счёт обновлён", duration: 2000 });
   };
@@ -138,25 +122,19 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      style={{
-        transform: swipeDx > 0 ? `translateX(${swipeDx}px)` : undefined,
-        transition: swipeDx > 0 ? "none" : "transform 0.3s ease-out",
-        opacity: swipeDx > 0 ? Math.max(0.5, 1 - swipeDx / 400) : 1,
-      }}
     >
-      {/* Header */}
       <div className="px-5 pt-10 pb-4 flex items-center justify-between">
         <button onClick={onBack} className="flex items-center gap-1 text-safe-green text-sm font-medium">
           <ChevronLeft size={20} /> Назад
         </button>
-        <button onClick={() => { setEditing(!editing); setEditName(account.name); setEditBalance(account.balance.toString()); setEditType(account.type); setEditGoal((account.monthlyGoal || 0).toString()); }} className="text-safe-green text-sm font-medium flex items-center gap-1">
+        <button onClick={() => { setEditing(!editing); setEditName(account.name); setEditBalance(account.balance.toString()); setEditType(account.type); setEditGoal((account.monthlyGoal || 0).toString()); }}
+          className="text-safe-green text-sm font-medium flex items-center gap-1">
           <Pencil size={14} /> {editing ? "Отмена" : "Изменить"}
         </button>
       </div>
 
       <div className="px-5 space-y-6">
         {editing ? (
-          /* ─── Edit Mode ─── */
           <div className="space-y-4">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Название</label>
@@ -165,11 +143,7 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Баланс</label>
               <div className="relative">
-                <MoneyInput
-                  value={editBalance}
-                  onChange={setEditBalance}
-                  className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-8"
-                />
+                <MoneyInput value={editBalance} onChange={setEditBalance} className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-8" />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">₸</span>
               </div>
             </div>
@@ -177,14 +151,9 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
               <label className="text-xs text-muted-foreground mb-1 block">Тип</label>
               <div className="flex gap-2">
                 {(["active", "savings", "inactive"] as AccountType[]).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setEditType(t)}
-                    className={`flex-1 py-2.5 rounded-[10px] text-sm font-semibold transition-colors ${
-                      editType === t ? "text-white" : "text-muted-foreground"
-                    }`}
-                    style={{ background: editType === t ? "hsl(162 100% 33%)" : "hsl(0 0% 23%)" }}
-                  >
+                  <button key={t} onClick={() => setEditType(t)}
+                    className={`flex-1 py-2.5 rounded-[10px] text-sm font-semibold transition-colors ${editType === t ? "text-white" : "text-muted-foreground"}`}
+                    style={{ background: editType === t ? "hsl(162 100% 33%)" : "hsl(0 0% 23%)" }}>
                     {t === "active" ? "Активный" : t === "savings" ? "Сбережения" : "Неактивный"}
                   </button>
                 ))}
@@ -194,11 +163,7 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Цель в месяц</label>
                 <div className="relative">
-                  <MoneyInput
-                    value={editGoal}
-                    onChange={setEditGoal}
-                    className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-12"
-                  />
+                  <MoneyInput value={editGoal} onChange={setEditGoal} className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-12" />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸/мес</span>
                 </div>
               </div>
@@ -209,15 +174,15 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
             </div>
           </div>
         ) : (
-          /* ─── View Mode ─── */
           <>
             <div className="text-center">
               <p className="text-sm text-muted-foreground mb-1">{typeBadge}</p>
               <h2 className="text-2xl font-bold text-foreground mb-2">{account.name}</h2>
-              <p className={`text-4xl font-bold font-tabular ${account.balance < 0 ? "text-destructive" : "text-foreground"}`}>{account.balance < 0 ? "−" : ""}{formatAmount(Math.abs(account.balance))} ₸</p>
+              <p className={`text-4xl font-bold font-tabular ${account.balance < 0 ? "text-destructive" : "text-foreground"}`}>
+                {account.balance < 0 ? "−" : ""}{formatAmount(Math.abs(account.balance))} ₸
+              </p>
             </div>
 
-            {/* Savings goal progress */}
             {account.type === "savings" && goal > 0 && (
               <div className="glass-card p-4 space-y-2">
                 <div className="flex justify-between text-sm">
@@ -234,7 +199,6 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
               </div>
             )}
 
-            {/* Use in calculations toggle (only for active accounts) */}
             {account.type === "active" && (
               <div className="glass-card p-4">
                 <div className="flex items-center justify-between">
@@ -244,19 +208,13 @@ export default function AccountDetail({ finance, accountId, onBack }: AccountDet
                       Если выключить, этот счёт не будет учитываться в цифре «Можешь потратить сегодня»
                     </p>
                   </div>
-                  <ToggleSwitch
-                    on={isActiveAccount}
-                    onToggle={() => toggleAccount(accountId)}
-                  />
+                  <ToggleSwitch on={isActiveAccount} onToggle={() => toggleAccount(accountId)} />
                 </div>
               </div>
             )}
 
-            {/* Transactions for this account */}
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                Операции по счёту
-              </h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Операции по счёту</h3>
               {accountTransactions.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">Нет операций</p>
               ) : (
