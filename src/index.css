@@ -64,17 +64,6 @@
     @apply border-border;
   }
 
-  * {
-  @apply border-border;
-  -webkit-user-select: none;
-  user-select: none;
-  }
-
-  input, textarea, [contenteditable] {
-    -webkit-user-select: text;
-    user-select: text;
-  }
-
   body {
     @apply bg-background text-foreground;
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
@@ -94,6 +83,11 @@
 @layer utilities {
   .font-tabular {
     font-variant-numeric: tabular-nums;
+  }
+
+  .glass-input::placeholder,
+  .glass-input::-webkit-input-placeholder {
+    color: hsl(0 0% 100% / 0.25);
   }
 
   .safe-number {
@@ -129,9 +123,8 @@
     border-radius: 12px;
   }
 
-  /* НОВАЯ версия glass-nav в utilities */
   .glass-nav {
-    background: rgba(28, 28, 30, 0.78);              /* тёмное, но прозрачное стекло */
+    background: rgba(28, 28, 30, 0.78);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     border-radius: 18px;
