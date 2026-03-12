@@ -114,28 +114,47 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
 
   return (
     <div className="flex flex-col min-h-screen pb-28">
-      {/* Header */}
-      <div className="px-5 pt-10 pb-6">
-        <h1 className="text-2xl font-bold text-foreground mb-4">Капитал</h1>
-        <div className="glass-card p-4 space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Активы</span>
-            <span className="font-bold font-tabular text-foreground">{formatAmount(totalAssets)} ₸</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Долговые обязательства</span>
-            <span className="font-bold font-tabular text-alert-orange">{formatAmount(totalDebt)} ₸</span>
-          </div>
-          <div className="border-t border-white/5 pt-2 flex justify-between items-center">
-            <span className="text-sm font-medium text-foreground">Чистый капитал</span>
-            <span className={`text-xl font-bold font-tabular ${netWorth >= 0 ? "text-safe-green" : "text-destructive"}`}>
-              {netWorth < 0 ? "−" : ""}{formatAmount(Math.abs(netWorth))} ₸
-            </span>
-          </div>
-        </div>
-      </div>
+{/* Header */}
+<div className="px-5 pt-10 pb-6">
+  <h1 className="text-2xl font-bold text-foreground mb-4">Капитал</h1>
+  <div
+    className="rounded-[18px] p-4 space-y-2 border border-white/5"
+    style={{
+      background:
+        "radial-gradient(circle at 0% 0%, rgba(255,255,255,0.06) 0%, transparent 55%), linear-gradient(135deg, hsl(220 15% 7%) 0%, hsl(220 15% 11%) 100%)",
+      boxShadow: "0 16px 40px rgba(0,0,0,0.5)",
+    }}
+  >
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-muted-foreground">Активы</span>
+      <span className="font-bold font-tabular text-foreground">
+        {formatAmount(totalAssets)} ₸
+      </span>
+    </div>
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-muted-foreground">Долговые обязательства</span>
+      <span className="font-bold font-tabular text-alert-orange">
+        {formatAmount(totalDebt)} ₸
+      </span>
+    </div>
+    <div className="border-t border-white/10 pt-2 flex justify-between items-center">
+      <span className="text-sm font-medium text-foreground">Чистый капитал</span>
+      <span
+        className={`text-xl font-bold font-tabular ${
+          netWorth >= 0 ? "text-safe-green" : "text-destructive"
+        }`}
+      >
+        {netWorth < 0 ? "−" : ""}
+        {formatAmount(Math.abs(netWorth))} ₸
+      </span>
+    </div>
+  </div>
+</div>
+
+
 
       <div className="flex-1 px-4 space-y-6">
+
         {/* ─── Active Accounts ──────── */}
         <div>
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
