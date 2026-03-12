@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import BottomNav from "@/components/BottomNav";
 import Today, { TodayFAB } from "@/pages/Today";
 import Plans from "@/pages/Plans";
@@ -33,6 +33,7 @@ const Index = () => {
   // FAB & action sheet state (lifted from Today)
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
 
   const handleTabChange = (newTab: Tab) => {
     if (newTab === activeTab) return;
