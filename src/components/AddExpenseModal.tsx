@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { X, ChevronDown } from "lucide-react";
+import { X } from "lucide-react";
 import { Account, Obligation, ExpenseType } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 
@@ -32,7 +32,6 @@ export default function AddExpenseModal({
   const [showAccounts, setShowAccounts] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 👉 Новое состояние для даты операции
   const [operationDate, setOperationDate] = useState(
     new Date().toISOString().split("T")[0]
   );
@@ -52,30 +51,34 @@ export default function AddExpenseModal({
       if (!selectedAccount && activeAccounts.length > 0) {
         setSelectedAccount(activeAccounts[0].name);
       }
-      // 👉 При каждом открытии сбрасываем дату на сегодня
       setOperationDate(new Date().toISOString().split("T")[0]);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.click();
+      }, 150);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   if (!open) return null;
 
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, "");
+    const formatted = raw ? Number(raw).toLocaleString("ru-RU") : "";
+    setAmount(formatted);
+  };
+
   const handleSave = () => {
-    const num = parseFloat(amount.replace(/[^\d.]/g, ""));
+    const num = parseFloat(amount.replace(/\s/g, "").replace(/[^\d]/g, ""));
     if (!num || !selectedAccount) return;
     const opts: { obligationId?: string; toAccount?: string } = {};
     if (type === "obligation" && selectedObligId) opts.obligationId = selectedObligId;
     if (type === "savings" && savingsTarget === "transfer" && toAccount)
       opts.toAccount = toAccount;
 
-    // Пока дата операции не прокидывается дальше (onSave сигнатуру не трогаем),
-    // на следующем шаге расширим onSave / addExpense, чтобы использовать operationDate.
     onSave(num, selectedAccount, type, opts);
     onClose();
   };
-
-  const selectedAccountObj = activeAccounts.find((a) => a.name === selectedAccount);
 
   const typeOptions: { value: ExpenseType; label: string; desc: string }[] = [
     { value: "regular", label: "Обычный расход", desc: "Уменьшает дневной лимит" },
@@ -116,10 +119,10 @@ export default function AddExpenseModal({
             <div className="relative">
               <input
                 ref={inputRef}
-                type="number"
+                type="text"
                 inputMode="numeric"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={handleAmountChange}
                 placeholder="0"
                 className="w-full bg-surface-raised border-2 border-border rounded-xl px-4 py-3.5 text-3xl font-bold text-foreground tabular-nums placeholder:text-muted-foreground/50 focus:border-alert-orange focus:outline-none transition-colors"
               />
