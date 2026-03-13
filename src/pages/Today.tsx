@@ -274,7 +274,7 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
 
           {/* Streak badge */}
           <div
-            className="flex items-center gap-1.5 px-2.5 py-2 rounded-full"
+            className="flex items-center gap-1.5 px-2.5 py-3 rounded-full"
             style={{
               background:
                 streakCount > 0
