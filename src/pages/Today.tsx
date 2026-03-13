@@ -13,6 +13,7 @@ import { formatAmount } from "@/lib/formatAmount";
 import BudgetDiscipline from "@/components/BudgetDiscipline";
 import SavingsCarousel from "@/components/SavingsCarousel";
 import { toast } from "@/hooks/use-toast";
+import { useStreak } from "@/hooks/usestreak";
 
 interface TodayProps {
   finance: ReturnType<typeof useFinance>;
@@ -227,6 +228,8 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
     deleteExpense,
   } = finance;
 
+  const { count: streakCount, isOnTrack } = useStreak(spentToday, effectiveDailyBudget);
+
   const safeToSpendColor =
     safeToSpendStatus === "overspent"
       ? "text-destructive"
@@ -252,95 +255,149 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
 
   const heroLabel =
     isOverspent
-      ? "ДНЕВНОЙ ЛИМИТ ИСЧЕРПАН"
+      ? "Лимит исчерпан"
       : safeToSpendStatus === "warning"
-      ? "ПОЧТИ ИСЧЕРПАН ЛИМИТ"
-      : "МОЖЕШЬ ПОТРАТИТЬ СЕГОДНЯ";
+      ? "Лимит почти исчерпан"
+      : "Можешь потратить";
 
   return (
     <div className="flex flex-col min-h-screen pb-40">
+      {/* Header + hero */}
+      <div className="px-4 pt-5 pb-2">
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <h1 className="text-4xl font-bold tracking-tight text-white px-2">
+              Sanda
+            </h1>
+          </div>
 
-      {/* Hero */}
-      <div className="px-5 pt-10 pb-10 text-center">
-
-      {/* 1. Дисциплина бюджета */}
-      <BudgetDiscipline
-        expenses={state.expenses}
-        dailyBudget={dailyBudget}
-        activeBalance={activeBalance}
-        remainingObligations={remainingObligations}
-        stillNeedToSave={stillNeedToSave}
-      />
-
-      <div className="px-5 pt-5 pb-5 text-center"></div>
-
-    <div className="flex items-center justify-center gap-1 mb-2">
-      <p className="text-xs font-semibold tracking-widest uppercase text-white">
-        {heroLabel}
-      </p>
-      <button
-        onClick={() => setShowInfo(true)}
-        className="inline-flex items-center justify-center text-white/70 hover:text-white transition-colors"
-      >
-        <HelpCircle size={12} />
-      </button>
-    </div>
-
-
-        <div className="flex items-end justify-center gap-2 mb-1">
-          <span
-            className={`safe-number font-tabular ${
-              isOverspent ? "text-destructive" : safeToSpendColor
-            }`}
+          {/* Streak badge */}
+          <div
+            className="flex items-center gap-1.5 px-2.5 py-2 rounded-full"
+            style={{
+              background:
+                streakCount > 0
+                  ? isOnTrack
+                    ? "rgba(22,163,74,0.18)"
+                    : "rgba(220,38,38,0.12)"
+                  : "rgba(140, 146, 172,0.18)",
+            }}
           >
-            <AnimatedNumber value={displayAmount} />
-          </span>
-          <span
-            className={`text-4xl font-bold mb-1 opacity-80 ${
-              isOverspent ? "text-destructive" : safeToSpendColor
-            }`}
-          >
-            ₸
-          </span>
+            <span className="text-base leading-none">🔥</span>
+            <span
+              className="font-bold leading-none"
+              style={{
+                fontSize: 14,
+                color:
+                  streakCount > 0
+                    ? isOnTrack
+                      ? "#bbf7d0"
+                      : "#fecaca"
+                    : "#9ca3af",
+              }}
+            >
+              {streakCount}
+            </span>
+            <span
+              className="font-medium leading-none"
+              style={{
+                fontSize: 11,
+                color:
+                  streakCount > 0
+                    ? isOnTrack
+                      ? "#bbf7d0"
+                      : "#fecaca"
+                    : "#9ca3af",
+              }}
+            >
+              {streakCount === 1
+                ? "день"
+                : streakCount >= 2 && streakCount <= 4
+                ? "дня"
+                : "дней"}
+            </span>
+          </div>
         </div>
 
-        {isOverspent && (
-          <p className="text-sm font-semibold text-alert-orange mt-1 animate-fade-in-up">
-            Перерасход: {formatAmount(overspendAmount)} ₸
-          </p>
-        )}
+        {/* Hero: сначала дисциплина, потом карточка */}
+        <div className="pt-4">
+          <BudgetDiscipline
+            expenses={state.expenses}
+            dailyBudget={dailyBudget}
+            activeBalance={activeBalance}
+            remainingObligations={remainingObligations}
+            stillNeedToSave={stillNeedToSave}
+          />
 
-        <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
-          <span>
-            Лимит:{" "}
-            <span className="text-foreground font-semibold">
-              {formatAmount(effectiveDailyBudget)} ₸
-            </span>
-          </span>
-          <span style={{ opacity: 0.3 }}>•</span>
-          <span>
-            Потрачено:{" "}
-            <span className="text-alert-orange font-semibold">
-              {formatAmount(spentToday)} ₸
-            </span>
-          </span>
+          {/* Карточка hero без оборачивания дисциплины */}
+          <div className="mt-3 glass-card rounded-[20px] px-4 py-8">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-1 mb-2">
+                <p className="text-xs font-semibold tracking-widest uppercase text-white">
+                  {heroLabel}
+                </p>
+                <button
+                  onClick={() => setShowInfo(true)}
+                  className="inline-flex items-center justify-center text-white/70 hover:text-white transition-colors"
+                >
+                  <HelpCircle size={12} />
+                </button>
+              </div>
+
+              <div className="flex items-end justify-center gap-2 mb-3">
+                <span
+                  className={`safe-number font-tabular ${
+                    isOverspent ? "text-destructive" : safeToSpendColor
+                  }`}
+                >
+                  <AnimatedNumber value={displayAmount} />
+                </span>
+                <span
+                  className={`text-4xl font-bold mb-1 opacity-80 ${
+                    isOverspent ? "text-destructive" : safeToSpendColor
+                  }`}
+                >
+                  ₸
+                </span>
+              </div>
+
+              {isOverspent && (
+                <p className="text-sm font-semibold text-alert-orange mt-1 animate-fade-in-up">
+                  Перерасход: {formatAmount(overspendAmount)} ₸
+                </p>
+              )}
+
+              <div className="flex items-center justify-center gap-3 mt-2 text-xs text-muted-foreground font-tabular">
+                <span>
+                  Лимит:{" "}
+                  <span className="text-foreground font-semibold">
+                    {formatAmount(effectiveDailyBudget)} ₸
+                  </span>
+                </span>
+                <span style={{ opacity: 0.3 }}>•</span>
+                <span>
+                  Потрачено:{" "}
+                  <span className="text-alert-orange font-semibold">
+                    {formatAmount(spentToday)} ₸
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="flex-1 px-4 space-y-10 mt-2">
-
-
-        {/* 2. Слайдер сразу после блока дисциплины */}
-        {savingsAccounts.length > 0 || state.obligations.length > 0 ? (
+        {(savingsAccounts.length > 0 || state.obligations.length > 0) && (
           <SavingsCarousel
             savingsAccounts={savingsAccounts}
             getSavingsForAccount={getSavingsForAccount}
             obligations={state.obligations}
           />
-        ) : null}
+        )}
 
-        {/* 3. Последние операции */}
         {recentExpenses.length > 0 && (
           <div className="animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
             <h3 className="text-lg font-semibold tracking-wider text-white mb-4 px-1">
@@ -419,11 +476,22 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
         )}
       </div>
 
+      {showInfo && (
+        <InfoPanel
+          onClose={() => setShowInfo(false)}
+          activeBalance={activeBalance}
+          remainingObligations={remainingObligations}
+          stillNeedToSave={stillNeedToSave}
+          daysLeft={daysLeft}
+          dailyBudget={dailyBudget}
+          spentToday={spentToday}
+          safeToSpend={safeToSpend}
+        />
+      )}
     </div>
   );
 }
 
-// Exported sub-components for portal rendering outside animated containers
 export function TodayFAB({ onClick, isOpen }: { onClick: () => void; isOpen: boolean }) {
   return (
     <button
