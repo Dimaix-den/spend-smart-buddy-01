@@ -1,14 +1,24 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Plus, ChevronDown, ChevronUp, ChevronRight } from "lucide-react";
 import { useFinance } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import { toast } from "@/hooks/use-toast";
 import MoneyInput from "@/components/MoneyInput";
+import Carousel from "@/components/Carousel";
 
 interface CapitalProps {
   finance: ReturnType<typeof useFinance>;
   onOpenAccount: (id: string) => void;
   onOpenObligation: (id: string) => void;
+}
+
+// утилита: разбить массив на чанки по size
+function chunk<T>(array: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < array.length; i += size) {
+    result.push(array.slice(i, i + size));
+  }
+  return result;
 }
 
 export default function Capital({ finance, onOpenAccount, onOpenObligation }: CapitalProps) {
@@ -53,8 +63,21 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
   // Asset detail
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
 
+  // refs для форм
+  const accFormRef = useRef<HTMLDivElement | null>(null);
+  const savFormRef = useRef<HTMLDivElement | null>(null);
+  const obligFormRef = useRef<HTMLDivElement | null>(null);
+  const assetFormRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollTo = (ref: React.RefObject<HTMLDivElement | null>) => {
+    ref.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   const accountsTotal = state.accounts
-    .filter(a => (a.type === "active" || a.type === "savings") && !a.isSystem)
+    .filter((a) => (a.type === "active" || a.type === "savings") && !a.isSystem)
     .reduce((s, a) => s + a.balance, 0);
   const totalAssets = accountsTotal + totalAssetsValue;
   const netWorth = totalAssets - totalDebt;
@@ -63,7 +86,9 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
     if (!newAccName.trim()) return;
     const bal = parseFloat(newAccBalance) || 0;
     addAccount(newAccName.trim(), bal, "active");
-    setNewAccName(""); setNewAccBalance(""); setShowAddAccount(false);
+    setNewAccName("");
+    setNewAccBalance("");
+    setShowAddAccount(false);
     toast({ description: "✅ Счёт добавлен", duration: 2000 });
   };
 
@@ -72,7 +97,10 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
     const bal = parseFloat(newSavBalance) || 0;
     const goal = parseFloat(newSavGoal) || 0;
     addAccount(newSavName.trim(), bal, "savings", goal);
-    setNewSavName(""); setNewSavBalance(""); setNewSavGoal(""); setShowAddSavings(false);
+    setNewSavName("");
+    setNewSavBalance("");
+    setNewSavGoal("");
+    setShowAddSavings(false);
     toast({ description: "✅ Сбережение добавлено", duration: 2000 });
   };
 
@@ -82,7 +110,10 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
     const monthly = parseFloat(newObligMonthly) || 0;
     if (!monthly) return;
     addObligation(newObligName.trim(), total || monthly, monthly);
-    setNewObligName(""); setNewObligTotal(""); setNewObligMonthly(""); setShowAddOblig(false);
+    setNewObligName("");
+    setNewObligTotal("");
+    setNewObligMonthly("");
+    setShowAddOblig(false);
     toast({ description: "✅ Обязательство добавлено", duration: 2000 });
   };
 
@@ -91,7 +122,9 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
     const val = parseFloat(newAssetValue) || 0;
     if (!val) return;
     addAsset(newAssetName.trim(), val);
-    setNewAssetName(""); setNewAssetValue(""); setShowAddAsset(false);
+    setNewAssetName("");
+    setNewAssetValue("");
+    setShowAddAsset(false);
     toast({ description: "✅ Имущество добавлено", duration: 2000 });
   };
 
@@ -114,108 +147,168 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
 
   return (
     <div className="flex flex-col min-h-screen pb-28">
-{/* Header */}
-<div className="px-5 pt-10 pb-6">
-  <h1 className="text-2xl font-bold text-foreground mb-4">Капитал</h1>
-  <div
-    className="rounded-[18px] p-4 space-y-2 border border-white/5"
-    style={{
-      background:
-        "radial-gradient(circle at 0% 0%, rgba(255,255,255,0.06) 0%, transparent 55%), linear-gradient(135deg, hsl(220 15% 7%) 0%, hsl(220 15% 11%) 100%)",
-      boxShadow: "0 16px 40px rgba(0,0,0,0.5)",
-    }}
-  >
-    <div className="flex justify-between items-center">
-      <span className="text-sm text-muted-foreground">Активы</span>
-      <span className="font-bold font-tabular text-foreground">
-        {formatAmount(totalAssets)} ₸
-      </span>
-    </div>
-    <div className="flex justify-between items-center">
-      <span className="text-sm text-muted-foreground">Долговые обязательства</span>
-      <span className="font-bold font-tabular text-alert-orange">
-        {formatAmount(totalDebt)} ₸
-      </span>
-    </div>
-    <div className="border-t border-white/10 pt-2 flex justify-between items-center">
-      <span className="text-sm font-medium text-foreground">Чистый капитал</span>
-      <span
-        className={`text-xl font-bold font-tabular ${
-          netWorth >= 0 ? "text-safe-green" : "text-destructive"
-        }`}
-      >
-        {netWorth < 0 ? "−" : ""}
-        {formatAmount(Math.abs(netWorth))} ₸
-      </span>
-    </div>
-  </div>
-</div>
-
-
+      {/* Header */}
+      <div className="px-5 pt-10 pb-6">
+        <h1 className="text-2xl font-bold text-foreground mb-4">Капитал</h1>
+        <div
+          className="rounded-[18px] p-4 space-y-2 border border-white/5"
+          style={{
+            background:
+              "radial-gradient(circle at 0% 0%, rgba(2,255,255,0.06) 0%, transparent 55%), linear-gradient(135deg, hsl(220 15% 7%) 0%, hsl(220 15% 11%) 100%)",
+            boxShadow: "0 16px 40px rgba(0,0,0,0.5)",
+          }}
+        >
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Активы</span>
+            <span className="font-bold font-tabular text-foreground">
+              {formatAmount(totalAssets)} ₸
+            </span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Долговые обязательства</span>
+            <span className="font-bold font-tabular text-alert-orange">
+              {formatAmount(totalDebt)} ₸
+            </span>
+          </div>
+          <div className="border-t border-white/10 pt-2 flex justify-between items-center">
+            <span className="text-sm font-medium text-foreground">Чистый капитал</span>
+            <span
+              className={`text-xl font-bold font-tabular ${
+                netWorth >= 0 ? "text-safe-green" : "text-destructive"
+              }`}
+            >
+              {netWorth < 0 ? "−" : ""}
+              {formatAmount(Math.abs(netWorth))} ₸
+            </span>
+          </div>
+        </div>
+      </div>
 
       <div className="flex-1 px-4 space-y-6">
+        
+      {/* ─── Active Accounts ──────── */}
+      <div>
+        <h2 className="text-S font-semibold tracking-wider mb-4 px-1">
+          Активные счета
+        </h2>
 
-        {/* ─── Active Accounts ──────── */}
-        <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-            Активные счета
-          </h2>
-          <div className="space-y-2">
-            {activeAccounts.map((acc) => (
-              <button
-                key={acc.id}
-                onClick={() => onOpenAccount(acc.id)}
-                className="w-full rounded-[12px] p-4 flex items-center justify-between active:scale-[0.98] transition-transform"
-                style={{
-                  background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
-                  borderLeft: "3px solid hsl(162 100% 33%)",
-                }}
+        <div className="grid grid-cols-2 gap-2">
+          {activeAccounts.map((acc) => (
+            <button
+              key={acc.id}
+              onClick={() => onOpenAccount(acc.id)}
+              className="rounded-[12px] p-4 flex flex-col justify-between active:scale-[0.98] transition-transform text-left"
+              style={{
+                background:
+                  "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
+              }}
+            >
+              <p className="font-semibold text-foreground text-sm truncate">
+                {acc.name}
+              </p>
+              <p
+                className={`text-lg font-bold font-tabular mt-1 ${
+                  acc.balance < 0 ? "text-destructive" : "text-foreground"
+                }`}
               >
-                <div className="text-left">
-                  <p className="font-semibold text-foreground text-sm">{acc.name}</p>
-                  <p className={`text-xl font-bold font-tabular mt-0.5 ${acc.balance < 0 ? "text-destructive" : "text-foreground"}`}>
-                    {acc.balance < 0 ? "−" : ""}{formatAmount(Math.abs(acc.balance))} ₸
-                  </p>
-                </div>
-                <ChevronRight size={18} className="text-muted-foreground" />
-              </button>
-            ))}
-          </div>
-          {showAddAccount ? (
-            <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
-              <input autoFocus placeholder="Название" value={newAccName} onChange={(e) => setNewAccName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
-              <div className="relative">
-                <MoneyInput placeholder="0" value={newAccBalance} onChange={setNewAccBalance} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setShowAddAccount(false)} className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Отмена</button>
-                <button onClick={handleAddAccount} className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>Добавить</button>
-              </div>
-            </div>
-          ) : (
-            <button onClick={() => setShowAddAccount(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 5%)" }}>
-              <Plus size={16} /> Добавить счёт
+                {acc.balance < 0 ? "−" : ""}
+                {formatAmount(Math.abs(acc.balance))} ₸
+              </p>
             </button>
-          )}
+          ))}
+
+          {/* "Добавить счёт" как последняя карточка */}
+          <button
+            onClick={() => {
+              setShowAddAccount(true);
+              setTimeout(() => scrollTo(accFormRef), 0);
+            }}
+            className="rounded-[12px] p-4 flex flex-col items-center justify-center gap-2 active:scale-[0.98] transition-transform text-sm font-semibold text-muted-foreground"
+            style={{
+              background: "hsl(0 0% 6%)",
+              border: "1px dashed rgba(255,255,255,0.12)",
+            }}
+          >
+            <Plus size={18} className="text-safe-green" />
+            <span>Добавить счёт</span>
+          </button>
         </div>
+
+        {showAddAccount && (
+          <div
+            ref={accFormRef}
+            className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up"
+          >
+            <input
+              autoFocus
+              placeholder="Название"
+              value={newAccName}
+              onChange={(e) => setNewAccName(e.target.value)}
+              className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none"
+            />
+            <div className="relative">
+              <MoneyInput
+                placeholder="0"
+                value={newAccBalance}
+                onChange={setNewAccBalance}
+                className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                ₸
+              </span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAddAccount(false)}
+                className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground"
+                style={{ background: "hsl(0 0% 23%)" }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleAddAccount}
+                className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white"
+                style={{ background: "hsl(162 100% 33%)" }}
+              >
+                Добавить
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
 
         {/* ─── Inactive (collapsible) ──────────────────── */}
         {inactiveAccounts.length > 0 && (
           <div className="-mt-2">
-            <button onClick={() => setShowInactive(!showInactive)} className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+            <button
+              onClick={() => setShowInactive(!showInactive)}
+              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/40 mb-2 px-1"
+            >
               Неактивные ({inactiveAccounts.length})
-              {showInactive ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              {showInactive ? (
+                <ChevronUp size={12} className="text-foreground/40" />
+              ) : (
+                <ChevronDown size={12} className="text-foreground/40" />
+              )}
             </button>
             {showInactive && (
               <div className="space-y-2 animate-fade-in-up">
                 {inactiveAccounts.map((acc) => (
-                  <button key={acc.id} onClick={() => onOpenAccount(acc.id)}
+                  <button
+                    key={acc.id}
+                    onClick={() => onOpenAccount(acc.id)}
                     className="w-full rounded-[12px] p-4 flex items-center justify-between opacity-60 active:scale-[0.98] transition-transform"
-                    style={{ background: "hsl(0 0% 11%)", borderLeft: "3px solid hsl(0 0% 30%)" }}>
+                    style={{
+                      background: "hsl(0 0% 11%)",
+                      borderLeft: "3px solid hsl(0 0% 30%)",
+                    }}
+                  >
                     <div className="text-left">
                       <p className="font-semibold text-foreground text-sm">{acc.name}</p>
-                      <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(acc.balance)} ₸</p>
+                      <p className="text-lg font-bold font-tabular text-foreground">
+                        {formatAmount(acc.balance)} ₸
+                      </p>
                     </div>
                     <ChevronRight size={18} className="text-muted-foreground" />
                   </button>
@@ -227,19 +320,30 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
 
         {/* ─── Savings ──────────────────────────── */}
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">Сбережения</h2>
+          <h2 className="text-S font-semibold tracking-wider mb-4 px-1">
+            Сбережения
+          </h2>
           <div className="space-y-2">
             {savingsAccounts.map((acc) => {
               const saved = getSavingsForAccount(acc.name);
               const goal = acc.monthlyGoal || 0;
               const pct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
               return (
-                <button key={acc.id} onClick={() => onOpenAccount(acc.id)}
+                <button
+                  key={acc.id}
+                  onClick={() => onOpenAccount(acc.id)}
                   className="w-full rounded-[12px] p-4 text-left active:scale-[0.98] transition-transform"
-                  style={{ background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)", borderLeft: "3px solid hsl(162 100% 33%)" }}>
+                  style={{
+                    background:
+                      "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(120 23% 15%) 100%)",
+                    borderLeft: "3px solid hsl(162 100% 33%)",
+                  }}
+                >
                   <div className="flex items-center justify-between mb-2">
                     <p className="font-semibold text-foreground text-sm">{acc.name}</p>
-                    <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(acc.balance)} ₸</p>
+                    <p className="text-lg font-bold font-tabular text-foreground">
+                      {formatAmount(acc.balance)} ₸
+                    </p>
                   </div>
                   {goal > 0 && (
                     <div className="space-y-1.5">
@@ -247,10 +351,24 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
                         <span>Цель: {formatAmount(goal)} ₸/мес</span>
                         <span className="text-safe-green font-semibold">{pct}%</span>
                       </div>
-                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
-                        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: "hsl(162 100% 33%)" }} />
+                      <div
+                        className="h-1.5 rounded-full overflow-hidden"
+                        style={{ background: "hsl(0 0% 23%)" }}
+                      >
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${pct}%`,
+                            background: "hsl(162 100% 33%)",
+                          }}
+                        />
                       </div>
-                      <p className="text-xs text-muted-foreground">Отложено: <span className="text-safe-green font-semibold">{formatAmount(saved)} ₸</span></p>
+                      <p className="text-xs text-muted-foreground">
+                        Отложено:{" "}
+                        <span className="text-safe-green font-semibold">
+                          {formatAmount(saved)} ₸
+                        </span>
+                      </p>
                     </div>
                   )}
                 </button>
@@ -258,38 +376,84 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
             })}
           </div>
           {showAddSavings ? (
-            <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
-              <input autoFocus placeholder="Название" value={newSavName} onChange={(e) => setNewSavName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
+            <div
+              ref={savFormRef}
+              className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up"
+            >
+              <input
+                autoFocus
+                placeholder="Название"
+                value={newSavName}
+                onChange={(e) => setNewSavName(e.target.value)}
+                className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none"
+              />
               <div className="relative">
-                <MoneyInput placeholder="Текущий баланс" value={newSavBalance} onChange={setNewSavBalance} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
+                <MoneyInput
+                  placeholder="Текущий баланс"
+                  value={newSavBalance}
+                  onChange={setNewSavBalance}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  ₸
+                </span>
               </div>
               <div className="relative">
-                <MoneyInput placeholder="Цель в месяц" value={newSavGoal} onChange={setNewSavGoal} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-12" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₸/мес</span>
+                <MoneyInput
+                  placeholder="Цель в месяц"
+                  value={newSavGoal}
+                  onChange={setNewSavGoal}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-12"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  ₸/мес
+                </span>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setShowAddSavings(false)} className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Отмена</button>
-                <button onClick={handleAddSavings} className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>Добавить</button>
+                <button
+                  onClick={() => setShowAddSavings(false)}
+                  className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground"
+                  style={{ background: "hsl(0 0% 23%)" }}
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleAddSavings}
+                  className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white"
+                  style={{ background: "hsl(162 100% 33%)" }}
+                >
+                  Добавить
+                </button>
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowAddSavings(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 5%)" }}>
+            <button
+              onClick={() => {
+                setShowAddSavings(true);
+                setTimeout(() => scrollTo(savFormRef), 0);
+              }}
+              className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2"
+              style={{ background: "hsl(0 0% 5%)" }}
+            >
               <Plus size={16} /> Добавить сбережение
             </button>
           )}
         </div>
 
-        {/* ─── Obligations (redesigned — matches Savings style) ──────── */}
+        {/* ─── Obligations ──────── */}
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+          <h2 className="text-S font-semibold tracking-wider mb-4 px-1">
             Обязательства
           </h2>
           <div className="space-y-2">
             {state.obligations.map((o) => {
               const isInstallment = o.totalAmount > o.monthlyPayment;
-              const totalMonths = isInstallment ? Math.ceil(o.totalAmount / o.monthlyPayment) : 1;
-              const pct = isInstallment ? Math.min(100, Math.round((o.paidMonths / totalMonths) * 100)) : 0;
+              const totalMonths = isInstallment
+                ? Math.ceil(o.totalAmount / o.monthlyPayment)
+                : 1;
+              const pct = isInstallment
+                ? Math.min(100, Math.round((o.paidMonths / totalMonths) * 100))
+                : 0;
               const remaining = isInstallment ? totalMonths - o.paidMonths : 0;
               const remainingAmount = isInstallment
                 ? Math.max(0, o.totalAmount - o.monthlyPayment * o.paidMonths)
@@ -301,7 +465,8 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
                   onClick={() => onOpenObligation(o.id)}
                   className="w-full rounded-[12px] p-4 text-left active:scale-[0.98] transition-transform"
                   style={{
-                    background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
+                    background:
+                      "linear-gradient(135deg, hsl(28 51% 5%) 0%, hsl(28 51% 10%) 100%)",
                     borderLeft: "3px solid hsl(38 100% 52%)",
                   }}
                 >
@@ -321,9 +486,14 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
                         <span>Прогресс</span>
                         <span className="text-alert-orange font-semibold">{pct}%</span>
                       </div>
-                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "hsl(0 0% 23%)" }}>
-                        <div className="h-full rounded-full transition-all duration-500"
-                          style={{ width: `${pct}%`, background: "hsl(38 100% 52%)" }} />
+                      <div
+                        className="h-1.5 rounded-full overflow-hidden"
+                        style={{ background: "hsl(0 0% 23%)" }}
+                      >
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ width: `${pct}%`, background: "hsl(38 100% 52%)" }}
+                        />
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Осталось: {remaining} из {totalMonths} месяцев
@@ -336,19 +506,39 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
           </div>
 
           {showAddOblig ? (
-            <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
-              <input autoFocus placeholder="Название" value={newObligName} onChange={(e) => setNewObligName(e.target.value)}
-                className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
+            <div
+              ref={obligFormRef}
+              className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up"
+            >
+              <input
+                autoFocus
+                placeholder="Название"
+                value={newObligName}
+                onChange={(e) => setNewObligName(e.target.value)}
+                className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none"
+              />
               <div className="relative">
-                <MoneyInput placeholder="Общая сумма" value={newObligTotal} onChange={setNewObligTotal}
-                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
+                <MoneyInput
+                  placeholder="Общая сумма"
+                  value={newObligTotal}
+                  onChange={setNewObligTotal}
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  ₸
+                </span>
               </div>
               <div className="relative">
-                <MoneyInput placeholder="Месячный платёж" value={newObligMonthly} onChange={setNewObligMonthly}
+                <MoneyInput
+                  placeholder="Месячный платёж"
+                  value={newObligMonthly}
+                  onChange={setNewObligMonthly}
                   onKeyDown={(e) => e.key === "Enter" && handleAddObligation()}
-                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  ₸
+                </span>
               </div>
               {autoMonths && (
                 <p className="text-xs text-muted-foreground px-1">
@@ -356,12 +546,31 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
                 </p>
               )}
               <div className="flex gap-2">
-                <button onClick={() => setShowAddOblig(false)} className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Отмена</button>
-                <button onClick={handleAddObligation} className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>Добавить</button>
+                <button
+                  onClick={() => setShowAddOblig(false)}
+                  className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground"
+                  style={{ background: "hsl(0 0% 23%)" }}
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleAddObligation}
+                  className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text_WHITE"
+                  style={{ background: "hsl(162 100% 33%)" }}
+                >
+                  Добавить
+                </button>
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowAddOblig(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 5%)" }}>
+            <button
+              onClick={() => {
+                setShowAddOblig(true);
+                setTimeout(() => scrollTo(obligFormRef), 0);
+              }}
+              className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2"
+              style={{ background: "hsl(0 0% 5%)" }}
+            >
               <Plus size={16} /> Добавить обязательство
             </button>
           )}
@@ -369,58 +578,111 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
 
         {/* ─── Assets (Имущество) ──────── */}
         <div>
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
-            Имущество
+          <h2 className="text-S font-semibold tracking-wider mb-4 px-1">
+            Имущества
           </h2>
           <div className="space-y-2">
             {assets.map((asset) => (
               <button
                 key={asset.id}
-                onClick={() => setSelectedAssetId(selectedAssetId === asset.id ? null : asset.id)}
+                onClick={() =>
+                  setSelectedAssetId(selectedAssetId === asset.id ? null : asset.id)
+                }
                 className="w-full rounded-[12px] p-4 flex items-center justify-between active:scale-[0.98] transition-transform"
                 style={{
-                  background: "linear-gradient(135deg, hsl(0 0% 11%) 0%, hsl(0 0% 15%) 100%)",
-                  borderLeft: "3px solid hsl(162 100% 33%)",
+                  background:
+                    "linear-gradient(135deg, hsl(220 40% 5%) 0%, hsl(220 46% 15%) 100%)",
+                  borderLeft: "3px solid hsl(220 30% 33%)",
                 }}
               >
                 <p className="font-semibold text-foreground text-sm">{asset.name}</p>
-                <p className="text-lg font-bold font-tabular text-foreground">{formatAmount(asset.value)} ₸</p>
+                <p className="text-lg font-bold font-tabular text-foreground">
+                  {formatAmount(asset.value)} ₸
+                </p>
               </button>
             ))}
 
-            {/* Inline asset detail */}
             {selectedAssetId && (
               <div className="glass-card-raised p-4 space-y-3 animate-fade-in-up">
                 <p className="text-sm font-semibold text-foreground text-center">
-                  {assets.find(a => a.id === selectedAssetId)?.name}
+                  {assets.find((a) => a.id === selectedAssetId)?.name}
                 </p>
                 <p className="text-2xl font-bold font-tabular text-foreground text-center">
-                  {formatAmount(assets.find(a => a.id === selectedAssetId)?.value || 0)} ₸
+                  {formatAmount(
+                    assets.find((a) => a.id === selectedAssetId)?.value || 0
+                  )}{" "}
+                  ₸
                 </p>
                 <div className="flex gap-2">
-                  <button onClick={() => setSelectedAssetId(null)} className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Закрыть</button>
-                  <button onClick={() => handleDeleteAsset(selectedAssetId)} className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-destructive" style={{ background: "hsl(0 0% 18%)" }}>Удалить</button>
+                  <button
+                    onClick={() => setSelectedAssetId(null)}
+                    className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground"
+                    style={{ background: "hsl(0 0% 23%)" }}
+                  >
+                    Закрыть
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAsset(selectedAssetId)}
+                    className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-destructive"
+                    style={{ background: "hsl(0 0% 18%)" }}
+                  >
+                    Удалить
+                  </button>
                 </div>
               </div>
             )}
           </div>
 
           {showAddAsset ? (
-            <div className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up">
-              <input autoFocus placeholder="Название (Квартира, Машина...)" value={newAssetName} onChange={(e) => setNewAssetName(e.target.value)} className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none" />
+            <div
+              ref={assetFormRef}
+              className="glass-card-raised p-4 mt-2 space-y-3 animate-fade-in-up"
+            >
+              <input
+                autoFocus
+                placeholder="Название (Квартира, Машина...)"
+                value={newAssetName}
+                onChange={(e) => setNewAssetName(e.target.value)}
+                className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none"
+              />
               <div className="relative">
-                <MoneyInput placeholder="Стоимость" value={newAssetValue} onChange={setNewAssetValue}
+                <MoneyInput
+                  placeholder="Стоимость"
+                  value={newAssetValue}
+                  onChange={setNewAssetValue}
                   onKeyDown={(e) => e.key === "Enter" && handleAddAsset()}
-                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8" />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">₸</span>
+                  className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  ₸
+                </span>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => setShowAddAsset(false)} className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground" style={{ background: "hsl(0 0% 23%)" }}>Отмена</button>
-                <button onClick={handleAddAsset} className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white" style={{ background: "hsl(162 100% 33%)" }}>Добавить</button>
+                <button
+                  onClick={() => setShowAddAsset(false)}
+                  className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground"
+                  style={{ background: "hsl(0 0% 23%)" }}
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleAddAsset}
+                  className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white"
+                  style={{ background: "hsl(162 100% 33%)" }}
+                >
+                  Добавить
+                </button>
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowAddAsset(true)} className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2" style={{ background: "hsl(0 0% 5%)" }}>
+            <button
+              onClick={() => {
+                setShowAddAsset(true);
+                setTimeout(() => scrollTo(assetFormRef), 0);
+              }}
+              className="w-full flex items-center justify-center gap-2 text-muted-foreground hover:text-safe-green py-3 rounded-[12px] text-sm font-semibold transition-colors mt-2"
+              style={{ background: "hsl(0 0% 5%)" }}
+            >
               <Plus size={16} /> Добавить имущество
             </button>
           )}
