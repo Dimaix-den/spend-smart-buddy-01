@@ -196,15 +196,30 @@ export default function BudgetDiscipline({
           }
 
           return (
-            <div
-              key={d.dateStr}
-              className="flex flex-col items-center justify-center"
-              aria-label={label}
+          <div
+            key={d.dateStr}
+            aria-label={label}
+            className={
+              d.isToday
+                ? "flex flex-col items-center justify-center px-1 py-2 rounded-xl"
+                : "flex flex-col items-center justify-center"
+            }
+            style={
+              d.isToday
+                ? {
+                    backgroundColor: "rgba(140,146,172,0.18)", // серый фон
+                  }
+                : {}
+            }
+          >
+            <span
+              className="text-[14px] leading-none mb-2"
+              style={{ color: "hsl(0 0% 65%)" }}
             >
-              <span className="text-[14px] text-muted-foreground leading-none mb-2">
-                {weekDaysShort[d.weekDay]}
-              </span>
+              {weekDaysShort[d.weekDay]}
+            </span>
 
+            <div className="flex items-center justify-center">
               <div className="flex items-center justify-center" style={wrapperStyle}>
                 <div
                   className="flex items-center justify-center"
@@ -224,7 +239,9 @@ export default function BudgetDiscipline({
                 </div>
               </div>
             </div>
-          );
+          </div>
+        );
+
         })}
       </div>
     </div>
