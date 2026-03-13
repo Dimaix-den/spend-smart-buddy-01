@@ -30,7 +30,6 @@ const Index = () => {
   const finance = useFinance(user?.uid ?? (isGuest ? "guest" : undefined));
 
   const prevTabRef = useRef<Tab>("today");
-  const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [tabKey, setTabKey] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -39,7 +38,6 @@ const Index = () => {
     if (newTab === activeTab) return;
     const oldIndex = TAB_ORDER.indexOf(activeTab);
     const newIndex = TAB_ORDER.indexOf(newTab);
-    setSlideDirection(newIndex > oldIndex ? "left" : "right");
     prevTabRef.current = activeTab;
     setActiveTab(newTab);
     setTabKey(k => k + 1);
@@ -111,7 +109,7 @@ const Index = () => {
     <div className="min-h-screen bg-background flex justify-center">
       <div className="w-full max-w-app relative">
         <div className="overflow-y-auto scrollbar-hide">
-          <div key={tabKey} className={slideDirection === "left" ? "tab-slide-left" : "tab-slide-right"}>
+          <div key={tabKey} className="tab-fade">
             {activeTab === "today" && (
               <Today
                 finance={finance}
