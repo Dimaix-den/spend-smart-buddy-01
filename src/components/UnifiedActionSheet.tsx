@@ -112,7 +112,7 @@ export default function UnifiedActionSheet({
             : "expense";
 
         setTab(t);
-        setAmount(exp.amount.toString());
+        setAmount(exp.amount > 0 ? exp.amount.toLocaleString("ru-RU") : "");
         setSelectedAccount(exp.account);
         setNote(exp.note || "");
         setOperationDate(exp.date || new Date().toISOString().split("T")[0]);
@@ -153,10 +153,12 @@ export default function UnifiedActionSheet({
 
   if (!open) return null;
 
-  const parseAmount = () => {
-  const num = parseFloat(amount.replace(/\s/g, "").replace(/[^\d]/g, ""));
+const parseAmount = () => {
+  // ru-RU использует \u00A0 (неразрывный пробел) как разделитель тысяч
+  const cleaned = amount.replace(/[\s\u00A0\u202F]/g, "").replace(/[^\d]/g, "");
+  const num = parseInt(cleaned, 10);
   return num && num > 0 ? num : 0;
-  };
+};
 
   const handleSave = () => {
     const num = parseAmount();
