@@ -20,20 +20,20 @@ type Tab = "today" | "plans" | "capital" | "settings";
 const TAB_ORDER: Tab[] = ["today", "plans", "capital", "settings"];
 
 const Index = () => {
-  const { user, loading: authLoading, signInWithGoogle, logout } = useAuth();
+  const { user, loading: authLoading, isGuest, signInWithGoogle, continueAsGuest, logout, switchAccount } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("today");
   const [detailAccountId, setDetailAccountId] = useState<string | null>(null);
   const [detailObligationId, setDetailObligationId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const finance = useFinance(user?.uid);
+
+  // Для гостя используем null uid — данные хранятся локально
+  const finance = useFinance(user?.uid ?? (isGuest ? "guest" : undefined));
+
   const prevTabRef = useRef<Tab>("today");
   const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
   const [tabKey, setTabKey] = useState(0);
-
-  // FAB & action sheet state (lifted from Today)
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-
 
   const handleTabChange = (newTab: Tab) => {
     if (newTab === activeTab) return;
@@ -57,13 +57,13 @@ const Index = () => {
     );
   }
 
-  // Not authenticated
-  if (!user) {
-    return <LoginScreen onSignIn={signInWithGoogle} />;
+  // Not authenticated and not guest — show login
+  if (!user && !isGuest) {
+    return <LoginScreen onSignIn={signInWithGoogle} onContinueAsGuest={continueAsGuest} />;
   }
 
-  // Firestore loading
-  if (finance.firestoreLoading) {
+  // Firestore loading (only for authenticated users)
+  if (user && finance.firestoreLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -89,11 +89,7 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-background flex justify-center">
         <div className="w-full max-w-app relative">
-          <ObligationDetail
-            finance={finance}
-            obligationId={detailObligationId}
-            onBack={() => setDetailObligationId(null)}
-          />
+          <ObligationDetail finance={finance} obligationId={detailObligationId} onBack={() => setDetailObligationId(null)} />
         </div>
         <Toaster />
       </div>
@@ -104,11 +100,7 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-background flex justify-center">
         <div className="w-full max-w-app relative">
-          <AccountDetail
-            finance={finance}
-            accountId={detailAccountId}
-            onBack={() => setDetailAccountId(null)}
-          />
+          <AccountDetail finance={finance} accountId={detailAccountId} onBack={() => setDetailAccountId(null)} />
         </div>
         <Toaster />
       </div>
@@ -119,23 +111,15 @@ const Index = () => {
     <div className="min-h-screen bg-background flex justify-center">
       <div className="w-full max-w-app relative">
         <div className="overflow-y-auto scrollbar-hide">
-          <div
-            key={tabKey}
-            className={slideDirection === "left" ? "tab-slide-left" : "tab-slide-right"}
-          >
+          <div key={tabKey} className={slideDirection === "left" ? "tab-slide-left" : "tab-slide-right"}>
             {activeTab === "today" && (
               <Today
                 finance={finance}
                 onShowHistory={() => setShowHistory(true)}
-                onOpenSheet={(expense) => {
-                  setEditingExpense(expense || null);
-                  setSheetOpen(true);
-                }}
+                onOpenSheet={(expense) => { setEditingExpense(expense || null); setSheetOpen(true); }}
               />
             )}
-            {activeTab === "plans" && (
-              <Plans finance={finance} />
-            )}
+            {activeTab === "plans" && <Plans finance={finance} />}
             {activeTab === "capital" && (
               <Capital
                 finance={finance}
@@ -144,50 +128,35 @@ const Index = () => {
               />
             )}
             {activeTab === "settings" && (
-              <Settings finance={finance} user={user} onLogout={logout} />
+              <Settings
+                finance={finance}
+                user={user}
+                isGuest={isGuest}
+                onLogout={logout}
+                onSignIn={signInWithGoogle}
+                onSwitchAccount={switchAccount}
+              />
             )}
           </div>
         </div>
         <BottomNav active={activeTab} onChange={handleTabChange} />
       </div>
 
-      {/* FAB — outside animated container */}
       {activeTab === "today" && (
-        <TodayFAB
-          onClick={() => {
-            setEditingExpense(null);
-            setSheetOpen(true);
-          }}
-          isOpen={sheetOpen}
-        />
+        <TodayFAB onClick={() => { setEditingExpense(null); setSheetOpen(true); }} isOpen={sheetOpen} />
       )}
 
-      {/* Action Sheet — outside animated container */}
       <UnifiedActionSheet
         open={sheetOpen}
-        onClose={() => {
-          setSheetOpen(false);
-          setEditingExpense(null);
-        }}
+        onClose={() => { setSheetOpen(false); setEditingExpense(null); }}
         onSaveExpense={(amount, account, type, opts) => {
           finance.addExpense(amount, account, type, opts);
-          const label =
-            type === "savings" || type === "transfer"
-              ? "💰 Переведено"
-              : type === "obligation"
-              ? "✅ Платёж"
-              : "✅ Расход";
-          toast({
-            description: `${label}: ${formatAmount(amount)} ₸`,
-            duration: 2000,
-          });
+          const label = type === "savings" || type === "transfer" ? "💰 Переведено" : type === "obligation" ? "✅ Платёж" : "✅ Расход";
+          toast({ description: `${label}: ${formatAmount(amount)} ₸`, duration: 2000 });
         }}
         onSaveIncome={(amount, account, note, date, plannedExpenseId) => {
           finance.addIncome(amount, account, note, date, plannedExpenseId);
-          toast({
-            description: `💰 Доход: +${formatAmount(amount)} ₸`,
-            duration: 2000,
-          });
+          toast({ description: `💰 Доход: +${formatAmount(amount)} ₸`, duration: 2000 });
         }}
         onDeleteExpense={(id) => finance.deleteExpense(id)}
         accounts={finance.state.accounts}
