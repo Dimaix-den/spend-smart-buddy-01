@@ -108,7 +108,7 @@
 
   /* Dark Apple Cards — no borders, subtle inner glow */
   .glass-card {
-    background: hsl(0 0% 11%);
+    background:  rgba(140, 146, 172,0.14);
     border: none;
     box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.05);
     border-radius: 12px;
