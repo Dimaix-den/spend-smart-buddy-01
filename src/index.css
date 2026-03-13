@@ -108,10 +108,10 @@
 
   /* Dark Apple Cards — no borders, subtle inner glow */
   .glass-card {
-    background:  rgba(140, 146, 172,0.14);
+    background:  rgba(28, 28, 30, 0.78);
     border: none;
     box-shadow: inset 0 0 0 0.5px rgba(255,255,255,0.05);
-    border-radius: 12px;
+    border-radius: 16px;
   }
 
   .glass-card-raised {
@@ -234,4 +234,13 @@
 .detail-screen {
   overflow-x: hidden !important;
   overscroll-behavior-x: none;
+}
+
+.tab-fade {
+  animation: tabFade 0.18s ease-out;
+}
+
+@keyframes tabFade {
+  from { opacity: 0; }
+  to   { opacity: 2; }
 }
