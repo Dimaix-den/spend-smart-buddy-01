@@ -106,6 +106,12 @@
     display: none;
   }
 
+  /* Класс для горизонтальных списков (фильтры и т.п.) */
+  .filters-scroll {
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Dark Apple Cards — no borders, subtle inner glow */
   .glass-card {
     background:  rgba(28, 28, 30, 0.78);
