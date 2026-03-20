@@ -101,58 +101,67 @@ export default function EntityDetail({
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
 
   const swipeRef = useRef<{
-    startX: number;
-    startY: number;
-    swiping: boolean;
-    dx: number;
-  }>({
-    startX: 0,
-    startY: 0,
-    swiping: false,
-    dx: 0,
-  });
+  startX: number;
+  startY: number;
+  swiping: boolean;
+  dx: number;
+}>({
+  startX: 0,
+  startY: 0,
+  swiping: false,
+  dx: 0,
+});
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    if (touch.clientX < 40) {
-      swipeRef.current = {
-        startX: touch.clientX,
-        startY: touch.clientY,
-        swiping: true,
-        dx: 0,
-      };
-    }
-  };
+const handleTouchStart = (e: React.TouchEvent) => {
+  const touch = e.touches[0];
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!swipeRef.current.swiping) return;
-    const dx = e.touches[0].clientX - swipeRef.current.startX;
-    const dy = Math.abs(e.touches[0].clientY - swipeRef.current.startY);
-    if (dy > 50) {
-      swipeRef.current.swiping = false;
-      return;
-    }
-    if (dx > 0) swipeRef.current.dx = dx;
-  };
+  // Если хочешь только «от края» — оставь это условие.
+  // Если нужно по всему экрану — убери if полностью.
+  if (touch.clientX < 40) {
+    swipeRef.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      swiping: true,
+      dx: 0,
+    };
+  }
+};
 
-  const handleTouchEnd = () => {
-    if (swipeRef.current.swiping && swipeRef.current.dx > 80) onBack();
+const handleTouchMove = (e: React.TouchEvent) => {
+  if (!swipeRef.current.swiping) return;
+
+  const touch = e.touches[0];
+  const dx = touch.clientX - swipeRef.current.startX;
+  const dy = Math.abs(touch.clientY - swipeRef.current.startY);
+
+  // Более строгий отсев вертикального скролла:
+  // если сильно уехали по вертикали и горизонтальный сдвиг маленький — считаем, что это скролл, а не свайп назад.
+  if (dy > 20 && dx < 30) {
     swipeRef.current.swiping = false;
     swipeRef.current.dx = 0;
-  };
-
-  if (!account && !obligation) {
-    return (
-      <div className="flex flex-col min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">
-          {entityType === "account" ? "Счёт" : "Обязательство"} не найдено
-        </p>
-        <button onClick={onBack} className="mt-4 text-safe-green">
-          ← Назад
-        </button>
-      </div>
-    );
+    return;
   }
+
+  if (dx > 0) {
+    swipeRef.current.dx = dx;
+
+    // Очень быстрый свайп — срабатывание прямо в move
+    if (dx > 120) {
+      swipeRef.current.swiping = false;
+      swipeRef.current.dx = 0;
+      onBack();
+    }
+  }
+};
+
+const handleTouchEnd = () => {
+  if (swipeRef.current.swiping && swipeRef.current.dx > 80) {
+    onBack();
+  }
+  swipeRef.current.swiping = false;
+  swipeRef.current.dx = 0;
+};
+
 
   // Account logic
   if (account) {
