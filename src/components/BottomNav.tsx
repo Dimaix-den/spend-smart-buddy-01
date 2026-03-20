@@ -42,7 +42,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
         }
 
         .ios26-icon-active {
-          filter: drop-shadow(0 0 6px hsl(162 100% 33% / 0.6));
+          filter: drop-shadow(0 0 6px hsl(162 100% 100% / 0.2));
         }
 
         @keyframes ios26-pop {
@@ -81,7 +81,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
                   borderRadius: "200px",
                   padding: "10px 4px 8px",
                   transform: isActive ? "scale(1)" : "scale(0.97)",
-                  background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
+                  background: isActive ? "rgba(255,255,255,0.05)" : "transparent",
                   boxShadow: isActive
                     ? "inset 0 0.5px 0 rgba(255,255,255,0.2), inset 0 -0.5px 0 rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.25)"
                     : "none",
@@ -100,7 +100,7 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
                 <span
                   className={isActive ? "ios26-label-active" : ""}
                   style={{
-                    fontSize: "9.5px",
+                    fontSize: "10px",
                     fontWeight: isActive ? 600 : 400,
                     letterSpacing: "0.01em",
                     color: isActive ? "hsl(0 0% 100%)" : "rgba(255,255,255,0.4)",
