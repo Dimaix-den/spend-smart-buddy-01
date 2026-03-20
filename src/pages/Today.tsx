@@ -219,24 +219,34 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
   const [showInfo, setShowInfo] = useState(false);
 
   const {
-    state,
-    safeToSpend,
-    safeToSpendStatus,
-    activeBalance,
-    remainingObligations,
-    stillNeedToSave,
-    daysLeft,
-    dailyBudget,
-    effectiveDailyBudget,
-    spentToday,
-    savingsAccounts,
-    getSavingsForAccount,
-    addExpense,
-    addIncome,
-    deleteExpense,
-  } = finance;
+  state,
+  safeToSpend,
+  safeToSpendStatus,
+  activeBalance,
+  remainingObligations,
+  stillNeedToSave,
+  daysLeft,
+  dailyBudget,
+  effectiveDailyBudget,
+  spentToday,
+  savingsAccounts,
+  getSavingsForAccount,
+  addExpense,
+  addIncome,
+  deleteExpense,
+} = finance;
 
-  const { count: streakCount, isOnTrack } = useStreak(spentToday, effectiveDailyBudget);
+const { days, streak } = useStreak({
+  expenses: state.expenses,
+  dailyBudget,
+  activeBalance,
+  remainingObligations,
+  stillNeedToSave,
+});
+
+const streakCount = streak;
+const isOnTrack = streakCount > 0;
+
 
   const safeToSpendColor =
     safeToSpendStatus === "overspent"
