@@ -21,7 +21,13 @@ interface TodayProps {
   onOpenSheet: (expense?: Expense) => void;
 }
 
-function AnimatedNumber({ value, className }: { value: number; className?: string }) {
+function AnimatedNumber({
+  value,
+  className,
+}: {
+  value: number;
+  className?: string;
+}) {
   const [display, setDisplay] = useState(value);
   const [flash, setFlash] = useState(false);
   const prevRef = useRef(value);
@@ -79,16 +85,31 @@ function InfoPanel({
   }, []);
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-40 flex flex-col"
+      onClick={onClose}
+    >
       <div className="absolute inset-0 glass-overlay" />
-      <div
-        className="relative w-full max-w-app glass-sheet rounded-t-[20px] p-4 modal-slide-up mb-20"
-        onClick={(e) => e.stopPropagation()}
-      >
+
+        <div
+          className="relative mt-auto w-full max-w-app mx-auto glass-sheet rounded-t-[20px] modal-slide-up px-4 pt-4"
+          style={{
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 120px)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full" style={{ background: "hsl(0 0% 30%)" }} />
+          <div
+            className="w-10 h-1 rounded-full"
+            style={{ background: "hsl(0 0% 30%)" }}
+          />
         </div>
-        <h3 className="text-sm font-bold text-foreground mb-3">Как рассчитывается?</h3>
+
+        <h3 className="text-sm font-bold text-foreground mb-3">
+          Как рассчитывается?
+        </h3>
+
         <div className="space-y-4 text-sm">
           <div className="flex justify-between text-foreground/80">
             <span>Доступно на счетах</span>
@@ -96,22 +117,26 @@ function InfoPanel({
               {formatAmount(activeBalance)} ₸
             </span>
           </div>
+
           <div className="flex justify-between text-alert-orange">
             <span>− Неоплаченные обязательства</span>
             <span className="font-tabular font-semibold">
               −{formatAmount(remainingObligations)} ₸
             </span>
           </div>
+
           <div className="flex justify-between text-muted-foreground">
             <span>− Осталось сберечь</span>
             <span className="font-tabular font-semibold">
               −{formatAmount(stillNeedToSave)} ₸
             </span>
           </div>
+
           <div className="border-t border-white/5 pt-4 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
             <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
+
           <div
             className="rounded-[12px] p-3 mt-1 space-y-4"
             style={{ background: "hsl(0 0% 18%)" }}
@@ -122,14 +147,18 @@ function InfoPanel({
                 {formatAmount(dailyBudget)} ₸
               </span>
             </div>
+
             <div className="flex justify-between">
               <span className="text-foreground/80">− Потрачено сегодня</span>
               <span className="text-alert-orange font-semibold font-tabular">
                 {formatAmount(spentToday)} ₸
               </span>
             </div>
+
             <div className="flex justify-between items-center border-t border-white/5 pt-1.5">
-              <span className="text-foreground font-medium">= Можно потратить</span>
+              <span className="text-foreground font-medium">
+                = Можно потратить
+              </span>
               <span className="text-safe-green font-bold font-tabular text-lg">
                 {formatAmount(Math.max(0, safeToSpend))} ₸
               </span>
@@ -215,38 +244,41 @@ function TransactionRow({
   );
 }
 
-export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProps) {
+export default function Today({
+  finance,
+  onShowHistory,
+  onOpenSheet,
+}: TodayProps) {
   const [showInfo, setShowInfo] = useState(false);
 
   const {
-  state,
-  safeToSpend,
-  safeToSpendStatus,
-  activeBalance,
-  remainingObligations,
-  stillNeedToSave,
-  daysLeft,
-  dailyBudget,
-  effectiveDailyBudget,
-  spentToday,
-  savingsAccounts,
-  getSavingsForAccount,
-  addExpense,
-  addIncome,
-  deleteExpense,
-} = finance;
+    state,
+    safeToSpend,
+    safeToSpendStatus,
+    activeBalance,
+    remainingObligations,
+    stillNeedToSave,
+    daysLeft,
+    dailyBudget,
+    effectiveDailyBudget,
+    spentToday,
+    savingsAccounts,
+    getSavingsForAccount,
+    addExpense,
+    addIncome,
+    deleteExpense,
+  } = finance;
 
-const { days, streak } = useStreak({
-  expenses: state.expenses,
-  dailyBudget,
-  activeBalance,
-  remainingObligations,
-  stillNeedToSave,
-});
+  const { days, streak } = useStreak({
+    expenses: state.expenses,
+    dailyBudget,
+    activeBalance,
+    remainingObligations,
+    stillNeedToSave,
+  });
 
-const streakCount = streak;
-const isOnTrack = streakCount > 0;
-
+  const streakCount = streak;
+  const isOnTrack = streakCount > 0;
 
   const safeToSpendColor =
     safeToSpendStatus === "overspent"
@@ -285,7 +317,9 @@ const isOnTrack = streakCount > 0;
         {/* Header row */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <h1 className="text-4xl font-bold tracking-tight text-white px-2">Sanda</h1>
+            <h1 className="text-4xl font-bold tracking-tight text-white px-2">
+              Sanda
+            </h1>
           </div>
 
           {/* Streak badge */}
@@ -349,17 +383,17 @@ const isOnTrack = streakCount > 0;
           {/* Карточка hero */}
           <div className="mt-3 glass-card rounded-[20px] px-4 py-8">
             <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-2">
-                <p className="text-xs font-semibold tracking-widest uppercase text-white">
-                  {heroLabel}
-                </p>
-                <button
-                  onClick={() => setShowInfo(true)}
-                  className="inline-flex items-center justify-center text-white/70 hover:text-white transition-colors"
-                >
-                  <HelpCircle size={12} />
-                </button>
-              </div>
+              <button
+              onClick={() => setShowInfo(true)}
+              className="inline-flex items-center justify-center gap-1 mb-2 text-white/80 hover:text-white transition-colors active:scale-[0.98]"
+              style={{ WebkitTapHighlightColor: "transparent" }}
+            >
+              <span className="text-xs font-semibold tracking-widest uppercase">
+                {heroLabel}
+              </span>
+              <HelpCircle size={12} />
+            </button>
+
 
               <div className="flex items-end justify-center gap-2 mb-3">
                 <span
@@ -415,7 +449,10 @@ const isOnTrack = streakCount > 0;
         )}
 
         {recentExpenses.length > 0 && (
-          <div className="animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
+          <div
+            className="animate-fade-in-up"
+            style={{ animationDelay: "0.12s" }}
+          >
             <h3 className="text-lg font-semibold tracking-wider text-white mb-4 px-1">
               Последние операции
             </h3>
@@ -429,10 +466,14 @@ const isOnTrack = streakCount > 0;
                 return (
                   <div key={date}>
                     <div className="flex items-center justify-between mb-1 px-1">
-                      <span className="text-xs text-muted-foreground">{date}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {date}
+                      </span>
                       <span
                         className={`text-xs font-bold font-tabular ${
-                          dayTotal >= 0 ? "text-safe-green" : "text-alert-orange"
+                          dayTotal >= 0
+                            ? "text-safe-green"
+                            : "text-alert-orange"
                         }`}
                       >
                         {dayTotal >= 0 ? "+" : ""}
@@ -443,7 +484,8 @@ const isOnTrack = streakCount > 0;
                       {txns.map((expense) => {
                         const isIncome = expense.type === "income";
                         const isTransfer =
-                          expense.type === "transfer" || expense.type === "savings";
+                          expense.type === "transfer" ||
+                          expense.type === "savings";
                         const isObligation = expense.type === "obligation";
 
                         const label = isIncome
@@ -508,7 +550,13 @@ const isOnTrack = streakCount > 0;
   );
 }
 
-export function TodayFAB({ onClick, isOpen }: { onClick: () => void; isOpen: boolean }) {
+export function TodayFAB({
+  onClick,
+  isOpen,
+}: {
+  onClick: () => void;
+  isOpen: boolean;
+}) {
   return (
     <button
       onClick={onClick}
