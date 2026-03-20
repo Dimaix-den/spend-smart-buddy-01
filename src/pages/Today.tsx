@@ -67,8 +67,13 @@ function InfoPanel({
   stillNeedToSave,
   daysLeft,
   dailyBudget,
+  effectiveDailyBudget,
   spentToday,
   safeToSpend,
+  upcomingPlannedIncome,
+  upcomingPlannedExpenses,
+  includePlans,
+  onTogglePlans,
 }: {
   onClose: () => void;
   activeBalance: number;
@@ -76,13 +81,20 @@ function InfoPanel({
   stillNeedToSave: number;
   daysLeft: number;
   dailyBudget: number;
+  effectiveDailyBudget: number;
   spentToday: number;
   safeToSpend: number;
+  upcomingPlannedIncome: number;
+  upcomingPlannedExpenses: number;
+  includePlans: boolean;
+  onTogglePlans: () => void;
 }) {
   useEffect(() => {
     document.body.classList.add("popup-open");
     return () => document.body.classList.remove("popup-open");
   }, []);
+
+  const netPlans = upcomingPlannedIncome - upcomingPlannedExpenses;
 
   return (
     <div
@@ -91,14 +103,12 @@ function InfoPanel({
     >
       <div className="absolute inset-0 glass-overlay" />
 
-        <div
-          className="relative mt-auto w-full max-w-app mx-auto glass-sheet rounded-t-[20px] modal-slide-up px-4 pt-4"
-          style={{
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 120px)",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-
+      <div
+        className="relative mt-auto w-full max-w-app mx-auto glass-sheet rounded-t-[20px] modal-slide-up px-4 pt-4"
+        // больше «подушки» снизу, чтобы не упираться в навбар
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 140px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-center mb-4">
           <div
             className="w-10 h-1 rounded-full"
@@ -106,7 +116,7 @@ function InfoPanel({
           />
         </div>
 
-        <h3 className="text-sm font-bold text-foreground mb-3">
+        <h3 className="text-lg font-bold text-foreground mb-3">
           Как рассчитывается?
         </h3>
 
@@ -132,9 +142,87 @@ function InfoPanel({
             </span>
           </div>
 
+          {/* Блок с планами */}
+          <div
+            className="rounded-[12px] p-3 mt-1 space-y-3"
+            style={{
+              background: "hsl(0 0% 18%)",
+              opacity: includePlans ? 1 : 0.45, // серим весь блок, если выкл
+            }}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-foreground">
+                  Планы до конца периода
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Включать ли их в расчёт «Можешь потратить»
+                </p>
+              </div>
+
+              <button
+                onClick={onTogglePlans}
+                className="relative flex-shrink-0"
+                style={{
+                  width: 51,
+                  height: 31,
+                  borderRadius: 31,
+                }}
+              >
+                <div
+                  className="absolute inset-0 rounded-full transition-colors duration-300"
+                  style={{
+                    background: includePlans
+                      ? "hsl(162 100% 33%)"
+                      : "hsl(0 0% 23%)",
+                  }}
+                />
+                <div
+                  className="absolute rounded-full bg-white"
+                  style={{
+                    top: 2,
+                    left: 2,
+                    width: 27,
+                    height: 27,
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
+                    transition:
+                      "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                    transform: includePlans
+                      ? "translateX(20px)"
+                      : "translateX(0px)",
+                  }}
+                />
+              </button>
+            </div>
+
+            <div className="flex justify-between text-safe-green">
+              <span>+ Планируемый доход</span>
+              <span className="font-tabular font-semibold">
+                +{formatAmount(upcomingPlannedIncome)} ₸
+              </span>
+            </div>
+
+            <div className="flex justify-between text-alert-orange">
+              <span>− Планируемые расходы</span>
+              <span className="font-tabular font-semibold">
+                −{formatAmount(upcomingPlannedExpenses)} ₸
+              </span>
+            </div>
+
+            <div className="flex justify-between border-t border-white/5 pt-2 text-foreground/90">
+              <span>= Чистый эффект планов</span>
+              <span className="font-tabular font-semibold">
+                {netPlans >= 0 ? "+" : "−"}
+                {formatAmount(Math.abs(netPlans))} ₸
+              </span>
+            </div>
+          </div>
+
           <div className="border-t border-white/5 pt-4 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
-            <span className="font-tabular font-semibold">{daysLeft} дн.</span>
+            <span className="font-tabular font-semibold">
+              {daysLeft} дн.
+            </span>
           </div>
 
           <div
@@ -142,9 +230,14 @@ function InfoPanel({
             style={{ background: "hsl(0 0% 18%)" }}
           >
             <div className="flex justify-between">
-              <span className="text-foreground/80">= Дневной лимит</span>
+              <span className="text-foreground/80">
+                = Дневной лимит{includePlans ? " с учётом планов" : ""}
+              </span>
               <span className="text-foreground font-semibold font-tabular">
-                {formatAmount(dailyBudget)} ₸
+                {formatAmount(
+                  includePlans ? effectiveDailyBudget : dailyBudget
+                )}{" "}
+                ₸
               </span>
             </div>
 
@@ -169,6 +262,7 @@ function InfoPanel({
     </div>
   );
 }
+
 
 function TransactionRow({
   expense,
@@ -227,12 +321,16 @@ function TransactionRow({
         onTouchEnd={handleTouchEnd}
       >
         <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${bgColor}`}>
+          <div
+            className={`w-8 h-8 rounded-full flex items-center justify-center ${bgColor}`}
+          >
             <Icon size={14} className={color} />
           </div>
           <div>
             <p className="text-sm font-medium text-foreground">{label}</p>
-            <p className="text-xs text-muted-foreground">{expense.account}</p>
+            <p className="text-xs text-muted-foreground">
+              {expense.account}
+            </p>
           </div>
         </div>
         <span className={`font-bold font-tabular text-sm ${color}`}>
@@ -262,14 +360,15 @@ export default function Today({
     dailyBudget,
     effectiveDailyBudget,
     spentToday,
+    upcomingPlannedIncome,
+    upcomingPlannedExpenses,
     savingsAccounts,
     getSavingsForAccount,
-    addExpense,
-    addIncome,
     deleteExpense,
+    updateSettings,
   } = finance;
 
-  const { days, streak } = useStreak({
+  const { streak } = useStreak({
     expenses: state.expenses,
     dailyBudget,
     activeBalance,
@@ -279,6 +378,8 @@ export default function Today({
 
   const streakCount = streak;
   const isOnTrack = streakCount > 0;
+
+  const includePlans = state.includePlansInCalculation ?? true;
 
   const safeToSpendColor =
     safeToSpendStatus === "overspent"
@@ -384,16 +485,15 @@ export default function Today({
           <div className="mt-3 glass-card rounded-[20px] px-4 py-8">
             <div className="text-center">
               <button
-              onClick={() => setShowInfo(true)}
-              className="inline-flex items-center justify-center gap-1 mb-2 text-white/80 hover:text-white transition-colors active:scale-[0.98]"
-              style={{ WebkitTapHighlightColor: "transparent" }}
-            >
-              <span className="text-xs font-semibold tracking-widest uppercase">
-                {heroLabel}
-              </span>
-              <HelpCircle size={12} />
-            </button>
-
+                onClick={() => setShowInfo(true)}
+                className="inline-flex items-center justify-center gap-1 mb-2 text-white/80 hover:text-white transition-colors active:scale-[0.98]"
+                style={{ WebkitTapHighlightColor: "transparent" }}
+              >
+                <span className="text-xs font-semibold tracking-widest uppercase">
+                  {heroLabel}
+                </span>
+                <HelpCircle size={12} />
+              </button>
 
               <div className="flex items-end justify-center gap-2 mb-3">
                 <span
@@ -542,8 +642,17 @@ export default function Today({
           stillNeedToSave={stillNeedToSave}
           daysLeft={daysLeft}
           dailyBudget={dailyBudget}
+          effectiveDailyBudget={effectiveDailyBudget}
           spentToday={spentToday}
           safeToSpend={safeToSpend}
+          upcomingPlannedIncome={upcomingPlannedIncome}
+          upcomingPlannedExpenses={upcomingPlannedExpenses}
+          includePlans={includePlans}
+          onTogglePlans={() =>
+            updateSettings({
+              includePlansInCalculation: !includePlans,
+            })
+          }
         />
       )}
     </div>
