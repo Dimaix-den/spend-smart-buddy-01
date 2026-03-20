@@ -1,137 +1,160 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
+import { Expense } from "@/hooks/useFinance";
 
-interface StreakData {
-  count: number;
-  lastCheckedDate: string; // YYYY-MM-DD
-  lastStatus: "ok" | "fail" | null;
-}
+export type DisciplineStatus = "no-data" | "within-budget" | "exceeded" | "future";
 
-const STREAK_KEY = "sanda_streak_v1";
+export type DisciplineDay = {
+  dateStr: string;
+  dayNum: number;
+  weekDay: number;
+  spent: number;
+  limit: number;
+  isToday: boolean;
+  status: DisciplineStatus;
+};
 
-function today() {
-  return new Date().toISOString().split("T")[0];
-}
-
-function loadStreak(): StreakData {
-  try {
-    const raw = localStorage.getItem(STREAK_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { count: 0, lastCheckedDate: "", lastStatus: null };
-}
-
-function saveStreak(data: StreakData) {
-  try {
-    localStorage.setItem(STREAK_KEY, JSON.stringify(data));
-  } catch {}
+interface UseStreakParams {
+  expenses: Expense[];
+  dailyBudget: number;
+  activeBalance: number;
+  remainingObligations: number;
+  stillNeedToSave: number;
 }
 
 /**
- * Страйк растёт если каждый день spentToday <= effectiveDailyBudget.
- * Проверка происходит при смене даты — вчерашний день засчитывается.
- * Сегодняшний день ещё не закончился — страйк показывается как есть.
+ * Один хук:
+ * - считает days для графика дисциплины на 7 дней,
+ * - считает streak = подряд "within-budget" от сегодняшнего дня назад (включая сегодня).
  */
-export function useStreak(spentToday: number, effectiveDailyBudget: number) {
-  const [streak, setStreak] = useState<StreakData>(loadStreak);
+export function useStreak({
+  expenses,
+  dailyBudget,
+  activeBalance,
+  remainingObligations,
+  stillNeedToSave,
+}: UseStreakParams) {
+  const { days, streak } = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-  useEffect(() => {
-    const todayStr = today();
-    const data = loadStreak();
+    const todayY = today.getFullYear();
+    const todayM = today.getMonth();
+    const todayD = today.getDate();
 
-    if (!data.lastCheckedDate) {
-      // Первый запуск — инициализируем
-      const initial: StreakData = { count: 0, lastCheckedDate: todayStr, lastStatus: null };
-      saveStreak(initial);
-      setStreak(initial);
-      return;
-    }
-
-    if (data.lastCheckedDate === todayStr) {
-      // Тот же день — просто отдаём текущее состояние
-      setStreak(data);
-      return;
-    }
-
-    // Новый день — засчитываем вчерашний
-    // Проверяем был ли пропуск (больше 1 дня)
-    const lastMs = new Date(data.lastCheckedDate).getTime();
-    const todayMs = new Date(todayStr).getTime();
-    const daysDiff = Math.round((todayMs - lastMs) / 86400000);
-
-    let newCount = data.count;
-
-    if (daysDiff > 1) {
-      // Пропустили день(и) — страйк сбрасывается
-      newCount = 0;
-    }
-    // если daysDiff === 1 — вчерашний статус уже записан в lastStatus
-    // страйк уже обновлён при записи вчера
-
-    const updated: StreakData = {
-      count: newCount,
-      lastCheckedDate: todayStr,
-      lastStatus: null,
+    const formatLocalDate = (d: Date) => {
+      const y = d.getFullYear();
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      const pad = (n: number) => (n < 10 ? `0${n}` : `${n}`);
+      return `${y}-${pad(m)}-${pad(day)}`;
     };
-    saveStreak(updated);
-    setStreak(updated);
-  }, []);
 
-  // Записываем результат дня при изменении потраченного
-  useEffect(() => {
-    const todayStr = today();
-    const data = loadStreak();
-    if (data.lastCheckedDate !== todayStr) return;
+    const todayStr = formatLocalDate(today);
 
-    // Обновляем статус текущего дня в реальном времени (но не финализируем)
-    // Финализация происходит при следующем открытии приложения
-    setStreak((prev) => ({ ...prev, lastStatus: spentToday <= effectiveDailyBudget ? "ok" : "fail" }));
-  }, [spentToday, effectiveDailyBudget]);
+    const allTransactions = expenses.filter((e) => e.date);
+    const firstTransaction = [...allTransactions].sort((a, b) =>
+      a.date.localeCompare(b.date)
+    )[0];
+    const firstDate = firstTransaction
+      ? new Date(firstTransaction.date + "T00:00:00")
+      : null;
 
-  // Метод для ручной финализации — вызывается при смене дня
-  const finalizeDay = (wasWithinLimit: boolean) => {
-    const todayStr = today();
-    const data = loadStreak();
-    const newCount = wasWithinLimit ? data.count + 1 : 0;
-    const updated: StreakData = {
-      count: newCount,
-      lastCheckedDate: todayStr,
-      lastStatus: wasWithinLimit ? "ok" : "fail",
-    };
-    saveStreak(updated);
-    setStreak(updated);
-  };
+    const daysList: DisciplineDay[] = [];
 
-  // При монтировании — если вчера не финализировали, делаем это сейчас
-  useEffect(() => {
-    const todayStr = today();
-    const data = loadStreak();
-    if (!data.lastCheckedDate || data.lastCheckedDate === todayStr) return;
+    const currentDayOfWeek = today.getDay();
+    const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+    const monday = new Date(todayY, todayM, todayD - daysFromMonday);
+    monday.setHours(0, 0, 0, 0);
 
-    const lastMs = new Date(data.lastCheckedDate).getTime();
-    const todayMs = new Date(todayStr).getTime();
-    const daysDiff = Math.round((todayMs - lastMs) / 86400000);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(
+        monday.getFullYear(),
+        monday.getMonth(),
+        monday.getDate() + i
+      );
+      d.setHours(0, 0, 0, 0);
 
-    if (daysDiff === 1 && data.lastStatus !== null) {
-      // Вчера был записан статус — финализируем
-      const newCount = data.lastStatus === "ok" ? data.count + 1 : 0;
-      const updated: StreakData = {
-        count: newCount,
-        lastCheckedDate: todayStr,
-        lastStatus: null,
-      };
-      saveStreak(updated);
-      setStreak(updated);
-    } else if (daysDiff > 1) {
-      const updated: StreakData = { count: 0, lastCheckedDate: todayStr, lastStatus: null };
-      saveStreak(updated);
-      setStreak(updated);
+      const dateStr = formatLocalDate(d);
+      const dayNum = d.getDate();
+      const jsDay = d.getDay();
+      const weekDay = jsDay === 0 ? 6 : jsDay - 1;
+
+      const dTime = d.getTime();
+      const todayTime = today.getTime();
+
+      let status: DisciplineStatus;
+      let spent = 0;
+      let limitForDay = dailyBudget;
+
+      if (dTime > todayTime) {
+        status = "future";
+      } else if (!firstDate || dTime < firstDate.getTime()) {
+        status = "no-data";
+      } else if (dateStr === todayStr) {
+        const savedLimit = localStorage.getItem(`day_limit_${dateStr}`);
+        if (savedLimit) {
+          limitForDay = parseFloat(savedLimit);
+        } else if (dailyBudget > 0) {
+          localStorage.setItem(`day_limit_${dateStr}`, String(dailyBudget));
+          limitForDay = dailyBudget;
+        }
+
+        spent = expenses
+          .filter((e) => e.type === "regular" && e.date === dateStr)
+          .reduce((sum, e) => sum + e.amount, 0);
+
+        status = spent <= limitForDay ? "within-budget" : "exceeded";
+
+        localStorage.setItem(`day_status_${dateStr}`, status);
+        localStorage.setItem(`day_spent_${dateStr}`, String(spent));
+      } else {
+        const savedStatus = localStorage.getItem(`day_status_${dateStr}`);
+        const savedLimit = localStorage.getItem(`day_limit_${dateStr}`);
+        const savedSpent = localStorage.getItem(`day_spent_${dateStr}`);
+
+        if (savedStatus) {
+          status = savedStatus as DisciplineStatus;
+          spent = savedSpent ? parseFloat(savedSpent) : 0;
+          limitForDay = savedLimit ? parseFloat(savedLimit) : dailyBudget;
+        } else {
+          spent = expenses
+            .filter((e) => e.type === "regular" && e.date === dateStr)
+            .reduce((sum, e) => sum + e.amount, 0);
+
+          status = spent <= limitForDay ? "within-budget" : "exceeded";
+
+          localStorage.setItem(`day_status_${dateStr}`, status);
+          localStorage.setItem(`day_spent_${dateStr}`, String(spent));
+          localStorage.setItem(`day_limit_${dateStr}`, String(limitForDay));
+        }
+      }
+
+      daysList.push({
+        dateStr,
+        dayNum,
+        weekDay,
+        spent,
+        limit: limitForDay,
+        isToday: dateStr === todayStr,
+        status,
+      });
     }
-  }, []);
 
-  const isOnTrack = spentToday <= effectiveDailyBudget;
+    // Стрик: подряд зелёные кружки от сегодняшнего дня назад (включая сегодня)
+    let streak = 0;
+    for (let i = daysList.length - 1; i >= 0; i--) {
+      const d = daysList[i];
+      if (d.status === "within-budget") {
+        streak += 1;
+      } else if (d.status === "future" || d.status === "no-data") {
+        continue;
+      } else {
+        break;
+      }
+    }
 
-  return {
-    count: streak.count,
-    isOnTrack,
-  };
+    return { days: daysList, streak };
+  }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave]);
+
+  return { days, streak };
 }
