@@ -69,9 +69,12 @@
     font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior: none;
+
+    -webkit-user-select: none; /* Safari */
+    -ms-user-select: none;     /* IE 10+ */
+    user-select: none;         /* Остальные */
   }
 
-  /* Scroll lock when popup is open */
   body.popup-open {
     overflow: hidden;
     position: fixed;
