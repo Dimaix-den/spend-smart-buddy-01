@@ -167,8 +167,16 @@ function TransactionRow({
   };
 
   const Icon = isIncome ? TrendingUp : isTransfer ? ArrowRightLeft : TrendingDown;
-  const color = isIncome ? "text-safe-green" : isTransfer ? "text-income-blue" : "text-alert-orange";
-  const bgColor = isIncome ? "bg-safe-green/15" : isTransfer ? "bg-income-blue/15" : "bg-alert-orange/15";
+  const color = isIncome
+    ? "text-safe-green"
+    : isTransfer
+    ? "text-income-blue"
+    : "text-alert-orange";
+  const bgColor = isIncome
+    ? "bg-safe-green/15"
+    : isTransfer
+    ? "bg-income-blue/15"
+    : "bg-alert-orange/15";
 
   return (
     <div className="relative overflow-hidden rounded-[12px]">
@@ -267,9 +275,7 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
         {/* Header row */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <h1 className="text-4xl font-bold tracking-tight text-white px-2">
-              Sanda
-            </h1>
+            <h1 className="text-4xl font-bold tracking-tight text-white px-2">Sanda</h1>
           </div>
 
           {/* Streak badge */}
@@ -330,7 +336,7 @@ export default function Today({ finance, onShowHistory, onOpenSheet }: TodayProp
             stillNeedToSave={stillNeedToSave}
           />
 
-          {/* Карточка hero без оборачивания дисциплины */}
+          {/* Карточка hero */}
           <div className="mt-3 glass-card rounded-[20px] px-4 py-8">
             <div className="text-center">
               <div className="flex items-center justify-center gap-1 mb-2">
