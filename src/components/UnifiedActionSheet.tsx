@@ -21,6 +21,7 @@ interface UnifiedActionSheetProps {
   obligations: Obligation[];
   editingExpense?: Expense | null;
   plannedExpenses?: PlannedExpense[];
+  preselectedAccount?: string; // ← НОВЫЙ ПРОП
 }
 
 // Sort accounts by usage frequency
@@ -45,6 +46,7 @@ export default function UnifiedActionSheet({
   obligations,
   editingExpense,
   plannedExpenses = [],
+  preselectedAccount, // ← НОВЫЙ ПРОП
 }: UnifiedActionSheetProps) {
   const isEditing = !!editingExpense;
 
@@ -137,6 +139,7 @@ export default function UnifiedActionSheet({
         }
         setSelectedPlanId("");
       } else {
+        // Новая транзакция
         setTab("expense");
         setAmount("");
         setNote("");
@@ -144,21 +147,28 @@ export default function UnifiedActionSheet({
         setSelectedObligId("");
         setSelectedPlanId("");
         setToAccount("");
-        if (activeAccounts.length > 0) setSelectedAccount(activeAccounts[0].name);
+        
+        // ← ИЗМЕНЁННАЯ ЛОГИКА: используем preselectedAccount
+        if (preselectedAccount) {
+          setSelectedAccount(preselectedAccount);
+        } else if (activeAccounts.length > 0) {
+          setSelectedAccount(activeAccounts[0].name);
+        }
+        
         setOperationDate(new Date().toISOString().split("T")[0]);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, editingExpense]);
+  }, [open, editingExpense, preselectedAccount]); // ← Добавлен preselectedAccount
 
   if (!open) return null;
 
-const parseAmount = () => {
-  // ru-RU использует \u00A0 (неразрывный пробел) как разделитель тысяч
-  const cleaned = amount.replace(/[\s\u00A0\u202F]/g, "").replace(/[^\d]/g, "");
-  const num = parseInt(cleaned, 10);
-  return num && num > 0 ? num : 0;
-};
+  const parseAmount = () => {
+    // ru-RU использует \u00A0 (неразрывный пробел) как разделитель тысяч
+    const cleaned = amount.replace(/[\s\u00A0\u202F]/g, "").replace(/[^\d]/g, "");
+    const num = parseInt(cleaned, 10);
+    return num && num > 0 ? num : 0;
+  };
 
   const handleSave = () => {
     const num = parseAmount();
