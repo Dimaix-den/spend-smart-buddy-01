@@ -374,6 +374,8 @@ export default function Today({
     activeBalance,
     remainingObligations,
     stillNeedToSave,
+    dayHistory: state.dayHistory ?? {},
+    onUpdateDayHistory: (updates) => updateSettings({ dayHistory: updates }),
   });
 
   const streakCount = streak;
