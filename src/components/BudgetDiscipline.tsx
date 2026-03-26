@@ -37,32 +37,28 @@ export default function BudgetDiscipline({ days }: BudgetDisciplineProps) {
               borderColor: grayColor,
               backgroundColor: "transparent",
             };
-            
           } else {
-            // Сколько потратил относительно лимита (0..∞)
-            const rawRatio = d.limit > 0 && !isNoData ? d.spent / d.limit : 0;
-            // Для зелёной части ограничиваем максимум 1 (то есть 100%)
-            const clampedRatio = Math.min(rawRatio, 1);
+            const isExceeded = d.status === "exceeded";
 
-            // Показываем красный только если день реально "пробил лимит"
-            // (в useStreak такой день помечен статусом "exceeded")
-            const showRed = d.status === "exceeded";
+            const rawRatio =
+              d.limit > 0 && !isNoData ? d.spent / d.limit : 0;
 
-            // Зелёный сектор: чем меньше потратил, тем больше зелёного
-            const greenRatio = Math.max(0, Math.min(1 - clampedRatio, 1));
+            const clampedRatio = Math.max(0, Math.min(rawRatio, 1));
+
+            const greenRatio = 1 - clampedRatio;
             const greenDeg = greenRatio * 360;
 
-            // Насколько "сверх лимита" ушли (для красного сектора)
-            const overRatio = showRed ? Math.min(rawRatio - 1, 1) : 0;
-            const redDeg = overRatio > 0 ? overRatio * 360 : 0;
+            let redDeg = 0;
+            if (isExceeded && rawRatio > 1) {
+              const overRatio = Math.min(rawRatio - 1, 1);
+              redDeg = overRatio * 360;
+            }
 
             let backgroundImage: string;
 
             if (isNoData) {
-              // Нет данных — просто серый кружок
               backgroundImage = `conic-gradient(${grayColor} 0deg 360deg)`;
-            } else if (showRed && redDeg > 0) {
-              // День превышен — добавляем красную дугу поверх
+            } else if (isExceeded && redDeg > 0) {
               backgroundImage = `
                 conic-gradient(
                   ${redColor} 0deg ${redDeg}deg,
@@ -73,7 +69,6 @@ export default function BudgetDiscipline({ days }: BudgetDisciplineProps) {
                 )
               `;
             } else {
-              // Обычный день в лимите — зелёная + серая часть
               backgroundImage = `
                 conic-gradient(
                   ${greenColor} 0deg ${greenDeg}deg,
@@ -94,7 +89,6 @@ export default function BudgetDiscipline({ days }: BudgetDisciplineProps) {
               backgroundClip: "border-box",
             };
           }
-
 
           return (
             <div
