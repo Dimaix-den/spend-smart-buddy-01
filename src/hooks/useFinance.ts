@@ -76,6 +76,7 @@ export interface FinanceState {
   salaryDay?: number;
   plannedExpenses?: PlannedExpense[];
   includePlansInCalculation?: boolean;
+  dayHistory?: Record<string, { status: string; spent: number; limit: number }>;
 }
 
 const STORAGE_KEY = "sanda_finance_v3";
@@ -106,6 +107,7 @@ const DEFAULT_STATE: FinanceState = {
   salaryDay: 15,
   plannedExpenses: [],
   includePlansInCalculation: true,
+  dayHistory: {},
 };
 
 function migrateState(parsed: any): FinanceState {
@@ -178,6 +180,7 @@ function migrateState(parsed: any): FinanceState {
   if (!parsed.plannedExpenses) parsed.plannedExpenses = [];
   if (parsed.includePlansInCalculation === undefined) parsed.includePlansInCalculation = true;
   if (!parsed.assets) parsed.assets = [];
+  if (!parsed.dayHistory) parsed.dayHistory = {};
   return parsed as FinanceState;
 }
 
@@ -812,7 +815,20 @@ export function useFinance(userId?: string | null) {
           o.id === expense.obligationId ? { ...o, paid: false } : o
         );
       }
-      return { ...s, accounts: updatedAccounts, obligations: updatedObligations, expenses: s.expenses.filter((e) => e.id !== id) };
+      // Откатываем paidInMonths у связанного плана
+      let updatedPlans = s.plannedExpenses || [];
+      if (expense.plannedExpenseId) {
+        const expDate = new Date(expense.date);
+        const monthKey = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, "0")}`;
+        updatedPlans = updatedPlans.map((p) => {
+          if (p.id !== expense.plannedExpenseId) return p;
+          return {
+            ...p,
+            paidInMonths: (p.paidInMonths || []).filter((m) => m !== monthKey),
+          };
+        });
+      }
+      return { ...s, accounts: updatedAccounts, obligations: updatedObligations, plannedExpenses: updatedPlans, expenses: s.expenses.filter((e) => e.id !== id) };
     });
   }, []);
 
@@ -850,9 +866,14 @@ export function useFinance(userId?: string | null) {
   }, []);
 
   useEffect(() => {
-    const currentMonth = new Date().getMonth();
-    const startMonth = new Date(state.budgetPeriod.startDate).getMonth();
-    if (currentMonth !== startMonth) {
+    const now = new Date();
+    const startDate = new Date(state.budgetPeriod.startDate);
+
+    const monthsDiff =
+      (now.getFullYear() - startDate.getFullYear()) * 12 +
+      (now.getMonth() - startDate.getMonth());
+
+    if (monthsDiff > 0) {
       setState((s) => {
         const balances: Record<string, number> = {};
         s.accounts
