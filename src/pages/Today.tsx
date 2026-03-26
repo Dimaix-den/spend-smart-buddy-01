@@ -368,7 +368,7 @@ export default function Today({
     updateSettings,
   } = finance;
 
-  const { streak } = useStreak({
+  const { streak, days: disciplineDays } = useStreak({
     expenses: state.expenses,
     dailyBudget,
     activeBalance,
@@ -475,13 +475,7 @@ export default function Today({
 
         {/* Hero: сначала дисциплина, потом карточка */}
         <div className="pt-4">
-          <BudgetDiscipline
-            expenses={state.expenses}
-            dailyBudget={dailyBudget}
-            activeBalance={activeBalance}
-            remainingObligations={remainingObligations}
-            stillNeedToSave={stillNeedToSave}
-          />
+          <BudgetDiscipline days={disciplineDays} />
 
           {/* Карточка hero */}
           <div className="mt-3 glass-card rounded-[20px] px-4 py-8">
