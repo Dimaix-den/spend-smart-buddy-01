@@ -1,38 +1,12 @@
-import { useEffect } from "react";
-import { Expense } from "@/hooks/useFinance";
-import { useStreak } from "@/hooks/usestreak";
+import { DisciplineDay } from "@/hooks/usestreak";
 
 interface BudgetDisciplineProps {
-  expenses: Expense[];
-  dailyBudget: number;
-  activeBalance: number;
-  remainingObligations: number;
-  stillNeedToSave: number;
-  onStreakChange?: (count: number) => void;
+  days: DisciplineDay[];
 }
 
-export default function BudgetDiscipline({
-  expenses,
-  dailyBudget,
-  activeBalance,
-  remainingObligations,
-  stillNeedToSave,
-  onStreakChange,
-}: BudgetDisciplineProps) {
+export default function BudgetDiscipline({ days }: BudgetDisciplineProps) {
   const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
   const weekDaysShort = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
-
-  const { days, streak } = useStreak({
-    expenses,
-    dailyBudget,
-    activeBalance,
-    remainingObligations,
-    stillNeedToSave,
-  });
-
-  useEffect(() => {
-    if (onStreakChange) onStreakChange(streak);
-  }, [streak, onStreakChange]);
 
   return (
     <div className="space-y-2">
