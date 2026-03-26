@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Expense } from "@/hooks/useFinance";
 
 export type DisciplineStatus = "no-data" | "within-budget" | "exceeded" | "future";
@@ -13,14 +13,17 @@ export type DisciplineDay = {
   status: DisciplineStatus;
 };
 
+export interface DayHistoryEntry {
+  status: string;
+  spent: number;
+  limit: number;
+}
+
 interface UseStreakParams {
   expenses: Expense[];
   dailyBudget: number;
-  activeBalance: number;
-  remainingObligations: number;
-  stillNeedToSave: number;
-  dayHistory: Record<string, { status: string; spent: number; limit: number }>;
-  onUpdateDayHistory: (updates: Record<string, { status: string; spent: number; limit: number }>) => void;
+  dayHistory: Record<string, DayHistoryEntry>;
+  onUpdateDayHistory: (newHistory: Record<string, DayHistoryEntry>) => void;
 }
 
 export function useStreak({
@@ -29,7 +32,7 @@ export function useStreak({
   dayHistory,
   onUpdateDayHistory,
 }: UseStreakParams) {
-  const { days, streak } = useMemo(() => {
+  const { days, streak, historyUpdates } = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -56,7 +59,7 @@ export function useStreak({
       : null;
 
     const daysList: DisciplineDay[] = [];
-    const historyUpdates: Record<string, { status: string; spent: number; limit: number }> = {};
+    const updates: Record<string, DayHistoryEntry> = {};
 
     const currentDayOfWeek = today.getDay();
     const daysFromMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
@@ -88,7 +91,6 @@ export function useStreak({
       } else if (!firstDate || dTime < firstDate.getTime()) {
         status = "no-data";
       } else if (dateStr === todayStr) {
-        // Сегодня: берём сохранённый лимит или фиксируем текущий
         const saved = dayHistory[dateStr];
         if (saved?.limit) {
           limitForDay = saved.limit;
@@ -102,9 +104,8 @@ export function useStreak({
 
         status = spent <= limitForDay ? "within-budget" : "exceeded";
 
-        historyUpdates[dateStr] = { status, spent, limit: limitForDay };
+        updates[dateStr] = { status, spent, limit: limitForDay };
       } else {
-        // Прошлые дни: берём из dayHistory (Firestore), не из localStorage
         const saved = dayHistory[dateStr];
         if (saved) {
           status = saved.status as DisciplineStatus;
@@ -116,7 +117,7 @@ export function useStreak({
             .reduce((sum, e) => sum + e.amount, 0);
 
           status = spent <= limitForDay ? "within-budget" : "exceeded";
-          historyUpdates[dateStr] = { status, spent, limit: limitForDay };
+          updates[dateStr] = { status, spent, limit: limitForDay };
         }
       }
 
@@ -131,12 +132,6 @@ export function useStreak({
       });
     }
 
-    // Сохраняем обновления в state (через Firestore), а не в localStorage
-    if (Object.keys(historyUpdates).length > 0) {
-      onUpdateDayHistory({ ...dayHistory, ...historyUpdates });
-    }
-
-    // Стрик: подряд зелёные от сегодняшнего дня назад
     let streak = 0;
     for (let i = daysList.length - 1; i >= 0; i--) {
       const d = daysList[i];
@@ -149,8 +144,16 @@ export function useStreak({
       }
     }
 
-    return { days: daysList, streak };
+    return { days: daysList, streak, historyUpdates: updates };
   }, [expenses, dailyBudget, dayHistory]);
+
+  useEffect(() => {
+    if (!historyUpdates || Object.keys(historyUpdates).length === 0) return;
+    onUpdateDayHistory({
+      ...dayHistory,
+      ...historyUpdates,
+    });
+  }, [historyUpdates, dayHistory, onUpdateDayHistory]);
 
   return { days, streak };
 }
