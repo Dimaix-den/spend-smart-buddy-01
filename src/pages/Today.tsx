@@ -105,7 +105,6 @@ function InfoPanel({
 
       <div
         className="relative mt-auto w-full max-w-app mx-auto glass-sheet rounded-t-[20px] modal-slide-up px-4 pt-4"
-        // больше «подушки» снизу, чтобы не упираться в навбар
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 140px)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -142,12 +141,11 @@ function InfoPanel({
             </span>
           </div>
 
-          {/* Блок с планами */}
           <div
             className="rounded-[12px] p-3 mt-1 space-y-3"
             style={{
               background: "hsl(0 0% 18%)",
-              opacity: includePlans ? 1 : 0.45, // серим весь блок, если выкл
+              opacity: includePlans ? 1 : 0.45,
             }}
           >
             <div className="flex items-center justify-between">
@@ -263,7 +261,6 @@ function InfoPanel({
   );
 }
 
-
 function TransactionRow({
   expense,
   label,
@@ -371,9 +368,6 @@ export default function Today({
   const { streak, days: disciplineDays } = useStreak({
     expenses: state.expenses,
     dailyBudget,
-    activeBalance,
-    remainingObligations,
-    stillNeedToSave,
     dayHistory: state.dayHistory ?? {},
     onUpdateDayHistory: (updates) => updateSettings({ dayHistory: updates }),
   });
@@ -415,9 +409,7 @@ export default function Today({
 
   return (
     <div className="flex flex-col min-h-screen pb-40">
-      {/* Header + hero */}
       <div className="px-4 pt-5 pb-2">
-        {/* Header row */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <h1 className="text-4xl font-bold tracking-tight text-white px-2">
@@ -425,7 +417,6 @@ export default function Today({
             </h1>
           </div>
 
-          {/* Streak badge */}
           <div
             className="flex items-center gap-1.5 px-2.5 py-3 rounded-full"
             style={{
@@ -473,11 +464,9 @@ export default function Today({
           </div>
         </div>
 
-        {/* Hero: сначала дисциплина, потом карточка */}
         <div className="pt-4">
           <BudgetDiscipline days={disciplineDays} />
 
-          {/* Карточка hero */}
           <div className="mt-3 glass-card rounded-[20px] px-4 py-8">
             <div className="text-center">
               <button
@@ -534,7 +523,6 @@ export default function Today({
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 px-4 space-y-10 mt-2">
         {(savingsAccounts.length > 0 || state.obligations.length > 0) && (
           <SavingsCarousel
