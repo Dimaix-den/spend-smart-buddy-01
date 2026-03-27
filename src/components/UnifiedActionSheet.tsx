@@ -93,25 +93,21 @@ export default function UnifiedActionSheet({
     new Date().toISOString().split("T")[0]
   );
 
-  // клавиатура и ограничения скролла
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+
   const sheetRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
-  // Filter out system accounts
   const nonSystemAccounts = accounts.filter((a) => !a.isSystem);
   const activeAccounts = sortByUsage(
     nonSystemAccounts.filter((a) => a.type === "active")
   );
   const transferableAccounts = sortByUsage(
-    nonSystemAccounts.filter(
-      (a) => a.type === "active" || a.type === "savings"
-    )
+    nonSystemAccounts.filter((a) => a.type === "active" || a.type === "savings")
   );
   const unpaidObligations = obligations.filter((o) => !o.paid);
 
-  // планы
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
@@ -125,84 +121,141 @@ export default function UnifiedActionSheet({
   const expensePlans = currentMonthPlans.filter((p) => p.type === "expense");
   const incomePlans = currentMonthPlans.filter((p) => p.type === "income");
 
-  // Scroll lock body
+  // Лочим скролл страницы, пока открыт поп-ап
   useEffect(() => {
-    if (open) {
-      document.body.classList.add("popup-open");
-    } else {
-      document.body.classList.remove("popup-open");
-    }
-    return () => document.body.classList.remove("popup-open");
+    if (!open) return;
+
+    const scrollY = window.scrollY || window.pageYOffset;
+
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+      window.scrollTo(0, scrollY);
+    };
   }, [open]);
 
-  // заполнение формы
+  // автофокус + скролл к началу при открытии
   useEffect(() => {
-    if (open) {
-      if (editingExpense) {
-        const exp = editingExpense;
-        const t: ActionTab =
-          exp.type === "income"
-            ? "income"
-            : exp.type === "savings" || exp.type === "transfer"
-            ? "transfer"
-            : "expense";
+    if (!open) return;
 
-        setTab(t);
-        setAmount(
-          exp.amount > 0 ? exp.amount.toLocaleString("ru-RU") : ""
-        );
-        setSelectedAccount(exp.account);
-        setNote(exp.note || "");
-        setOperationDate(
-          exp.date || new Date().toISOString().split("T")[0]
-        );
+    const hardResetScroll = () => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = 0;
+      }
+    };
 
-        if (t === "expense") {
-          if (exp.type === "obligation" && exp.obligationId) {
-            setExpenseType("obligation");
-            setSelectedObligId(exp.obligationId);
-          } else {
-            setExpenseType("regular");
-            setSelectedObligId("");
-          }
+    const focusInput = () => {
+      const el = inputRef.current as HTMLInputElement | null;
+      if (!el) return;
+      try {
+        el.focus({ preventScroll: true } as any);
+      } catch {
+        el.focus();
+      }
+    };
+
+    hardResetScroll();
+    focusInput();
+
+    const t1 = setTimeout(hardResetScroll, 50);
+    const t2 = setTimeout(hardResetScroll, 150);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [open]);
+
+  // инициализация стейта при открытии
+  useEffect(() => {
+    if (!open) return;
+
+    const resetScroll = () => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollTop = 0;
+      }
+    };
+
+    resetScroll();
+    const t1 = setTimeout(resetScroll, 0);
+    const t2 = setTimeout(resetScroll, 50);
+    const t3 = setTimeout(resetScroll, 100);
+
+    if (editingExpense) {
+      const exp = editingExpense;
+      const t: ActionTab =
+        exp.type === "income"
+          ? "income"
+          : exp.type === "savings" || exp.type === "transfer"
+          ? "transfer"
+          : "expense";
+
+      setTab(t);
+      setAmount(exp.amount > 0 ? exp.amount.toLocaleString("ru-RU") : "");
+      setSelectedAccount(exp.account);
+      setNote(exp.note || "");
+      setOperationDate(exp.date || new Date().toISOString().split("T")[0]);
+
+      if (t === "expense") {
+        if (exp.type === "obligation" && exp.obligationId) {
+          setExpenseType("obligation");
+          setSelectedObligId(exp.obligationId);
         } else {
           setExpenseType("regular");
           setSelectedObligId("");
         }
-
-        if (t === "transfer") {
-          setToAccount(exp.toAccount || "");
-        } else {
-          setToAccount("");
-        }
-        setSelectedPlanId("");
       } else {
-        setTab("expense");
-        setAmount("");
-        setNote("");
         setExpenseType("regular");
         setSelectedObligId("");
-        setSelectedPlanId("");
-        setToAccount("");
-
-        if (preselectedAccount) {
-          setSelectedAccount(preselectedAccount);
-        } else if (activeAccounts.length > 0) {
-          setSelectedAccount(activeAccounts[0].name);
-        }
-
-        setOperationDate(new Date().toISOString().split("T")[0]);
       }
+
+      if (t === "transfer") {
+        setToAccount(exp.toAccount || "");
+      } else {
+        setToAccount("");
+      }
+      setSelectedPlanId("");
+    } else {
+      setTab("expense");
+      setAmount("");
+      setNote("");
+      setExpenseType("regular");
+      setSelectedObligId("");
+      setSelectedPlanId("");
+      setToAccount("");
+
+      if (preselectedAccount) {
+        setSelectedAccount(preselectedAccount);
+      } else if (activeAccounts.length > 0) {
+        setSelectedAccount(activeAccounts[0].name);
+      }
+
+      setOperationDate(new Date().toISOString().split("T")[0]);
     }
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editingExpense, preselectedAccount]);
 
   if (!open) return null;
 
   const parseAmount = () => {
-    const cleaned = amount
-      .replace(/[\s\u00A0\u202F]/g, "")
-      .replace(/[^\d]/g, "");
+    const cleaned = amount.replace(/[\s\u00A0\u202F]/g, "").replace(/[^\d]/g, "");
     const num = parseInt(cleaned, 10);
     return num && num > 0 ? num : 0;
   };
@@ -217,16 +270,8 @@ export default function UnifiedActionSheet({
 
     if (tab === "income") {
       const planId =
-        expenseType === "planned" && selectedPlanId
-          ? selectedPlanId
-          : undefined;
-      onSaveIncome(
-        num,
-        selectedAccount,
-        note || undefined,
-        operationDate,
-        planId
-      );
+        expenseType === "planned" && selectedPlanId ? selectedPlanId : undefined;
+      onSaveIncome(num, selectedAccount, note || undefined, operationDate, planId);
     } else if (tab === "transfer") {
       if (!toAccount) return;
       const targetAcc = accounts.find((a) => a.name === toAccount);
@@ -311,7 +356,6 @@ export default function UnifiedActionSheet({
 
   const relevantPlans = tab === "income" ? incomePlans : expensePlans;
 
-  // клавиатура: держим кнопку над ней и ограничиваем скролл
   const handleFieldFocus = () => {
     setIsKeyboardOpen(true);
     setTimeout(() => {
@@ -353,39 +397,45 @@ export default function UnifiedActionSheet({
 
       <div
         ref={sheetRef}
-        className="relative mt-auto w-full h-full glass-sheet rounded-none modal-slide-up flex flex-col max-w-app mx-auto"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="relative mt-auto w-full glass-sheet rounded-none modal-slide-up flex flex-col max-w-app mx-auto"
+        style={{
+          height: "100dvh",
+          maxHeight: "90dvh",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
       >
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div
-            className="w-10 h-1 rounded-full"
-            style={{ background: "hsl(0 0% 30%)" }}
-          />
+        {/* Handle + header */}
+        <div className="pt-3 pb-3 px-5">
+          <div className="flex justify-center pb-1">
+            <div
+              className="w-10 h-1 rounded-full"
+              style={{ background: "hsl(0 0% 30%)" }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <h2 className="text-lg font-bold text-foreground">
+              {isEditing ? "Редактирование" : "Новая операция"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
+              style={{ background: "hsl(0 0% 23%)" }}
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-2 pb-3">
-          <h2 className="text-lg font-bold text-foreground">
-            {isEditing ? "Редактирование" : "Новая операция"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground transition-colors"
-            style={{ background: "hsl(0 0% 23%)" }}
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Контент + кнопка */}
+        {/* Content + bottom button */}
         <div className="flex-1 flex flex-col pb-4">
-          {/* скроллимая часть */}
           <div
             ref={scrollRef}
             className="flex-1 overflow-y-auto space-y-4"
             style={{
               paddingBottom: isKeyboardOpen ? 24 : 0,
+              overscrollBehavior: "contain",
+              WebkitOverflowScrolling: "touch",
             }}
           >
             {/* Tabs */}
@@ -425,15 +475,12 @@ export default function UnifiedActionSheet({
 
             {/* Amount */}
             <div className="space-y-1.5 px-5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Сумма
-              </label>
               <div className="relative">
                 <MoneyInput
                   ref={inputRef as any}
                   value={amount}
                   onChange={setAmount}
-                  autoFocus={true}
+                  autoFocus={false}
                   placeholder="0"
                   onFocus={handleFieldFocus}
                   onBlur={handleFieldBlur}
@@ -448,88 +495,160 @@ export default function UnifiedActionSheet({
               </div>
             </div>
 
-            {/* Account selector – подпись в рамке, список вне */}
-            <div className="space-y-1.5 px-5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {tab === "income" ? "На какой счёт" : "Откуда"}
-              </label>
-            </div>
-            <div className="w-full overflow-x-auto scrollbar-hide pb-1">
-              <div className="flex gap-2 px-5">
-                {(tab === "income"
-                  ? sortByUsage(
-                      nonSystemAccounts.filter((a) => a.type !== "inactive")
-                    )
-                  : sourceAccounts
-                ).map((acc) => {
-                  const isActiveAcc = selectedAccount === acc.name;
-                  const isSavingsAcc = acc.type === "savings";
-                  return (
-                    <button
-                      key={acc.id}
-                      onClick={() => setSelectedAccount(acc.name)}
-                      className="flex-shrink-0 px-3 py-2 rounded-[10px] text-left transition-all duration-200 min-w-[140px]"
-                      style={{
-                        background: isActiveAcc
-                          ? `${accentColor}22`
-                          : "hsl(0 0% 18%)",
-                        boxShadow: isActiveAcc
-                          ? `inset 0 0 0 1.5px ${accentColor}`
-                          : "none",
-                      }}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-muted-foreground">
-                          {isSavingsAcc ? "Сбережения" : "Счёт"}
-                        </span>
-                        {isSavingsAcc && (
-                          <span
-                            className="text-[9px] px-1 py-0.5 rounded font-semibold"
-                            style={{
-                              background: "hsl(162 100% 33% / 0.15)",
-                              color: "hsl(162 100% 33%)",
-                            }}
-                          >
-                            SAVINGS
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm font-semibold text-foreground truncate">
-                        {acc.name}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-tabular">
-                        {formatAmount(acc.balance)} ₸
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+              {/* Transfer / Accounts */}
+              {tab === "transfer" ? (
+                <>
+                  {/* строка label Откуда / Куда */}
+                  <div className="flex items-center gap-3 px-5 mt-3 ">
+                    <label className="flex-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Откуда
+                    </label>
+                    <label className="flex-1 text-xs font-medium text-muted-foreground uppercase tracking-wider text-right">
+                      Куда
+                    </label>
+                  </div>
 
-            {/* Transfer target – тоже «вне рамки» */}
-            {tab === "transfer" && (
+                  {/* две колонки + стрелка */}
+                  <div className="px-5 mt-1">
+                    <div className="relative">
+                      <div className="flex gap-3">
+                        {/* левая колонка (Откуда) */}
+                        <div className="flex-1">
+                          <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                            {sourceAccounts.map((acc) => {
+                              const isActive = selectedAccount === acc.name;
+                              const isSavings = acc.type === "savings";
+
+                              return (
+                                <button
+                                  key={acc.id}
+                                  type="button"
+                                  onClick={() => setSelectedAccount(acc.name)}
+                                  className="w-full px-3 py-2 rounded-[10px] text-left text-xs transition-all"
+                                  style={{
+                                    background: isActive
+                                      ? `${accentColor}22`
+                                      : "hsl(0 0% 18%)",
+                                    boxShadow: isActive
+                                      ? `inset 0 0 0 1.5px ${accentColor}`
+                                      : "none",
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-medium text-foreground truncate">
+                                      {acc.name}
+                                    </span>
+                                    {isSavings && (
+                                      <span
+                                        className="text-[12x] px-1 py-0.5 rounded font-semibold"
+                                        style={{
+                                          background: "hsl(162 100% 33% / 0.15)",
+                                          color: "hsl(162 100% 33%)",
+                                        }}
+                                      >
+                                        SAV
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[12px] text-muted-foreground font-tabular">
+                                    {formatAmount(acc.balance)} ₸
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* стрелка между колонками */}
+                        <div className="flex items-center justify-center px-1 text-muted-foreground text-lg">
+                          →
+                        </div>
+
+                        {/* правая колонка (Куда) */}
+                        <div className="flex-1">
+                          <div className="max-h-36 overflow-y-auto space-y-1 pl-1">
+                            {targetAccounts.map((acc) => {
+                              const isActive = toAccount === acc.name;
+                              const isSavings = acc.type === "savings";
+
+                              return (
+                                <button
+                                  key={acc.id}
+                                  type="button"
+                                  onClick={() => setToAccount(acc.name)}
+                                  className="w-full px-3 py-2 rounded-[10px] text-left text-xs transition-all"
+                                  style={{
+                                    background: isActive
+                                      ? "hsl(162 100% 33% / 0.15)"
+                                      : "hsl(0 0% 18%)",
+                                    boxShadow: isActive
+                                      ? "inset 0 0 0 1.5px hsl(162 100% 33%)"
+                                      : "none",
+                                  }}
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-medium text-foreground truncate">
+                                      {acc.name}
+                                    </span>
+                                    {isSavings && (
+                                      <span
+                                        className="text-[9px] px-1 py-0.5 rounded font-semibold"
+                                        style={{
+                                          background: "hsl(162 100% 33% / 0.15)",
+                                          color: "hsl(162 100% 33%)",
+                                        }}
+                                      >
+                                        SAV
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-muted-foreground font-tabular">
+                                    {formatAmount(acc.balance)} ₸
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* серые градиенты */}
+                      <div className="pointer-events-none absolute inset-x-0 top-0 h-0 bg-gradient-to-b from-[#1C1C1E] to-transparent" />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-0 bg-gradient-to-t from-[#1C1C1E] to-transparent" />
+                    </div>
+                  </div>
+                </>
+              ) : (
               <>
-                <div className="space-y-1.5 px-5 animate-fade-in-up">
+                {/* Account selector для расхода/дохода */}
+                <div className="space-y-1.5 px-5">
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Куда
+                    {tab === "income" ? "На какой счёт" : "Откуда"}
                   </label>
                 </div>
                 <div className="w-full overflow-x-auto scrollbar-hide pb-1">
                   <div className="flex gap-2 px-5">
-                    {targetAccounts.map((acc) => {
-                      const isActiveAcc = toAccount === acc.name;
+                    {(tab === "income"
+                      ? sortByUsage(
+                          nonSystemAccounts.filter(
+                            (a) => a.type !== "inactive"
+                          )
+                        )
+                      : sourceAccounts
+                    ).map((acc) => {
+                      const isActiveAcc = selectedAccount === acc.name;
                       const isSavingsAcc = acc.type === "savings";
                       return (
                         <button
                           key={acc.id}
-                          onClick={() => setToAccount(acc.name)}
+                          onClick={() => setSelectedAccount(acc.name)}
                           className="flex-shrink-0 px-3 py-2 rounded-[10px] text-left transition-all duration-200 min-w-[140px]"
                           style={{
                             background: isActiveAcc
-                              ? "hsl(162 100% 33% / 0.15)"
+                              ? `${accentColor}22`
                               : "hsl(0 0% 18%)",
                             boxShadow: isActiveAcc
-                              ? "inset 0 0 0 1.5px hsl(162 100% 33%)"
+                              ? `inset 0 0 0 1.5px ${accentColor}`
                               : "none",
                           }}
                         >
@@ -563,7 +682,7 @@ export default function UnifiedActionSheet({
               </>
             )}
 
-            {/* Expense type selector */}
+            {/* Expense type */}
             {tab !== "transfer" && (
               <div className="space-y-1.5 px-5">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -579,12 +698,7 @@ export default function UnifiedActionSheet({
                           label: "Обязательный",
                         },
                         ...(expensePlans.length > 0
-                          ? [
-                              {
-                                value: "planned" as const,
-                                label: "По плану",
-                              },
-                            ]
+                          ? [{ value: "planned" as const, label: "По плану" }]
                           : []),
                       ].map((opt) => (
                         <button
@@ -619,12 +733,7 @@ export default function UnifiedActionSheet({
                       {[
                         { value: "regular" as const, label: "Обычный" },
                         ...(incomePlans.length > 0
-                          ? [
-                              {
-                                value: "planned" as const,
-                                label: "По плану",
-                              },
-                            ]
+                          ? [{ value: "planned" as const, label: "По плану" }]
                           : []),
                       ].map((opt) => (
                         <button
@@ -737,7 +846,23 @@ export default function UnifiedActionSheet({
               </div>
             )}
 
-            {/* Note */}
+            {/* Дата */}
+            <div className="space-y-1.5 px-5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Дата операции
+              </label>
+              <div className="flex">
+                <input
+                  type="date"
+                  value={operationDate}
+                  onChange={(e) => setOperationDate(e.target.value)}
+                  className="glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none flex-1 box-border"
+                  style={{ maxWidth: "100%" }}
+                />
+              </div>
+            </div>
+
+            {/* Примечание */}
             <div className="space-y-1.5 px-5">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Примечание
@@ -758,32 +883,16 @@ export default function UnifiedActionSheet({
                 className="w-full glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none"
               />
             </div>
-
-            {/* Date */}
-            <div className="space-y-1.5 px-5">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Дата операции
-              </label>
-              <div className="flex">
-                <input
-                  type="date"
-                  value={operationDate}
-                  onChange={(e) => setOperationDate(e.target.value)}
-                  className="glass-input px-4 py-3 text-sm placeholder:text-muted-foreground/40 focus:outline-none flex-1 box-border"
-                  style={{ maxWidth: "100%" }}
-                />
-              </div>
-            </div>
           </div>
 
-          {/* Кнопка всегда над клавиатурой / внизу шита */}
+          {/* Кнопка снизу */}
           <button
             ref={buttonRef}
             onClick={handleSave}
             disabled={
               !amount || !selectedAccount || (tab === "transfer" && !toAccount)
             }
-            className="mt-4 mx-5 w-[calc(100%-40px)] py-4 rounded-[12px] font-bold text-base text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+            className="mb-10 mt-4 mx-5 w-[calc(100%-40px)] py-4 rounded-[12px] font-bold text-base text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
             style={{ background: accentColor }}
           >
             {isEditing
