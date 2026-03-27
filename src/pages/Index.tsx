@@ -33,6 +33,7 @@ const Index = () => {
   const [detailAccountId, setDetailAccountId] = useState<string | null>(null);
   const [detailObligationId, setDetailObligationId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [hasOverduePlans, setHasOverduePlans] = useState(false);
 
   // Для гостя используем guest uid — данные хранятся локально
   const finance = useFinance(user?.uid ?? (isGuest ? "guest" : undefined));
@@ -157,7 +158,9 @@ const Index = () => {
                 }}
               />
             )}
-            {activeTab === "plans" && <Plans finance={finance} />}
+            {activeTab === "plans" && (
+              <Plans finance={finance} onOverdueChange={setHasOverduePlans} />
+            )}
             {activeTab === "capital" && (
               <Capital
                 finance={finance}
@@ -177,7 +180,11 @@ const Index = () => {
             )}
           </div>
         </div>
-        <BottomNav active={activeTab} onChange={handleTabChange} />
+        <BottomNav
+          active={activeTab}
+          onChange={handleTabChange}
+          hasOverduePlans={hasOverduePlans}
+        />
       </div>
 
       {activeTab === "today" && (

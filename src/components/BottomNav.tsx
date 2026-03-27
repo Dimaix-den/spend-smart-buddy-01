@@ -5,9 +5,10 @@ type Tab = "today" | "plans" | "capital" | "settings";
 interface BottomNavProps {
   active: Tab;
   onChange: (tab: Tab) => void;
+  hasOverduePlans?: boolean;
 }
 
-export default function BottomNav({ active, onChange }: BottomNavProps) {
+export default function BottomNav({ active, onChange, hasOverduePlans }: BottomNavProps) {
   const tabs: { id: Tab; label: string; Icon: typeof Home }[] = [
     { id: "today", label: "Сегодня", Icon: Home },
     { id: "plans", label: "Планы", Icon: CalendarDays },
@@ -91,11 +92,16 @@ export default function BottomNav({ active, onChange }: BottomNavProps) {
                   className={isActive ? "ios26-icon-active" : ""}
                   style={{ transition: "all 0.25s ease" }}
                 >
-                  <Icon
-                    size={22}
-                    strokeWidth={isActive ? 2.2 : 1.6}
-                    color={isActive ? "hsl(0 0% 100%)" : "rgba(255,255,255,0.45)"}
-                  />
+                  <div className="relative">
+                    <Icon
+                      size={22}
+                      strokeWidth={isActive ? 2.2 : 1.6}
+                      color={isActive ? "hsl(0 0% 100%)" : "rgba(255,255,255,0.45)"}
+                    />
+                    {id === "plans" && hasOverduePlans && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-black/80" />
+                    )}
+                  </div>
                 </div>
                 <span
                   className={isActive ? "ios26-label-active" : ""}
