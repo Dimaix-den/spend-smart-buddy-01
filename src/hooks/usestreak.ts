@@ -19,19 +19,16 @@ interface UseStreakParams {
   activeBalance: number;
   remainingObligations: number;
   stillNeedToSave: number;
+  lastOpenedDates: string[];
 }
 
-/**
- * Один хук:
- * - считает days для графика дисциплины на 7 дней,
- * - считает streak = подряд "within-budget" от сегодняшнего дня назад (включая сегодня).
- */
 export function useStreak({
   expenses,
   dailyBudget,
   activeBalance,
   remainingObligations,
   stillNeedToSave,
+  lastOpenedDates,
 }: UseStreakParams) {
   const { days, streak } = useMemo(() => {
     const today = new Date();
@@ -51,6 +48,7 @@ export function useStreak({
 
     const todayStr = formatLocalDate(today);
 
+    // Самая ранняя операция — до неё всё no-data
     const allTransactions = expenses.filter((e) => e.date);
     const firstTransaction = [...allTransactions].sort((a, b) =>
       a.date.localeCompare(b.date)
@@ -58,6 +56,19 @@ export function useStreak({
     const firstDate = firstTransaction
       ? new Date(firstTransaction.date + "T00:00:00")
       : null;
+
+    // Самая ранняя дата открытия — до неё всё no-data
+    const sortedOpenDates = [...lastOpenedDates].sort();
+    const firstOpenDate = sortedOpenDates[0]
+      ? new Date(sortedOpenDates[0] + "T00:00:00")
+      : null;
+
+    // Начало отсчёта — самая ранняя из двух дат
+    const appStartDate = firstDate && firstOpenDate
+      ? new Date(Math.min(firstDate.getTime(), firstOpenDate.getTime()))
+      : firstDate || firstOpenDate;
+
+    const openedSet = new Set(lastOpenedDates);
 
     const daysList: DisciplineDay[] = [];
 
@@ -87,36 +98,26 @@ export function useStreak({
       let limitForDay = dailyBudget;
 
       if (dTime > todayTime) {
+        // Будущий день
         status = "future";
-      } else if (!firstDate || dTime < firstDate.getTime()) {
+      } else if (!appStartDate || dTime < appStartDate.getTime()) {
+        // До начала использования приложения
         status = "no-data";
-      } else if (dateStr === todayStr) {
-        const savedLimit = localStorage.getItem(`day_limit_${dateStr}`);
-        if (savedLimit) {
-          limitForDay = parseFloat(savedLimit);
-        } else if (dailyBudget > 0) {
-          localStorage.setItem(`day_limit_${dateStr}`, String(dailyBudget));
-          limitForDay = dailyBudget;
-        }
-
-        spent = expenses
-          .filter((e) => e.type === "regular" && e.date === dateStr)
-          .reduce((sum, e) => sum + e.amount, 0);
-
-        status = spent <= limitForDay ? "within-budget" : "exceeded";
-
-        localStorage.setItem(`day_status_${dateStr}`, status);
-        localStorage.setItem(`day_spent_${dateStr}`, String(spent));
       } else {
+        // День в зоне использования приложения
         const savedStatus = localStorage.getItem(`day_status_${dateStr}`);
         const savedLimit = localStorage.getItem(`day_limit_${dateStr}`);
         const savedSpent = localStorage.getItem(`day_spent_${dateStr}`);
 
-        if (savedStatus) {
-          status = savedStatus as DisciplineStatus;
-          spent = savedSpent ? parseFloat(savedSpent) : 0;
-          limitForDay = savedLimit ? parseFloat(savedLimit) : dailyBudget;
-        } else {
+        if (dateStr === todayStr) {
+          // Сегодня — фиксируем лимит один раз
+          if (savedLimit) {
+            limitForDay = parseFloat(savedLimit);
+          } else if (dailyBudget > 0) {
+            localStorage.setItem(`day_limit_${dateStr}`, String(dailyBudget));
+            limitForDay = dailyBudget;
+          }
+
           spent = expenses
             .filter((e) => e.type === "regular" && e.date === dateStr)
             .reduce((sum, e) => sum + e.amount, 0);
@@ -125,7 +126,35 @@ export function useStreak({
 
           localStorage.setItem(`day_status_${dateStr}`, status);
           localStorage.setItem(`day_spent_${dateStr}`, String(spent));
-          localStorage.setItem(`day_limit_${dateStr}`, String(limitForDay));
+        } else if (savedStatus) {
+          // Прошлый день с сохранённым статусом
+          status = savedStatus as DisciplineStatus;
+          spent = savedSpent ? parseFloat(savedSpent) : 0;
+          limitForDay = savedLimit ? parseFloat(savedLimit) : dailyBudget;
+        } else {
+          // Прошлый день без сохранённого статуса
+          spent = expenses
+            .filter((e) => e.type === "regular" && e.date === dateStr)
+            .reduce((sum, e) => sum + e.amount, 0);
+
+          const wasOpened = openedSet.has(dateStr);
+
+          if (spent > 0) {
+            // Были операции — считаем честно
+            status = spent <= limitForDay ? "within-budget" : "exceeded";
+            localStorage.setItem(`day_status_${dateStr}`, status);
+            localStorage.setItem(`day_spent_${dateStr}`, String(spent));
+            localStorage.setItem(`day_limit_${dateStr}`, String(limitForDay));
+          } else if (wasOpened) {
+            // Заходил, но не тратил — уложился в лимит
+            status = "within-budget";
+            localStorage.setItem(`day_status_${dateStr}`, status);
+            localStorage.setItem(`day_spent_${dateStr}`, "0");
+            localStorage.setItem(`day_limit_${dateStr}`, String(limitForDay));
+          } else {
+            // Не заходил и не тратил — нет данных
+            status = "no-data";
+          }
         }
       }
 
@@ -140,7 +169,8 @@ export function useStreak({
       });
     }
 
-    // Стрик: подряд зелёные кружки от сегодняшнего дня назад (включая сегодня)
+    // Стрик: подряд "within-budget" от сегодня назад
+    // no-data и future не ломают стрик, но и не считаются
     let streak = 0;
     for (let i = daysList.length - 1; i >= 0; i--) {
       const d = daysList[i];
@@ -154,7 +184,7 @@ export function useStreak({
     }
 
     return { days: daysList, streak };
-  }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave]);
+  }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave, lastOpenedDates]);
 
   return { days, streak };
 }
