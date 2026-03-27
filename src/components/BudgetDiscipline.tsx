@@ -22,8 +22,7 @@ export default function BudgetDiscipline({ days }: BudgetDisciplineProps) {
           const greenColor = "hsl(162 100% 45%)";
           const redColor = "hsl(0 76% 61%)";
 
-          const dayTextColor =
-            isFuture || isNoData ? "hsl(0 0% 50%)" : "#ffffff";
+          const dayTextColor = isFuture || isNoData ? "hsl(0 0% 50%)" : "#ffffff";
 
           let wrapperStyle: React.CSSProperties;
 
@@ -38,27 +37,17 @@ export default function BudgetDiscipline({ days }: BudgetDisciplineProps) {
               backgroundColor: "transparent",
             };
           } else {
-            const isExceeded = d.status === "exceeded";
-
-            const rawRatio =
-              d.limit > 0 && !isNoData ? d.spent / d.limit : 0;
-
-            const clampedRatio = Math.max(0, Math.min(rawRatio, 1));
-
-            const greenRatio = 1 - clampedRatio;
+            const ratio = d.limit > 0 && !isNoData ? d.spent / d.limit : 0;
+            const greenRatio = Math.max(0, Math.min(1 - ratio, 1));
             const greenDeg = greenRatio * 360;
-
-            let redDeg = 0;
-            if (isExceeded && rawRatio > 1) {
-              const overRatio = Math.min(rawRatio - 1, 1);
-              redDeg = overRatio * 360;
-            }
+            const overRatio = ratio > 1 ? Math.min(ratio - 1, 1) : 0;
+            const redDeg = overRatio * 360;
 
             let backgroundImage: string;
 
             if (isNoData) {
               backgroundImage = `conic-gradient(${grayColor} 0deg 360deg)`;
-            } else if (isExceeded && redDeg > 0) {
+            } else if (redDeg > 0) {
               backgroundImage = `
                 conic-gradient(
                   ${redColor} 0deg ${redDeg}deg,
@@ -99,11 +88,7 @@ export default function BudgetDiscipline({ days }: BudgetDisciplineProps) {
                   ? "flex flex-col items-center justify-center px-1 py-2 rounded-xl"
                   : "flex flex-col items-center justify-center"
               }
-              style={
-                d.isToday
-                  ? { backgroundColor: "rgba(140,146,172,0.18)" }
-                  : {}
-              }
+              style={d.isToday ? { backgroundColor: "rgba(140,146,172,0.18)" } : {}}
             >
               <span
                 className="text-[14px] leading-none mb-2"
