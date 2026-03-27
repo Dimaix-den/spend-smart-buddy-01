@@ -323,18 +323,18 @@ export function useFinance(userId?: string | null) {
     }
   }, [state, userId]);
 
-  // Записываем дату открытия приложения
+  // Записываем дату открытия приложения — только когда данные загружены
   useEffect(() => {
-    if (!readyToSave.current) return;
     const todayStr = today();
     const dates = state.lastOpenedDates || [];
-    if (!dates.includes(todayStr)) {
-      setState((s) => ({
-        ...s,
-        lastOpenedDates: [...(s.lastOpenedDates || []), todayStr],
-      }));
-    }
-  }, [readyToSave.current]);
+    if (dates.includes(todayStr)) return;
+    // Проверяем что это не DEFAULT_STATE (данные реально загружены)
+    if (firestoreLoading) return;
+    setState((s) => ({
+      ...s,
+      lastOpenedDates: [...(s.lastOpenedDates || []), todayStr],
+    }));
+  }, [firestoreLoading]);
 
   // ─── Derived ───────────────────────────────────────────────────
   const activeAccounts = state.accounts.filter((a) => a.type === "active" && !a.isSystem);
