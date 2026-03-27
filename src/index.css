@@ -253,3 +253,9 @@
   from { opacity: 0; }
   to   { opacity: 2; }
 }
+
+body.popup-open {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
