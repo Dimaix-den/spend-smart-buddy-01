@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { ChevronLeft, Pencil } from "lucide-react";
-import { useFinance, AccountType } from "@/hooks/useFinance";
+import { useFinance, AccountType, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
 import { toast } from "@/hooks/use-toast";
 import MoneyInput from "@/components/MoneyInput";
@@ -65,6 +65,7 @@ export default function EntityDetail({
     addExpense,
     addIncome,
     deleteExpense,
+    updateExpense,
   } = finance;
 
   const account =
@@ -99,6 +100,7 @@ export default function EntityDetail({
   );
 
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const swipeRef = useRef<{
   startX: number;
@@ -423,22 +425,45 @@ const handleTouchEnd = () => {
                           {date}
                         </p>
                         <div className="glass-card overflow-hidden">
-                          {txns.map((t, i) => {
+                        {txns.map((t, i) => {
                             const isIncoming =
                               t.type === "income" ||
                               t.toAccount === account.name;
+                            const isTransfer =
+                              t.type === "transfer" || t.type === "savings";
+                            const isObligation = t.type === "obligation";
+
+                            const label = t.type === "income"
+                              ? t.note || "Доход"
+                              : isTransfer
+                              ? t.toAccount
+                                ? `→ ${t.toAccount}`
+                                : t.note || "Перевод"
+                              : isObligation
+                              ? state.obligations.find((o) => o.id === t.obligationId)?.name ?? t.note ?? "Обязательство"
+                              : t.note || "Расход";
+
+                            const subtitle = isTransfer && t.toAccount === account.name
+                              ? `← ${t.account}`
+                              : t.account;
+
                             return (
                               <div
                                 key={t.id}
-                                className={`px-4 py-3 flex items-center justify-between ${
+                                className={`px-4 py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition-opacity ${
                                   i < txns.length - 1
                                     ? "border-b border-white/5"
                                     : ""
                                 }`}
+                                onClick={() => {
+                                  setEditingExpense(t);
+                                  setActionSheetOpen(true);
+                                }}
                               >
-                                <span className="text-sm text-foreground">
-                                  {t.note || t.type}
-                                </span>
+                                <div>
+                                  <span className="text-sm text-foreground">{label}</span>
+                                  <p className="text-xs text-muted-foreground">{subtitle}</p>
+                                </div>
                                 <span
                                   className={`font-bold font-tabular text-sm ${
                                     isIncoming
@@ -478,14 +503,38 @@ const handleTouchEnd = () => {
 
         <UnifiedActionSheet
           open={actionSheetOpen}
-          onClose={() => setActionSheetOpen(false)}
-          onSaveExpense={addExpense}
-          onSaveIncome={addIncome}
-          onDeleteExpense={deleteExpense}
+          onClose={() => {
+            setActionSheetOpen(false);
+            setEditingExpense(null);
+          }}
+          onSaveExpense={(amount, account_, type, opts) => {
+            if (editingExpense) {
+              updateExpense(editingExpense.id, amount, account_, opts?.note ?? editingExpense.note ?? "");
+            } else {
+              addExpense(amount, account_, type, opts);
+            }
+            setActionSheetOpen(false);
+            setEditingExpense(null);
+          }}
+          onSaveIncome={(amount, account_, note, date, plannedExpenseId) => {
+            if (editingExpense) {
+              updateExpense(editingExpense.id, amount, account_, note ?? editingExpense.note ?? "");
+            } else {
+              addIncome(amount, account_, note, date, plannedExpenseId);
+            }
+            setActionSheetOpen(false);
+            setEditingExpense(null);
+          }}
+          onDeleteExpense={(id) => {
+            deleteExpense(id);
+            setActionSheetOpen(false);
+            setEditingExpense(null);
+          }}
           accounts={state.accounts}
           obligations={state.obligations}
           plannedExpenses={state.plannedExpenses}
           preselectedAccount={account.name}
+          editingExpense={editingExpense}
         />
       </div>
     );
@@ -677,18 +726,22 @@ const handleTouchEnd = () => {
                     {obligationPayments.slice(0, 5).map((p, i) => (
                       <div
                         key={p.id}
-                        className={`px-4 py-3 flex items-center justify-between ${
+                        className={`px-4 py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition-opacity ${
                           i < obligationPayments.length - 1
                             ? "border-b border-white/5"
                             : ""
                         }`}
+                        onClick={() => {
+                          setEditingExpense(p);
+                          setActionSheetOpen(true);
+                        }}
                       >
                         <div>
                           <span className="text-sm text-foreground">
-                            {p.note || "Платёж"}
+                            {p.note || obligation.name}
                           </span>
                           <p className="text-xs text-muted-foreground">
-                            {p.date}
+                            {p.account} · {p.date}
                           </p>
                         </div>
                         <span className="font-bold font-tabular text-sm text-alert-orange">
@@ -702,6 +755,36 @@ const handleTouchEnd = () => {
             </>
           )}
         </div>
+
+        <UnifiedActionSheet
+          open={actionSheetOpen}
+          onClose={() => {
+            setActionSheetOpen(false);
+            setEditingExpense(null);
+          }}
+          onSaveExpense={(amount, account_, type, opts) => {
+            if (editingExpense) {
+              updateExpense(editingExpense.id, amount, account_, opts?.note ?? editingExpense.note ?? "");
+            } else {
+              addExpense(amount, account_, type, { ...opts, obligationId: obligation.id });
+            }
+            setActionSheetOpen(false);
+            setEditingExpense(null);
+          }}
+          onSaveIncome={(amount, account_, note, date) => {
+            addIncome(amount, account_, note, date);
+            setActionSheetOpen(false);
+            setEditingExpense(null);
+          }}
+          onDeleteExpense={(id) => {
+            deleteExpense(id);
+            setActionSheetOpen(false);
+            setEditingExpense(null);
+          }}
+          accounts={state.accounts}
+          obligations={state.obligations}
+          editingExpense={editingExpense}
+        />
       </div>
     );
   }
