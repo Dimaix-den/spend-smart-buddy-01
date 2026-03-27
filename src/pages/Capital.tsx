@@ -21,6 +21,16 @@ function chunk<T>(array: T[], size: number): T[][] {
   return result;
 }
 
+// убираем пробелы, неразрывные пробелы, запятые и всё, кроме цифр и точки
+const parseAmount = (value: string): number => {
+  if (!value) return 0;
+  const cleaned = value
+    .replace(/[\s\u00A0\u202F,]/g, "") // все виды пробелов и запятые
+    .replace(/[^\d.]/g, "");           // всё, что не цифра и не точка
+  const num = parseFloat(cleaned);
+  return isNaN(num) || num <= 0 ? 0 : num;
+};
+
 export default function Capital({ finance, onOpenAccount, onOpenObligation }: CapitalProps) {
   const {
     state,
@@ -84,7 +94,7 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
 
   const handleAddAccount = () => {
     if (!newAccName.trim()) return;
-    const bal = parseFloat(newAccBalance) || 0;
+    const bal = parseAmount(newAccBalance);
     addAccount(newAccName.trim(), bal, "active");
     setNewAccName("");
     setNewAccBalance("");
@@ -94,8 +104,9 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
 
   const handleAddSavings = () => {
     if (!newSavName.trim()) return;
-    const bal = parseFloat(newSavBalance) || 0;
-    const goal = parseFloat(newSavGoal) || 0;
+    const bal = parseAmount(newSavBalance);
+    const goal = parseAmount(newSavGoal);
+
     addAccount(newSavName.trim(), bal, "savings", goal);
     setNewSavName("");
     setNewSavBalance("");
@@ -106,8 +117,8 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
 
   const handleAddObligation = () => {
     if (!newObligName.trim()) return;
-    const total = parseFloat(newObligTotal) || 0;
-    const monthly = parseFloat(newObligMonthly) || 0;
+    const total = parseAmount(newObligTotal);
+    const monthly = parseAmount(newObligMonthly);
     if (!monthly) return;
     addObligation(newObligName.trim(), total || monthly, monthly);
     setNewObligName("");
@@ -119,7 +130,7 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
 
   const handleAddAsset = () => {
     if (!newAssetName.trim()) return;
-    const val = parseFloat(newAssetValue) || 0;
+    const val = parseAmount(newAssetValue);
     if (!val) return;
     addAsset(newAssetName.trim(), val);
     setNewAssetName("");
@@ -135,8 +146,8 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
   };
 
   const autoMonths = (() => {
-    const total = parseFloat(newObligTotal) || 0;
-    const monthly = parseFloat(newObligMonthly) || 0;
+  const total = parseAmount(newObligTotal);
+  const monthly = parseAmount(newObligMonthly);
     if (total > 0 && monthly > 0 && total > monthly) {
       return Math.ceil(total / monthly);
     }
