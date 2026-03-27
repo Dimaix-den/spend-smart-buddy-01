@@ -184,15 +184,17 @@ export default function History({ finance, onBack }: HistoryProps) {
                   const isIncome = e.type === "income";
                   const isTransfer =
                     e.type === "transfer" || e.type === "savings";
-                  const label =
-                    e.note ||
-                    (isIncome
-                      ? "Доход"
-                      : isTransfer
-                      ? "Перевод"
-                      : e.type === "obligation"
-                      ? "Обязательство"
-                      : e.account);
+                  const isObligation = e.type === "obligation";
+                  const label = isIncome
+                    ? e.note || "Доход"
+                    : isTransfer
+                    ? e.toAccount
+                      ? `→ ${e.toAccount}`
+                      : e.note || "Перевод"
+                    : isObligation
+                    ? state.obligations.find((o) => o.id === e.obligationId)
+                        ?.name ?? e.note ?? "Обязательство"
+                    : e.note || "Расход";
                   return (
                     <TransactionRow
                       key={e.id}
