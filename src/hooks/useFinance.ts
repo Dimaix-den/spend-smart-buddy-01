@@ -77,6 +77,7 @@ export interface FinanceState {
   plannedExpenses?: PlannedExpense[];
   includePlansInCalculation?: boolean;
   dayHistory?: Record<string, { status: string; spent: number; limit: number }>;
+  lastOpenedDates?: string[];
 }
 
 const STORAGE_KEY = "sanda_finance_v3";
@@ -108,6 +109,7 @@ const DEFAULT_STATE: FinanceState = {
   plannedExpenses: [],
   includePlansInCalculation: true,
   dayHistory: {},
+  lastOpenedDates: [],
 };
 
 function migrateState(parsed: any): FinanceState {
@@ -181,6 +183,7 @@ function migrateState(parsed: any): FinanceState {
   if (parsed.includePlansInCalculation === undefined) parsed.includePlansInCalculation = true;
   if (!parsed.assets) parsed.assets = [];
   if (!parsed.dayHistory) parsed.dayHistory = {};
+  if (!parsed.lastOpenedDates) parsed.lastOpenedDates = [];
   return parsed as FinanceState;
 }
 
@@ -319,6 +322,19 @@ export function useFinance(userId?: string | null) {
       }, 1000);
     }
   }, [state, userId]);
+
+  // Записываем дату открытия приложения
+  useEffect(() => {
+    if (!readyToSave.current) return;
+    const todayStr = today();
+    const dates = state.lastOpenedDates || [];
+    if (!dates.includes(todayStr)) {
+      setState((s) => ({
+        ...s,
+        lastOpenedDates: [...(s.lastOpenedDates || []), todayStr],
+      }));
+    }
+  }, [readyToSave.current]);
 
   // ─── Derived ───────────────────────────────────────────────────
   const activeAccounts = state.accounts.filter((a) => a.type === "active" && !a.isSystem);
