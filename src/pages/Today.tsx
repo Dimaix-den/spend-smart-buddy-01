@@ -588,12 +588,12 @@ export default function Today({
                           : isTransfer
                           ? expense.toAccount
                             ? `→ ${expense.toAccount}`
-                            : "Перевод"
+                            : expense.note || "Перевод"
                           : isObligation
                           ? state.obligations.find(
                               (o) => o.id === expense.obligationId
-                            )?.name ?? "Обязательство"
-                          : expense.note || expense.account;
+                            )?.name ?? expense.note ?? "Обязательство"
+                          : expense.note || "Расход";
 
                         return (
                           <TransactionRow
