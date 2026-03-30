@@ -53,9 +53,53 @@ export default function History({ finance, onBack }: HistoryProps) {
     { value: "transfer", label: "Переводы" },
   ];
 
-  const handleFiltersTouchStart = (e: React.TouchEvent) => {
-    // чтобы жесты внутри фильтров не улетали наверх по дереву
-    e.stopPropagation();
+  // свайп для закрытия History (с правого края внутрь)
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const isClosingSwipe = useRef(false);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartX.current = t.clientX;
+    touchStartY.current = t.clientY;
+    isClosingSwipe.current = false;
+
+    const width = window.innerWidth || document.documentElement.clientWidth;
+    // начинаем отслеживать жест только если палец стартует у правого края
+    if (width - t.clientX < 24) {
+      isClosingSwipe.current = true;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isClosingSwipe.current) return;
+
+    const t = e.touches[0];
+    const dx = t.clientX - touchStartX.current;
+    const dy = Math.abs(t.clientY - touchStartY.current);
+
+    // если пошёл вертикальный скролл — отменяем жест закрытия
+    if (dy > 30 && dy > Math.abs(dx)) {
+      isClosingSwipe.current = false;
+      return;
+    }
+
+    // здесь не вызываем preventDefault, чтобы не ломать системные жесты
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isClosingSwipe.current) return;
+
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartX.current;
+
+    // тянут влево внутрь экрана достаточно сильно — закрываем
+    if (dx < -80) {
+      setSwipedId(null);
+      onBack();
+    }
+
+    isClosingSwipe.current = false;
   };
 
   return (
@@ -63,8 +107,11 @@ export default function History({ finance, onBack }: HistoryProps) {
       className="flex flex-col min-h-screen pb-24"
       onClick={() => swipedId && setSwipedId(null)}
       onScroll={() => swipedId && setSwipedId(null)}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
-      <div className="px-5 pt-10 pb-4">
+      <div className="px-5 pt-2 pb-4">
         <button
           onClick={() => {
             setSwipedId(null);
@@ -77,83 +124,83 @@ export default function History({ finance, onBack }: HistoryProps) {
         <h1 className="text-2xl font-bold text-foreground">История операций</h1>
       </div>
 
-{/* Filters */}
-<div className="px-5 space-y-3 mb-4">
-  {/* Счета */}
-  <div
-    className="-mx-5 overflow-x-auto scrollbar-hide filters-scroll"
-  >
-    <div className="px-5 flex gap-2">
-      <button
-        onClick={() => {
-          setSwipedId(null);
-          setFilterAccount("all");
-        }}
-        className={`px-4 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
-          filterAccount === "all" ? "text-white" : "text-muted-foreground"
-        }`}
-        style={{
-          background:
-            filterAccount === "all" ? "hsl(162 100% 33%)" : "hsl(0 0% 18%)",
-        }}
-      >
-        Все счета
-      </button>
-      {state.accounts
-        .filter((a) => !a.isSystem)
-        .map((acc) => (
-          <button
-            key={acc.id}
-            onClick={() => {
-              setSwipedId(null);
-              setFilterAccount(acc.name);
-            }}
-            className={`px-4 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
-              filterAccount === acc.name
-                ? "text-white"
-                : "text-muted-foreground"
-            }`}
-            style={{
-              background:
-                filterAccount === acc.name
-                  ? "hsl(162 100% 33%)"
-                  : "hsl(0 0% 18%)",
-            }}
-          >
-            {acc.name}
-          </button>
-        ))}
-    </div>
-  </div>
+      {/* Filters */}
+      <div className="px-5 space-y-3 mb-4">
+        {/* Счета */}
+        <div className="-mx-5 overflow-x-auto scrollbar-hide filters-scroll">
+          <div className="px-5 flex gap-2">
+            <button
+              onClick={() => {
+                setSwipedId(null);
+                setFilterAccount("all");
+              }}
+              className={`px-4 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
+                filterAccount === "all" ? "text-white" : "text-muted-foreground"
+              }`}
+              style={{
+                background:
+                  filterAccount === "all"
+                    ? "hsl(162 100% 33%)"
+                    : "hsl(0 0% 18%)",
+              }}
+            >
+              Все счета
+            </button>
+            {state.accounts
+              .filter((a) => !a.isSystem)
+              .map((acc) => (
+                <button
+                  key={acc.id}
+                  onClick={() => {
+                    setSwipedId(null);
+                    setFilterAccount(acc.name);
+                  }}
+                  className={`px-4 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
+                    filterAccount === acc.name
+                      ? "text-white"
+                      : "text-muted-foreground"
+                  }`}
+                  style={{
+                    background:
+                      filterAccount === acc.name
+                        ? "hsl(162 100% 33%)"
+                        : "hsl(0 0% 18%)",
+                  }}
+                >
+                  {acc.name}
+                </button>
+              ))}
+          </div>
+        </div>
 
-  {/* Типы */}
-  <div
-    className="-mx-5 overflow-x-auto scrollbar-hide filters-scroll"
-  >
-    <div className="px-5 flex gap-2">
-      {typeFilters.map((f) => (
-        <button
-          key={f.value}
-          onClick={() => {
-            setSwipedId(null);
-            setFilterType(f.value);
-          }}
-          className={`px-4 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
-            filterType === f.value ? "text-white" : "text-muted-foreground"
-          }`}
-          style={{
-            background:
-              filterType === f.value
-                ? "hsl(162 100% 33%)"
-                : "hsl(0 0% 18%)",
-          }}
-        >
-          {f.label}
-        </button>
-      ))}
-    </div>
-  </div>
-</div>
+        {/* Типы */}
+        <div className="-mx-5 overflow-x-auto scrollbar-hide filters-scroll">
+          <div className="px-5 flex gap-2">
+            {typeFilters.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => {
+                  setSwipedId(null);
+                  setFilterType(f.value);
+                }}
+                className={`px-4 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
+                  filterType === f.value
+                    ? "text-white"
+                    : "text-muted-foreground"
+                }`}
+                style={{
+                  background:
+                    filterType === f.value
+                      ? "hsl(162 100% 33%)"
+                      : "hsl(0 0% 18%)",
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Transaction list */}
       <div className="px-4 space-y-4 flex-1">
