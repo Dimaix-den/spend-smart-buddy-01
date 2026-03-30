@@ -342,12 +342,88 @@ function TransactionRow({
   );
 }
 
+function StreakInfoPanel({ streakCount, onClose }: { streakCount: number; onClose: () => void }) {
+  useEffect(() => {
+    document.body.classList.add("popup-open");
+    return () => document.body.classList.remove("popup-open");
+  }, []);
+
+  const isOnTrack = streakCount > 0;
+
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col" onClick={onClose}>
+      <div className="absolute inset-0 glass-overlay" />
+      <div
+        className="relative mt-auto w-full max-w-app mx-auto glass-sheet rounded-t-[20px] modal-slide-up px-5 pt-4"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 40px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-center mb-4">
+          <div className="w-10 h-1 rounded-full" style={{ background: "hsl(0 0% 30%)" }} />
+        </div>
+
+        <div className="text-center mb-6">
+          <div className="text-5xl mb-3">🔥</div>
+          <div
+            className="text-4xl font-bold font-tabular"
+            style={{ color: isOnTrack ? "hsl(162 100% 45%)" : "hsl(0 0% 50%)" }}
+          >
+            {streakCount}
+          </div>
+          <div className="text-sm text-muted-foreground mt-1">
+            {streakCount === 1 ? "день подряд" : streakCount >= 2 && streakCount <= 4 ? "дня подряд" : "дней подряд"}
+          </div>
+        </div>
+
+        <div className="glass-card rounded-[16px] p-4 mb-4 space-y-2">
+          <p className="text-sm font-semibold text-foreground">
+            {streakCount === 0
+              ? "Начни сегодня 💪"
+              : streakCount < 3
+              ? "Хорошее начало!"
+              : streakCount < 7
+              ? "Ты в ритме!"
+              : streakCount < 14
+              ? "Неделя контроля — это уже привычка 🎯"
+              : streakCount < 30
+              ? "Две недели — это серьёзно! 🏆"
+              : "Ты машина финансовой дисциплины 🚀"}
+          </p>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {streakCount === 0
+              ? "Стрик растёт каждый день, когда ты укладываешься в дневной лимит или просто заходишь в приложение."
+              : "Стрик продолжается каждый день, когда ты не превышаешь дневной лимит."}
+          </p>
+        </div>
+
+        <div className="glass-card rounded-[16px] p-4 space-y-3 mb-20">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Как начисляется стрик
+          </p>
+          {[
+            { icon: "✅", text: "Уложился в дневной лимит" },
+            { icon: "✅", text: "Зашёл в приложение и ничего не потратил" },
+            { icon: "❌", text: "Превысил дневной лимит — стрик сбрасывается" },
+          ].map((item, i) => (
+            <div key={i} className="flex items-start gap-3">
+              <span className="text-base flex-shrink-0">{item.icon}</span>
+              <p className="text-sm text-foreground/80">{item.text}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Today({
   finance,
   onShowHistory,
   onOpenSheet,
 }: TodayProps) {
   const [showInfo, setShowInfo] = useState(false);
+  const [showStreakInfo, setShowStreakInfo] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const {
     state,
@@ -375,6 +451,8 @@ export default function Today({
     remainingObligations,
     stillNeedToSave,
     lastOpenedDates: state.lastOpenedDates ?? [],
+    dayHistory: state.dayHistory ?? {},
+    weekOffset,
   });
 
   const streakCount = streak;
@@ -425,8 +503,9 @@ export default function Today({
           </div>
 
           {/* Streak badge */}
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-3 rounded-full"
+          <button
+            onClick={() => setShowStreakInfo(true)}
+            className="flex items-center gap-1.5 px-2.5 py-3 rounded-full active:scale-95 transition-transform"
             style={{
               background:
                 streakCount > 0
@@ -434,6 +513,7 @@ export default function Today({
                     ? "rgba(22,163,74,0.18)"
                     : "rgba(220,38,38,0.12)"
                   : "rgba(140, 146, 172,0.18)",
+              WebkitTapHighlightColor: "transparent",
             }}
           >
             <span className="text-base leading-none">🔥</span>
@@ -443,9 +523,7 @@ export default function Today({
                 fontSize: 14,
                 color:
                   streakCount > 0
-                    ? isOnTrack
-                      ? "#bbf7d0"
-                      : "#fecaca"
+                    ? isOnTrack ? "#bbf7d0" : "#fecaca"
                     : "#9ca3af",
               }}
             >
@@ -457,24 +535,22 @@ export default function Today({
                 fontSize: 11,
                 color:
                   streakCount > 0
-                    ? isOnTrack
-                      ? "#bbf7d0"
-                      : "#fecaca"
+                    ? isOnTrack ? "#bbf7d0" : "#fecaca"
                     : "#9ca3af",
               }}
             >
-              {streakCount === 1
-                ? "день"
-                : streakCount >= 2 && streakCount <= 4
-                ? "дня"
-                : "дней"}
+              {streakCount === 1 ? "день" : streakCount >= 2 && streakCount <= 4 ? "дня" : "дней"}
             </span>
-          </div>
+          </button>
         </div>
 
         {/* Hero: сначала дисциплина, потом карточка */}
         <div className="pt-4">
-          <BudgetDiscipline days={disciplineDays} />
+          <BudgetDiscipline
+            days={disciplineDays}
+            weekOffset={weekOffset}
+            onWeekOffsetChange={setWeekOffset}
+          />
 
           {/* Карточка hero */}
           <div className="mt-3 glass-card rounded-[20px] px-4 py-8">
@@ -648,6 +724,13 @@ export default function Today({
               includePlansInCalculation: !includePlans,
             })
           }
+        />
+      )}
+
+      {showStreakInfo && (
+        <StreakInfoPanel
+          streakCount={streakCount}
+          onClose={() => setShowStreakInfo(false)}
         />
       )}
     </div>
