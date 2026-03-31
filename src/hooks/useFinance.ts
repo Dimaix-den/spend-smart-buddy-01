@@ -732,12 +732,25 @@ export function useFinance(userId?: string | null) {
               : a
           );
         }
-        const updatedObligations =
-          type === "obligation" && opts?.obligationId
-            ? s.obligations.map((o) =>
-                o.id === opts.obligationId ? { ...o, paid: true } : o
-              )
-            : s.obligations;
+      const updatedObligations =
+        type === "obligation" && opts?.obligationId
+          ? s.obligations.map((o) => {
+              if (o.id !== opts.obligationId) return o;
+      
+              // считаем, что пользователь внёс полный платёж за месяц
+              const isInstallment = o.totalAmount > o.monthlyPayment;
+      
+              return {
+                ...o,
+                paid: true,
+                // увеличиваем количество оплаченных месяцев
+                paidMonths: o.paidMonths + 1,
+                // при желании можно сразу ограничить paidMonths,
+                // чтобы не уходило дальше общего количества месяцев рассрочки:
+                // paidMonths: Math.min(o.paidMonths + 1, Math.floor(o.totalAmount / o.monthlyPayment)),
+              };
+            })
+          : s.obligations;
 
         // If linked to a planned expense, mark it as paid for the current month
         let updatedPlans = s.plannedExpenses || [];
