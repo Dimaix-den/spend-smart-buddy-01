@@ -17,9 +17,7 @@ interface SavingsCarouselProps {
 }
 
 function ObligationsBlock({ obligations }: { obligations: Obligation[] }) {
-  const currentObligations = obligations.filter((o) => !o.paid);
-
-  const monthlyTotal = currentObligations.reduce(
+  const monthlyTotal = obligations.reduce(
     (sum, o) => sum + o.monthlyPayment,
     0
   );
@@ -35,20 +33,20 @@ function ObligationsBlock({ obligations }: { obligations: Obligation[] }) {
             Задолженности
           </h3>
         </div>
-        {currentObligations.length > 0 && (
+        {obligations.length > 0 && (
           <span className="text-xs font-semibold text-alert-orange font-tabular">
             {formatAmount(monthlyTotal)} ₸/мес
           </span>
         )}
       </div>
 
-      {currentObligations.length === 0 ? (
+      {obligations.length === 0 ? (
         <p className="text-xs text-muted-foreground">
           В этом месяце нет задолженностей.
         </p>
       ) : (
         <div className="space-y-2">
-          {currentObligations.map((o) => {
+          {obligations.map((o) => {
             const isInstallment = o.totalAmount > o.monthlyPayment;
             const totalMonths = isInstallment
               ? Math.ceil(o.totalAmount / o.monthlyPayment)
@@ -57,19 +55,40 @@ function ObligationsBlock({ obligations }: { obligations: Obligation[] }) {
             const progressPct = isInstallment
               ? Math.min(100, Math.round((paidMonths / totalMonths) * 100))
               : 0;
+            const isPaidThisMonth = o.paid;
 
             return (
-              <div key={o.id} className="flex items-center justify-between">
+              <div
+                key={o.id}
+                className="flex items-center justify-between"
+              >
                 <div>
-                  <p className="text-sm text-foreground">{o.name}</p>
+                  <p
+                    className={`text-sm ${
+                      isPaidThisMonth
+                        ? "text-muted-foreground line-through"
+                        : "text-foreground"
+                    }`}
+                  >
+                    {o.name}
+                  </p>
                   {isInstallment && (
                     <p className="text-[11px] text-muted-foreground">
                       {paidMonths} / {totalMonths} мес.
                     </p>
                   )}
+                  {isPaidThisMonth && (
+                    <p className="text-[11px] text-safe-green mt-0.5">
+                      Платёж за этот месяц внесён
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-alert-orange font-tabular">
+                  <p
+                    className={`text-sm font-semibold font-tabular ${
+                      isPaidThisMonth ? "text-muted-foreground" : "text-alert-orange"
+                    }`}
+                  >
                     {formatAmount(o.monthlyPayment)} ₸
                   </p>
                   {isInstallment && (
@@ -110,7 +129,8 @@ function SavingsBlock({
         {savingsAccounts.map((acc) => {
           const saved = getSavingsForAccount(acc.name);
           const goal = acc.monthlyGoal || 0;
-          const pct = goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
+          const pct =
+            goal > 0 ? Math.min(100, Math.round((saved / goal) * 100)) : 0;
 
           return (
             <div key={acc.id}>
@@ -128,10 +148,13 @@ function SavingsBlock({
                     className="h-1.5 rounded-full overflow-hidden"
                     style={{ background: "hsl(0 0% 23%)" }}
                   >
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${pct}%`, background: "hsl(162 100% 33%)" }}
-                    />
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${pct}%`,
+                      background: "hsl(162 100% 33%)",
+                    }}
+                  />
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>
