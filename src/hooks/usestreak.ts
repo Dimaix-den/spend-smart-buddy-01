@@ -154,7 +154,7 @@ export function useStreak({
     }
 
     return { days: daysList, streak };
-  }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave, lastOpenedDates]);
+  }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave, lastOpenedDates, dayHistory, weekOffset]);
 
   return { days, streak };
 }
