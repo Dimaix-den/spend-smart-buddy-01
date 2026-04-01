@@ -165,7 +165,6 @@ function migrateState(parsed: any): FinanceState {
     }));
   }
 
-  // Migrate planned expenses: recurring bool → recurrence string
   if (parsed.plannedExpenses) {
     parsed.plannedExpenses = parsed.plannedExpenses.map((p: any) => ({
       ...p,
@@ -224,6 +223,40 @@ function maybeAdvanceDay(state: FinanceState): FinanceState {
   };
 }
 
+/** Границы бюджетного периода: календарь или от зарплаты до зарплаты */
+function computePeriodBounds(
+  currentDate: string,
+  type?: "calendar" | "salary",
+  salaryDay?: number
+) {
+  const now = new Date(currentDate);
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const day = now.getDate();
+
+  if (type === "salary" && salaryDay) {
+    let start: Date;
+    let end: Date;
+
+    if (day >= salaryDay) {
+      // период: с salaryDay этого месяца до salaryDay следующего
+      start = new Date(year, month, salaryDay);
+      end = new Date(year, month + 1, salaryDay);
+    } else {
+      // период: с salaryDay прошлого месяца до salaryDay этого
+      start = new Date(year, month - 1, salaryDay);
+      end = new Date(year, month, salaryDay);
+    }
+
+    return { start, end };
+  }
+
+  // календарный месяц
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 1);
+  return { start, end };
+}
+
 /** Get plans visible in a given month, including recurring projections */
 export function getPlansForMonth(
   plans: PlannedExpense[],
@@ -231,7 +264,6 @@ export function getPlansForMonth(
   month: number
 ): (PlannedExpense & { virtualDate: string })[] {
   const result: (PlannedExpense & { virtualDate: string })[] = [];
-  const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
 
   for (const p of plans) {
     const d = new Date(p.date);
@@ -240,23 +272,25 @@ export function getPlansForMonth(
     const pDay = d.getDate();
 
     if (pYear === year && pMonth === month) {
-      // Original month — always show
       result.push({ ...p, virtualDate: p.date });
     } else if (p.recurrence === "monthly") {
-      // Show in every month on or after the original date's month
       const origMs = new Date(pYear, pMonth, 1).getTime();
       const viewMs = new Date(year, month, 1).getTime();
       if (viewMs > origMs) {
         const lastDay = new Date(year, month + 1, 0).getDate();
         const day = Math.min(pDay, lastDay);
-        const vDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const vDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(
+          day
+        ).padStart(2, "0")}`;
         result.push({ ...p, virtualDate: vDate });
       }
     } else if (p.recurrence === "yearly") {
       if (pMonth === month && year > pYear) {
         const lastDay = new Date(year, month + 1, 0).getDate();
         const day = Math.min(pDay, lastDay);
-        const vDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        const vDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(
+          day
+        ).padStart(2, "0")}`;
         result.push({ ...p, virtualDate: vDate });
       }
     }
@@ -265,7 +299,11 @@ export function getPlansForMonth(
   return result.sort((a, b) => a.virtualDate.localeCompare(b.virtualDate));
 }
 
-export function isPlanPaidInMonth(plan: PlannedExpense, year: number, month: number): boolean {
+export function isPlanPaidInMonth(
+  plan: PlannedExpense,
+  year: number,
+  month: number
+): boolean {
   const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
   return (plan.paidInMonths || []).includes(monthKey);
 }
@@ -328,7 +366,6 @@ export function useFinance(userId?: string | null) {
     const todayStr = today();
     const dates = state.lastOpenedDates || [];
     if (dates.includes(todayStr)) return;
-    // Проверяем что это не DEFAULT_STATE (данные реально загружены)
     if (firestoreLoading) return;
     setState((s) => ({
       ...s,
@@ -337,22 +374,40 @@ export function useFinance(userId?: string | null) {
   }, [firestoreLoading]);
 
   // ─── Derived ───────────────────────────────────────────────────
-  const activeAccounts = state.accounts.filter((a) => a.type === "active" && !a.isSystem);
-  const savingsAccounts = state.accounts.filter((a) => a.type === "savings" && !a.isSystem);
-  const inactiveAccounts = state.accounts.filter((a) => a.type === "inactive" && !a.isSystem);
+  const activeAccounts = state.accounts.filter(
+    (a) => a.type === "active" && !a.isSystem
+  );
+  const savingsAccounts = state.accounts.filter(
+    (a) => a.type === "savings" && !a.isSystem
+  );
+  const inactiveAccounts = state.accounts.filter(
+    (a) => a.type === "inactive" && !a.isSystem
+  );
 
-  const activeBalance = activeAccounts.reduce((sum, a) => sum + a.balance, 0);
+  const activeBalance = activeAccounts.reduce(
+    (sum, a) => sum + a.balance,
+    0
+  );
 
   const remainingObligations = state.obligations
     .filter((o) => !o.paid)
     .reduce((sum, o) => sum + o.monthlyPayment, 0);
 
-  const totalObligations = state.obligations.reduce((sum, o) => sum + o.monthlyPayment, 0);
+  const totalObligations = state.obligations.reduce(
+    (sum, o) => sum + o.monthlyPayment,
+    0
+  );
 
   const totalDebt = state.obligations.reduce((sum, o) => {
     const isInstallment = o.totalAmount > o.monthlyPayment;
     if (isInstallment) {
-      return sum + Math.max(0, o.totalAmount - o.monthlyPayment * o.paidMonths);
+      return (
+        sum +
+        Math.max(
+          0,
+          o.totalAmount - o.monthlyPayment * o.paidMonths
+        )
+      );
     }
     return sum;
   }, 0);
@@ -362,30 +417,45 @@ export function useFinance(userId?: string | null) {
     0
   );
 
-  // Считаем только переводы в сбережения за текущий месяц
-  const currentMonthPrefix = `${new Date(state.currentDate).getFullYear()}-${String(new Date(state.currentDate).getMonth() + 1).padStart(2, "0")}`;
+  const now = new Date(state.currentDate);
+  const year = now.getFullYear();
+  const month = now.getMonth();
+
+  const { start: periodStart, end: periodEnd } = computePeriodBounds(
+    state.currentDate,
+    state.budgetPeriodType,
+    state.salaryDay
+  );
+
+  const inCurrentPeriod = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d >= periodStart && d < periodEnd;
+  };
 
   const alreadySaved = state.expenses
     .filter((e) => {
-      if (!e.date.startsWith(currentMonthPrefix)) return false;
+      if (!inCurrentPeriod(e.date)) return false;
       if (e.type === "savings") return true;
       if (e.type !== "transfer") return false;
-      const isToSavings = !!e.toAccount && savingsAccounts.some((sa) => sa.name === e.toAccount);
-      const isAdjInvolved = e.account === "Вне учёта" || e.toAccount === "Вне учёта";
+      const isToSavings =
+        !!e.toAccount &&
+        savingsAccounts.some((sa) => sa.name === e.toAccount);
+      const isAdjInvolved =
+        e.account === "Вне учёта" || e.toAccount === "Вне учёта";
       return isToSavings && !isAdjInvolved;
     })
     .reduce((sum, e) => sum + e.amount, 0);
 
   const getSavingsForAccount = useCallback(
     (accountName: string) => {
-      const prefix = `${new Date(state.currentDate).getFullYear()}-${String(new Date(state.currentDate).getMonth() + 1).padStart(2, "0")}`;
       return state.expenses
         .filter((e) => {
-          if (!e.date.startsWith(prefix)) return false;
+          if (!inCurrentPeriod(e.date)) return false;
           if (e.toAccount !== accountName) return false;
           if (e.type === "savings") return true;
           if (e.type !== "transfer") return false;
-          const isAdjInvolved = e.account === "Вне учёта" || e.toAccount === "Вне учёта";
+          const isAdjInvolved =
+            e.account === "Вне учёта" || e.toAccount === "Вне учёта";
           return !isAdjInvolved;
         })
         .reduce((sum, e) => sum + e.amount, 0);
@@ -394,10 +464,6 @@ export function useFinance(userId?: string | null) {
   );
 
   const stillNeedToSave = Math.max(0, plannedSavings - alreadySaved);
-
-  const now = new Date(state.currentDate);
-  const year = now.getFullYear();
-  const month = now.getMonth();
 
   let daysLeft: number;
   if (state.budgetPeriodType === "salary" && state.salaryDay) {
@@ -409,7 +475,10 @@ export function useFinance(userId?: string | null) {
     } else {
       periodEnd = new Date(year, month, salaryDay - 1);
     }
-    daysLeft = Math.max(1, Math.ceil((periodEnd.getTime() - now.getTime()) / 86400000));
+    daysLeft = Math.max(
+      1,
+      Math.ceil((periodEnd.getTime() - now.getTime()) / 86400000)
+    );
   } else {
     const nextMonthStart = new Date(year, month + 1, 1);
     const diffMs = nextMonthStart.getTime() - now.getTime();
@@ -443,8 +512,12 @@ export function useFinance(userId?: string | null) {
     })
     .reduce((sum, p) => sum + p.amount, 0);
 
-  const adjustedAvailable = available + upcomingPlannedIncome - upcomingPlannedExpenses;
-  const adjustedDailyBudget = Math.max(0, Math.round(adjustedAvailable / daysLeft));
+  const adjustedAvailable =
+    available + upcomingPlannedIncome - upcomingPlannedExpenses;
+  const adjustedDailyBudget = Math.max(
+    0,
+    Math.round(adjustedAvailable / daysLeft)
+  );
 
   const usePlans = state.includePlansInCalculation ?? true;
   const effectiveDailyBudget = usePlans ? adjustedDailyBudget : dailyBudget;
@@ -454,16 +527,17 @@ export function useFinance(userId?: string | null) {
 
   const percentSpent =
     effectiveDailyBudget > 0
-      ? ((effectiveDailyBudget - Math.max(0, safeToSpend)) / effectiveDailyBudget) * 100
+      ? ((effectiveDailyBudget - Math.max(0, safeToSpend)) /
+          effectiveDailyBudget) *
+        100
       : 0;
   const safeToSpendStatus =
     safeToSpend < 0 ? "overspent" : percentSpent >= 80 ? "warning" : "ok";
 
   // ─── Monthly budget ────────────────────────────────────────────
-  const monthStartBalance = Object.values(state.monthStartBalances || {}).reduce(
-    (s, v) => s + v,
-    0
-  );
+  const monthStartBalance = Object.values(
+    state.monthStartBalances || {}
+  ).reduce((s, v) => s + v, 0);
 
   const monthlyIncome = state.expenses
     .filter((e) => e.type === "income")
@@ -484,12 +558,17 @@ export function useFinance(userId?: string | null) {
 
   const monthProgress = Math.min(
     100,
-    Math.round((state.budgetPeriod.currentDay / state.budgetPeriod.totalDays) * 100)
+    Math.round(
+      (state.budgetPeriod.currentDay / state.budgetPeriod.totalDays) * 100
+    )
   );
 
   const savingsProgress =
     plannedSavings > 0
-      ? Math.min(100, Math.round((alreadySaved / plannedSavings) * 100))
+      ? Math.min(
+          100,
+          Math.round((alreadySaved / plannedSavings) * 100)
+        )
       : 0;
 
   // ─── Account actions ───────────────────────────────────────────
@@ -513,11 +592,18 @@ export function useFinance(userId?: string | null) {
       if (!account) return s;
       const diff = balance - account.balance;
       if (diff === 0) {
-        return { ...s, accounts: s.accounts.map((a) => a.id === id ? { ...a, balance } : a) };
+        return {
+          ...s,
+          accounts: s.accounts.map((a) =>
+            a.id === id ? { ...a, balance } : a
+          ),
+        };
       }
       const adjAccount = s.accounts.find((a) => a.name === "Вне учёта");
       if (!adjAccount) return s;
-      let updatedAccounts = s.accounts.map((a) => a.id === id ? { ...a, balance } : a);
+      let updatedAccounts = s.accounts.map((a) =>
+        a.id === id ? { ...a, balance } : a
+      );
       let adjNewBalance = adjAccount.balance;
       if (diff > 0) adjNewBalance -= diff;
       else adjNewBalance += Math.abs(diff);
@@ -533,39 +619,66 @@ export function useFinance(userId?: string | null) {
         toAccount: diff > 0 ? account.name : adjAccount.name,
         note: "Вне учета",
       };
-      return { ...s, accounts: updatedAccounts, expenses: [adjustment, ...s.expenses] };
+      return {
+        ...s,
+        accounts: updatedAccounts,
+        expenses: [adjustment, ...s.expenses],
+      };
     });
   }, []);
 
   const updateAccountName = useCallback((id: string, name: string) => {
-    setState((s) => ({ ...s, accounts: s.accounts.map((a) => (a.id === id ? { ...a, name } : a)) }));
-  }, []);
-
-  const updateAccountType = useCallback((id: string, type: AccountType) => {
     setState((s) => ({
       ...s,
       accounts: s.accounts.map((a) =>
-        a.id === id ? { ...a, type, isActive: type === "active" } : a
+        a.id === id ? { ...a, name } : a
       ),
     }));
   }, []);
 
-  const updateAccountGoal = useCallback((id: string, monthlyGoal: number) => {
-    setState((s) => ({
-      ...s,
-      accounts: s.accounts.map((a) => a.id === id ? { ...a, monthlyGoal } : a),
-    }));
-  }, []);
+  const updateAccountType = useCallback(
+    (id: string, type: AccountType) => {
+      setState((s) => ({
+        ...s,
+        accounts: s.accounts.map((a) =>
+          a.id === id
+            ? { ...a, type, isActive: type === "active" }
+            : a
+        ),
+      }));
+    },
+    []
+  );
+
+  const updateAccountGoal = useCallback(
+    (id: string, monthlyGoal: number) => {
+      setState((s) => ({
+        ...s,
+        accounts: s.accounts.map((a) =>
+          a.id === id ? { ...a, monthlyGoal } : a
+        ),
+      }));
+    },
+    []
+  );
 
   const addAccount = useCallback(
-    (name: string, balance: number, type: AccountType = "active", monthlyGoal?: number) => {
+    (
+      name: string,
+      balance: number,
+      type: AccountType = "active",
+      monthlyGoal?: number
+    ) => {
       setState((s) => ({
         ...s,
         accounts: [
           ...s.accounts,
           {
-            id: Date.now().toString(), name, balance,
-            isActive: type === "active", type,
+            id: Date.now().toString(),
+            name,
+            balance,
+            isActive: type === "active",
+            type,
             monthlyGoal: monthlyGoal ?? null,
           },
         ],
@@ -575,7 +688,10 @@ export function useFinance(userId?: string | null) {
   );
 
   const deleteAccount = useCallback((id: string) => {
-    setState((s) => ({ ...s, accounts: s.accounts.filter((a) => a.id !== id) }));
+    setState((s) => ({
+      ...s,
+      accounts: s.accounts.filter((a) => a.id !== id),
+    }));
   }, []);
 
   // ─── Obligation actions ────────────────────────────────────────
@@ -600,7 +716,15 @@ export function useFinance(userId?: string | null) {
   );
 
   const updateObligation = useCallback(
-    (id: string, updates: Partial<Pick<Obligation, "name" | "totalAmount" | "monthlyPayment" | "paidMonths">>) => {
+    (
+      id: string,
+      updates: Partial<
+        Pick<
+          Obligation,
+          "name" | "totalAmount" | "monthlyPayment" | "paidMonths"
+        >
+      >
+    ) => {
       setState((s) => ({
         ...s,
         obligations: s.obligations.map((o) =>
@@ -615,7 +739,9 @@ export function useFinance(userId?: string | null) {
     setState((s) => ({
       ...s,
       obligations: s.obligations.map((o) =>
-        o.id === id ? { ...o, paid: true, paidMonths: o.paidMonths + 1 } : o
+        o.id === id
+          ? { ...o, paid: true, paidMonths: o.paidMonths + 1 }
+          : o
       ),
     }));
   }, []);
@@ -630,29 +756,46 @@ export function useFinance(userId?: string | null) {
   }, []);
 
   const deleteObligation = useCallback((id: string) => {
-    setState((s) => ({ ...s, obligations: s.obligations.filter((o) => o.id !== id) }));
+    setState((s) => ({
+      ...s,
+      obligations: s.obligations.filter((o) => o.id !== id),
+    }));
   }, []);
 
   // ─── Asset actions ─────────────────────────────────────────────
   const addAsset = useCallback((name: string, value: number) => {
     setState((s) => ({
       ...s,
-      assets: [...(s.assets || []), { id: Date.now().toString(), name, value }],
+      assets: [
+        ...(s.assets || []),
+        { id: Date.now().toString(), name, value },
+      ],
     }));
   }, []);
 
-  const updateAsset = useCallback((id: string, updates: Partial<Pick<Asset, "name" | "value">>) => {
-    setState((s) => ({
-      ...s,
-      assets: (s.assets || []).map((a) => a.id === id ? { ...a, ...updates } : a),
-    }));
-  }, []);
+  const updateAsset = useCallback(
+    (id: string, updates: Partial<Pick<Asset, "name" | "value">>) => {
+      setState((s) => ({
+        ...s,
+        assets: (s.assets || []).map((a) =>
+          a.id === id ? { ...a, ...updates } : a
+        ),
+      }));
+    },
+    []
+  );
 
   const deleteAsset = useCallback((id: string) => {
-    setState((s) => ({ ...s, assets: (s.assets || []).filter((a) => a.id !== id) }));
+    setState((s) => ({
+      ...s,
+      assets: (s.assets || []).filter((a) => a.id !== id),
+    }));
   }, []);
 
-  const totalAssetsValue = (state.assets || []).reduce((sum, a) => sum + a.value, 0);
+  const totalAssetsValue = (state.assets || []).reduce(
+    (sum, a) => sum + a.value,
+    0
+  );
 
   // ─── Planned expense actions ───────────────────────────────────
   const addPlannedExpense = useCallback(
@@ -661,7 +804,11 @@ export function useFinance(userId?: string | null) {
         ...s,
         plannedExpenses: [
           ...(s.plannedExpenses || []),
-          { ...plan, id: Date.now().toString(), paidInMonths: plan.paidInMonths || [] },
+          {
+            ...plan,
+            id: Date.now().toString(),
+            paidInMonths: plan.paidInMonths || [],
+          },
         ],
       }));
     },
@@ -683,38 +830,58 @@ export function useFinance(userId?: string | null) {
   const deletePlannedExpense = useCallback((id: string) => {
     setState((s) => ({
       ...s,
-      plannedExpenses: (s.plannedExpenses || []).filter((p) => p.id !== id),
+      plannedExpenses: (s.plannedExpenses || []).filter(
+        (p) => p.id !== id
+      ),
     }));
   }, []);
 
-  const togglePlanPaidInMonth = useCallback((id: string, year: number, month: number) => {
-    const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
-    setState((s) => ({
-      ...s,
-      plannedExpenses: (s.plannedExpenses || []).map((p) => {
-        if (p.id !== id) return p;
-        const paidInMonths = p.paidInMonths || [];
-        if (paidInMonths.includes(monthKey)) {
-          return { ...p, paidInMonths: paidInMonths.filter((m) => m !== monthKey) };
-        } else {
-          return { ...p, paidInMonths: [...paidInMonths, monthKey] };
-        }
-      }),
-    }));
-  }, []);
+  const togglePlanPaidInMonth = useCallback(
+    (id: string, year: number, month: number) => {
+      const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      setState((s) => ({
+        ...s,
+        plannedExpenses: (s.plannedExpenses || []).map((p) => {
+          if (p.id !== id) return p;
+          const paidInMonths = p.paidInMonths || [];
+          if (paidInMonths.includes(monthKey)) {
+            return {
+              ...p,
+              paidInMonths: paidInMonths.filter((m) => m !== monthKey),
+            };
+          } else {
+            return {
+              ...p,
+              paidInMonths: [...paidInMonths, monthKey],
+            };
+          }
+        }),
+      }));
+    },
+    []
+  );
 
   // ─── Settings actions ──────────────────────────────────────────
   const setSavingsGoal = useCallback((goal: number) => {
     setState((s) => ({ ...s, savingsGoal: goal }));
   }, []);
 
-  const updateBudgetPeriod = useCallback((period: Partial<BudgetPeriod>) => {
-    setState((s) => ({ ...s, budgetPeriod: { ...s.budgetPeriod, ...period } }));
-  }, []);
+  const updateBudgetPeriod = useCallback(
+    (period: Partial<BudgetPeriod>) => {
+      setState((s) => ({
+        ...s,
+        budgetPeriod: { ...s.budgetPeriod, ...period },
+      }));
+    },
+    []
+  );
 
-  const updateSettings = useCallback((settings: Partial<FinanceState>) => {
-    setState((s) => ({ ...s, ...settings }));
-  }, []);
+  const updateSettings = useCallback(
+    (settings: Partial<FinanceState>) => {
+      setState((s) => ({ ...s, ...settings }));
+    },
+    []
+  );
 
   // ─── Expense actions ───────────────────────────────────────────
   const addExpense = useCallback(
@@ -722,52 +889,67 @@ export function useFinance(userId?: string | null) {
       amount: number,
       accountName: string,
       type: ExpenseType,
-      opts?: { obligationId?: string; toAccount?: string; note?: string; date?: string; plannedExpenseId?: string }
+      opts?: {
+        obligationId?: string;
+        toAccount?: string;
+        note?: string;
+        date?: string;
+        plannedExpenseId?: string;
+      }
     ) => {
       setState((s) => {
         const opDate = opts?.date || s.currentDate;
         let updatedAccounts = s.accounts.map((a) =>
           a.name === accountName
-            ? { ...a, balance: a.balance - amount, usageCount: (a.usageCount || 0) + 1, lastUsed: new Date().toISOString() }
+            ? {
+                ...a,
+                balance: a.balance - amount,
+                usageCount: (a.usageCount || 0) + 1,
+                lastUsed: new Date().toISOString(),
+              }
             : a
         );
-        if ((type === "savings" || type === "transfer") && opts?.toAccount) {
+        if (
+          (type === "savings" || type === "transfer") &&
+          opts?.toAccount
+        ) {
           updatedAccounts = updatedAccounts.map((a) =>
             a.name === opts.toAccount
-              ? { ...a, balance: a.balance + amount, usageCount: (a.usageCount || 0) + 1, lastUsed: new Date().toISOString() }
+              ? {
+                  ...a,
+                  balance: a.balance + amount,
+                  usageCount: (a.usageCount || 0) + 1,
+                  lastUsed: new Date().toISOString(),
+                }
               : a
           );
         }
-      const updatedObligations =
-        type === "obligation" && opts?.obligationId
-          ? s.obligations.map((o) => {
-              if (o.id !== opts.obligationId) return o;
-      
-              // считаем, что пользователь внёс полный платёж за месяц
-              const isInstallment = o.totalAmount > o.monthlyPayment;
-      
-              return {
-                ...o,
-                paid: true,
-                // увеличиваем количество оплаченных месяцев
-                paidMonths: o.paidMonths + 1,
-                // при желании можно сразу ограничить paidMonths,
-                // чтобы не уходило дальше общего количества месяцев рассрочки:
-                // paidMonths: Math.min(o.paidMonths + 1, Math.floor(o.totalAmount / o.monthlyPayment)),
-              };
-            })
-          : s.obligations;
+        const updatedObligations =
+          type === "obligation" && opts?.obligationId
+            ? s.obligations.map((o) => {
+                if (o.id !== opts.obligationId) return o;
+                return {
+                  ...o,
+                  paid: true,
+                  paidMonths: o.paidMonths + 1,
+                };
+              })
+            : s.obligations;
 
-        // If linked to a planned expense, mark it as paid for the current month
         let updatedPlans = s.plannedExpenses || [];
         if (opts?.plannedExpenseId) {
           const now = new Date(opDate);
-          const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const monthKey = `${now.getFullYear()}-${String(
+            now.getMonth() + 1
+          ).padStart(2, "0")}`;
           updatedPlans = updatedPlans.map((p) => {
             if (p.id !== opts.plannedExpenseId) return p;
             const paidInMonths = p.paidInMonths || [];
             if (paidInMonths.includes(monthKey)) return p;
-            return { ...p, paidInMonths: [...paidInMonths, monthKey] };
+            return {
+              ...p,
+              paidInMonths: [...paidInMonths, monthKey],
+            };
           });
         }
 
@@ -782,31 +964,53 @@ export function useFinance(userId?: string | null) {
           note: opts?.note ?? "",
           plannedExpenseId: opts?.plannedExpenseId ?? null,
         };
-        return { ...s, accounts: updatedAccounts, obligations: updatedObligations, plannedExpenses: updatedPlans, expenses: [expense, ...s.expenses] };
+        return {
+          ...s,
+          accounts: updatedAccounts,
+          obligations: updatedObligations,
+          plannedExpenses: updatedPlans,
+          expenses: [expense, ...s.expenses],
+        };
       });
     },
     []
   );
 
   const addIncome = useCallback(
-    (amount: number, accountName: string, note?: string, date?: string, plannedExpenseId?: string) => {
+    (
+      amount: number,
+      accountName: string,
+      note?: string,
+      date?: string,
+      plannedExpenseId?: string
+    ) => {
       setState((s) => {
         const opDate = date || s.currentDate;
         const updatedAccounts = s.accounts.map((a) =>
           a.name === accountName
-            ? { ...a, balance: a.balance + amount, usageCount: (a.usageCount || 0) + 1, lastUsed: new Date().toISOString() }
+            ? {
+                ...a,
+                balance: a.balance + amount,
+                usageCount: (a.usageCount || 0) + 1,
+                lastUsed: new Date().toISOString(),
+              }
             : a
         );
 
         let updatedPlans = s.plannedExpenses || [];
         if (plannedExpenseId) {
           const now = new Date(opDate);
-          const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const monthKey = `${now.getFullYear()}-${String(
+            now.getMonth() + 1
+          ).padStart(2, "0")}`;
           updatedPlans = updatedPlans.map((p) => {
             if (p.id !== plannedExpenseId) return p;
             const paidInMonths = p.paidInMonths || [];
             if (paidInMonths.includes(monthKey)) return p;
-            return { ...p, paidInMonths: [...paidInMonths, monthKey] };
+            return {
+              ...p,
+              paidInMonths: [...paidInMonths, monthKey],
+            };
           });
         }
 
@@ -819,7 +1023,12 @@ export function useFinance(userId?: string | null) {
           note: note ?? "",
           plannedExpenseId: plannedExpenseId ?? null,
         };
-        return { ...s, accounts: updatedAccounts, plannedExpenses: updatedPlans, expenses: [income, ...s.expenses] };
+        return {
+          ...s,
+          accounts: updatedAccounts,
+          plannedExpenses: updatedPlans,
+          expenses: [income, ...s.expenses],
+        };
       });
     },
     []
@@ -828,19 +1037,33 @@ export function useFinance(userId?: string | null) {
   const deleteExpense = useCallback((id: string) => {
     setState((s) => {
       const expense = s.expenses.find((e) => e.id === id);
-      if (!expense) return { ...s, expenses: s.expenses.filter((e) => e.id !== id) };
+      if (!expense)
+        return {
+          ...s,
+          expenses: s.expenses.filter((e) => e.id !== id),
+        };
       let updatedAccounts = s.accounts;
       if (expense.type === "income") {
         updatedAccounts = updatedAccounts.map((a) =>
-          a.name === expense.account ? { ...a, balance: a.balance - expense.amount } : a
+          a.name === expense.account
+            ? { ...a, balance: a.balance - expense.amount }
+            : a
         );
       } else {
         updatedAccounts = updatedAccounts.map((a) =>
-          a.name === expense.account ? { ...a, balance: a.balance + expense.amount } : a
+          a.name === expense.account
+            ? { ...a, balance: a.balance + expense.amount }
+            : a
         );
-        if ((expense.type === "savings" || expense.type === "transfer") && expense.toAccount) {
+        if (
+          (expense.type === "savings" ||
+            expense.type === "transfer") &&
+          expense.toAccount
+        ) {
           updatedAccounts = updatedAccounts.map((a) =>
-            a.name === expense.toAccount ? { ...a, balance: a.balance - expense.amount } : a
+            a.name === expense.toAccount
+              ? { ...a, balance: a.balance - expense.amount }
+              : a
           );
         }
       }
@@ -850,20 +1073,29 @@ export function useFinance(userId?: string | null) {
           o.id === expense.obligationId ? { ...o, paid: false } : o
         );
       }
-      // Откатываем paidInMonths у связанного плана
       let updatedPlans = s.plannedExpenses || [];
       if (expense.plannedExpenseId) {
         const expDate = new Date(expense.date);
-        const monthKey = `${expDate.getFullYear()}-${String(expDate.getMonth() + 1).padStart(2, "0")}`;
+        const monthKey = `${expDate.getFullYear()}-${String(
+          expDate.getMonth() + 1
+        ).padStart(2, "0")}`;
         updatedPlans = updatedPlans.map((p) => {
           if (p.id !== expense.plannedExpenseId) return p;
           return {
             ...p,
-            paidInMonths: (p.paidInMonths || []).filter((m) => m !== monthKey),
+            paidInMonths: (p.paidInMonths || []).filter(
+              (m) => m !== monthKey
+            ),
           };
         });
       }
-      return { ...s, accounts: updatedAccounts, obligations: updatedObligations, plannedExpenses: updatedPlans, expenses: s.expenses.filter((e) => e.id !== id) };
+      return {
+        ...s,
+        accounts: updatedAccounts,
+        obligations: updatedObligations,
+        plannedExpenses: updatedPlans,
+        expenses: s.expenses.filter((e) => e.id !== id),
+      };
     });
   }, []);
 
@@ -874,15 +1106,36 @@ export function useFinance(userId?: string | null) {
         if (!old) return s;
         let accs = s.accounts;
         if (old.type === "income") {
-          accs = accs.map((a) => a.name === old.account ? { ...a, balance: a.balance - old.amount } : a);
-          accs = accs.map((a) => a.name === accountName ? { ...a, balance: a.balance + amount } : a);
+          accs = accs.map((a) =>
+            a.name === old.account
+              ? { ...a, balance: a.balance - old.amount }
+              : a
+          );
+          accs = accs.map((a) =>
+            a.name === accountName
+              ? { ...a, balance: a.balance + amount }
+              : a
+          );
         } else {
-          accs = accs.map((a) => a.name === old.account ? { ...a, balance: a.balance + old.amount } : a);
-          accs = accs.map((a) => a.name === accountName ? { ...a, balance: a.balance - amount } : a);
+          accs = accs.map((a) =>
+            a.name === old.account
+              ? { ...a, balance: a.balance + old.amount }
+              : a
+          );
+          accs = accs.map((a) =>
+            a.name === accountName
+              ? { ...a, balance: a.balance - amount }
+              : a
+          );
         }
         return {
-          ...s, accounts: accs,
-          expenses: s.expenses.map((e) => e.id === id ? { ...e, amount, account: accountName, note } : e),
+          ...s,
+          accounts: accs,
+          expenses: s.expenses.map((e) =>
+            e.id === id
+              ? { ...e, amount, account: accountName, note }
+              : e
+          ),
         };
       });
     },
@@ -896,13 +1149,14 @@ export function useFinance(userId?: string | null) {
       const balances: Record<string, number> = {};
       state.accounts
         .filter((a) => a.type === "active" && !a.isSystem)
-        .forEach((a) => { balances[a.id] = a.balance; });
+        .forEach((a) => {
+          balances[a.id] = a.balance;
+        });
       setState((s) => ({ ...s, monthStartBalances: balances }));
     }
   }, [firestoreLoading]);
 
   useEffect(() => {
-    // Ждём пока данные загрузятся из Firestore
     if (firestoreLoading) return;
 
     const now = new Date();
@@ -917,11 +1171,20 @@ export function useFinance(userId?: string | null) {
         const balances: Record<string, number> = {};
         s.accounts
           .filter((a) => a.type === "active" && !a.isSystem)
-          .forEach((a) => { balances[a.id] = a.balance; });
+          .forEach((a) => {
+            balances[a.id] = a.balance;
+          });
         return {
           ...s,
-          budgetPeriod: { ...s.budgetPeriod, currentDay: 1, startDate: today() },
-          obligations: s.obligations.map((o) => ({ ...o, paid: false })),
+          budgetPeriod: {
+            ...s.budgetPeriod,
+            currentDay: 1,
+            startDate: today(),
+          },
+          obligations: s.obligations.map((o) => ({
+            ...o,
+            paid: false,
+          })),
           monthStartBalances: balances,
           currentDate: today(),
         };
