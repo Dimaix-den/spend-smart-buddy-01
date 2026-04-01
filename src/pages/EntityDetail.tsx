@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { useFinance, AccountType, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
