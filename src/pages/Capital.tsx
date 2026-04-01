@@ -65,6 +65,7 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
   const [newObligName, setNewObligName] = useState("");
   const [newObligTotal, setNewObligTotal] = useState("");
   const [newObligMonthly, setNewObligMonthly] = useState("");
+  const [newObligPaidMonths, setNewObligPaidMonths] = useState("");
 
   // Add asset form
   const [newAssetName, setNewAssetName] = useState("");
