@@ -101,6 +101,9 @@ export default function EntityDetail({
 
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [showEarlyRepayment, setShowEarlyRepayment] = useState(false);
+  const [earlyRepaymentAmount, setEarlyRepaymentAmount] = useState("");
+  const [earlyRepaymentAccount, setEarlyRepaymentAccount] = useState("");
 
   const swipeRef = useRef<{
   startX: number;
