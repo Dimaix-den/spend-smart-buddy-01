@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { ChevronLeft, Pencil } from "lucide-react";
 import { useFinance, AccountType, Expense } from "@/hooks/useFinance";
 import { formatAmount } from "@/lib/formatAmount";
@@ -101,6 +101,9 @@ export default function EntityDetail({
 
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [showEarlyRepayment, setShowEarlyRepayment] = useState(false);
+  const [earlyRepaymentAmount, setEarlyRepaymentAmount] = useState("");
+  const [earlyRepaymentAccount, setEarlyRepaymentAccount] = useState("");
 
   const swipeRef = useRef<{
   startX: number;
@@ -572,6 +575,49 @@ const handleTouchEnd = () => {
       toast({ description: "🗑 Обязательство удалено", duration: 2000 });
     };
 
+    const remainingMonths = totalMonths - paidMonths;
+    const activeAccounts = state.accounts.filter(
+      (a) => (a.type === "active" || a.type === "savings") && a.balance > 0
+    );
+
+    const earlyAmount = parseMoney(earlyRepaymentAmount);
+    const earlyMonthsCovered = obligation.monthlyPayment > 0
+      ? Math.min(Math.floor(earlyAmount / obligation.monthlyPayment), remainingMonths)
+      : 0;
+
+    const handleEarlyRepayment = () => {
+      if (earlyAmount <= 0 || earlyMonthsCovered <= 0) return;
+      if (!earlyRepaymentAccount) {
+        toast({ description: "⚠️ Выберите счёт", duration: 2000 });
+        return;
+      }
+
+      const selectedAccount = state.accounts.find(a => a.name === earlyRepaymentAccount);
+      if (selectedAccount && selectedAccount.balance < earlyAmount) {
+        toast({ description: "⚠️ Недостаточно средств", duration: 2000 });
+        return;
+      }
+
+      // Record expense
+      addExpense(earlyAmount, earlyRepaymentAccount, "obligation", {
+        obligationId: obligation.id,
+        note: `Досрочное погашение (${earlyMonthsCovered} мес.)`,
+      });
+
+      // Update paid months
+      updateObligation(entityId, {
+        paidMonths: paidMonths + earlyMonthsCovered,
+      });
+
+      setShowEarlyRepayment(false);
+      setEarlyRepaymentAmount("");
+      setEarlyRepaymentAccount("");
+      toast({
+        description: `✅ Досрочное погашение: ${earlyMonthsCovered} мес.`,
+        duration: 2000,
+      });
+    };
+
     return (
       <div
         className="flex flex-col min-h-screen pb-8"
@@ -712,6 +758,126 @@ const handleTouchEnd = () => {
                   <span>{pct}%</span>
                 </div>
               </div>
+
+              {/* Early repayment section */}
+              {remainingMonths > 1 && (
+                <div>
+                  {!showEarlyRepayment ? (
+                    <button
+                      onClick={() => {
+                        setShowEarlyRepayment(true);
+                        if (activeAccounts.length > 0 && !earlyRepaymentAccount) {
+                          setEarlyRepaymentAccount(activeAccounts[0].name);
+                        }
+                      }}
+                      className="w-full py-3 rounded-[12px] text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                      style={{
+                        background: "linear-gradient(135deg, hsl(38 80% 10%) 0%, hsl(38 60% 15%) 100%)",
+                        border: "1px solid hsl(38 100% 52% / 0.3)",
+                        color: "hsl(38 100% 52%)",
+                      }}
+                    >
+                      ⚡ Досрочное погашение
+                    </button>
+                  ) : (
+                    <div className="glass-card-raised p-4 space-y-3 animate-fade-in-up">
+                      <p className="text-sm font-semibold text-foreground">
+                        Досрочное погашение
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Внесите сумму, кратную месячному платежу ({formatAmount(obligation.monthlyPayment)} ₸), чтобы закрыть несколько месяцев сразу
+                      </p>
+
+                      <div className="relative">
+                        <MoneyInput
+                          placeholder="Сумма"
+                          value={earlyRepaymentAmount}
+                          onChange={setEarlyRepaymentAmount}
+                          className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          ₸
+                        </span>
+                      </div>
+
+                      {earlyAmount > 0 && (
+                        <div
+                          className="rounded-[10px] p-3 space-y-1"
+                          style={{ background: "hsl(0 0% 10%)" }}
+                        >
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Закроет месяцев</span>
+                            <span className="font-bold text-foreground">
+                              {earlyMonthsCovered} из {remainingMonths}
+                            </span>
+                          </div>
+                          {earlyAmount % obligation.monthlyPayment !== 0 && earlyMonthsCovered > 0 && (
+                            <p className="text-xs text-muted-foreground">
+                              Остаток {formatAmount(earlyAmount - earlyMonthsCovered * obligation.monthlyPayment)} ₸ не покрывает полный месяц
+                            </p>
+                          )}
+                          {earlyMonthsCovered >= remainingMonths && (
+                            <p className="text-xs font-semibold" style={{ color: "hsl(162 100% 45%)" }}>
+                              🎉 Полное досрочное закрытие!
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="text-xs text-muted-foreground mb-1 block">
+                          Со счёта
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {activeAccounts.map((acc) => (
+                            <button
+                              key={acc.id}
+                              onClick={() => setEarlyRepaymentAccount(acc.name)}
+                              className={`px-3 py-2 rounded-[8px] text-xs font-semibold transition-colors ${
+                                earlyRepaymentAccount === acc.name
+                                  ? "text-white"
+                                  : "text-muted-foreground"
+                              }`}
+                              style={{
+                                background:
+                                  earlyRepaymentAccount === acc.name
+                                    ? "hsl(162 100% 33%)"
+                                    : "hsl(0 0% 18%)",
+                              }}
+                            >
+                              {acc.name}
+                              <span className="ml-1 opacity-60">
+                                {formatAmount(acc.balance)} ₸
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => {
+                            setShowEarlyRepayment(false);
+                            setEarlyRepaymentAmount("");
+                          }}
+                          className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground"
+                          style={{ background: "hsl(0 0% 23%)" }}
+                        >
+                          Отмена
+                        </button>
+                        <button
+                          onClick={handleEarlyRepayment}
+                          disabled={earlyMonthsCovered <= 0}
+                          className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white disabled:opacity-40"
+                          style={{ background: "hsl(38 100% 52%)" }}
+                        >
+                          Погасить
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">

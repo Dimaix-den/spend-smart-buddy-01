@@ -709,7 +709,7 @@ const plans = state.plannedExpenses || [];
 
   // ─── Obligation actions ────────────────────────────────────────
   const addObligation = useCallback(
-    (name: string, totalAmount: number, monthlyPayment: number) => {
+    (name: string, totalAmount: number, monthlyPayment: number, initialPaidMonths?: number) => {
       setState((s) => ({
         ...s,
         obligations: [
@@ -719,7 +719,7 @@ const plans = state.plannedExpenses || [];
             name,
             totalAmount,
             monthlyPayment,
-            paidMonths: 0,
+            paidMonths: initialPaidMonths || 0,
             paid: false,
           },
         ],
