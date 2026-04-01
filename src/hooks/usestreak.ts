@@ -20,6 +20,8 @@ interface UseStreakParams {
   remainingObligations: number;
   stillNeedToSave: number;
   lastOpenedDates: string[];
+  dayHistory?: Record<string, { spent: number; limit: number }>;
+  weekOffset?: number;
 }
 
 export function useStreak({
@@ -29,6 +31,8 @@ export function useStreak({
   remainingObligations,
   stillNeedToSave,
   lastOpenedDates,
+  dayHistory,
+  weekOffset = 0,
 }: UseStreakParams) {
   const { days, streak } = useMemo(() => {
     const today = new Date();
@@ -150,7 +154,7 @@ export function useStreak({
     }
 
     return { days: daysList, streak };
-  }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave, lastOpenedDates]);
+  }, [expenses, dailyBudget, activeBalance, remainingObligations, stillNeedToSave, lastOpenedDates, dayHistory, weekOffset]);
 
   return { days, streak };
 }

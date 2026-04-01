@@ -2,9 +2,11 @@ import { DisciplineDay } from "@/hooks/usestreak";
 
 interface BudgetDisciplineProps {
   days: DisciplineDay[];
+  weekOffset?: number;
+  onWeekOffsetChange?: React.Dispatch<React.SetStateAction<number>>;
 }
 
-export default function BudgetDiscipline({ days }: BudgetDisciplineProps) {
+export default function BudgetDiscipline({ days, weekOffset, onWeekOffsetChange }: BudgetDisciplineProps) {
   const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
   const weekDaysShort = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 
