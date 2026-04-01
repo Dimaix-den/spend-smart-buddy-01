@@ -20,6 +20,8 @@ interface UseStreakParams {
   remainingObligations: number;
   stillNeedToSave: number;
   lastOpenedDates: string[];
+  dayHistory?: Record<string, { spent: number; limit: number }>;
+  weekOffset?: number;
 }
 
 export function useStreak({
