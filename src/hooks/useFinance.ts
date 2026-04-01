@@ -374,15 +374,15 @@ export function useFinance(userId?: string | null) {
   }, [firestoreLoading]);
 
   // ─── Derived ───────────────────────────────────────────────────
-  const activeAccounts = state.accounts.filter(
+  const activeAccounts = useMemo(() => state.accounts.filter(
     (a) => a.type === "active" && !a.isSystem
-  );
-  const savingsAccounts = state.accounts.filter(
+  ), [state.accounts]);
+  const savingsAccounts = useMemo(() => state.accounts.filter(
     (a) => a.type === "savings" && !a.isSystem
-  );
-  const inactiveAccounts = state.accounts.filter(
+  ), [state.accounts]);
+  const inactiveAccounts = useMemo(() => state.accounts.filter(
     (a) => a.type === "inactive" && !a.isSystem
-  );
+  ), [state.accounts]);
 
   const activeBalance = activeAccounts.reduce(
     (sum, a) => sum + a.balance,
