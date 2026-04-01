@@ -31,6 +31,8 @@ export function useStreak({
   remainingObligations,
   stillNeedToSave,
   lastOpenedDates,
+  dayHistory,
+  weekOffset = 0,
 }: UseStreakParams) {
   const { days, streak } = useMemo(() => {
     const today = new Date();
