@@ -494,20 +494,33 @@ export function useFinance(userId?: string | null) {
     .reduce((sum, e) => sum + e.amount, 0);
 
   // ─── Plans impact (exclude paid plans) ─────────────────────────
-  const plans = state.plannedExpenses || [];
-  const currentMonthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+const plans = state.plannedExpenses || [];
 
+// Проверяем, попадает ли дата плана внутрь текущего бюджетного периода
+  const inCurrentPeriodStrict = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return d >= periodStart && d < periodEnd;
+  };
+  
   const upcomingPlannedIncome = plans
     .filter((p) => {
-      if (p.type !== "income" || p.date < todayStr) return false;
-      const isPaid = (p.paidInMonths || []).includes(currentMonthKey);
+      if (p.type !== "income") return false;
+      if (!inCurrentPeriodStrict(p.date)) return false; // вне текущего периода
+      if (p.date < todayStr) return false; // уже прошло
+      // paidInMonths оставляем как есть — один и тот же план может повторяться по месяцам
+      const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      const isPaid = (p.paidInMonths || []).includes(monthKey);
       return !isPaid;
     })
     .reduce((sum, p) => sum + p.amount, 0);
+  
   const upcomingPlannedExpenses = plans
     .filter((p) => {
-      if (p.type !== "expense" || p.date < todayStr) return false;
-      const isPaid = (p.paidInMonths || []).includes(currentMonthKey);
+      if (p.type !== "expense") return false;
+      if (!inCurrentPeriodStrict(p.date)) return false;
+      if (p.date < todayStr) return false;
+      const monthKey = `${year}-${String(month + 1).padStart(2, "0")}`;
+      const isPaid = (p.paidInMonths || []).includes(monthKey);
       return !isPaid;
     })
     .reduce((sum, p) => sum + p.amount, 0);
