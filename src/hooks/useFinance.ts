@@ -796,10 +796,9 @@ const plans = state.plannedExpenses || [];
     }));
   }, []);
 
-  const totalAssetsValue = (state.assets || []).reduce(
-    (sum, a) => sum + a.value,
-    0
-  );
+  const totalAssetsValue = useMemo(() => (state.assets || []).reduce(
+    (sum, a) => sum + a.value, 0
+  ), [state.assets]);
 
   // ─── Planned expense actions ───────────────────────────────────
   const addPlannedExpense = useCallback(
