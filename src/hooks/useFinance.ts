@@ -362,8 +362,12 @@ export function useFinance(userId?: string | null) {
     0
   );
 
+  // Считаем только переводы в сбережения за текущий месяц
+  const currentMonthPrefix = `${new Date(state.currentDate).getFullYear()}-${String(new Date(state.currentDate).getMonth() + 1).padStart(2, "0")}`;
+
   const alreadySaved = state.expenses
     .filter((e) => {
+      if (!e.date.startsWith(currentMonthPrefix)) return false;
       if (e.type === "savings") return true;
       if (e.type !== "transfer") return false;
       const isToSavings = !!e.toAccount && savingsAccounts.some((sa) => sa.name === e.toAccount);
@@ -374,8 +378,10 @@ export function useFinance(userId?: string | null) {
 
   const getSavingsForAccount = useCallback(
     (accountName: string) => {
+      const prefix = `${new Date(state.currentDate).getFullYear()}-${String(new Date(state.currentDate).getMonth() + 1).padStart(2, "0")}`;
       return state.expenses
         .filter((e) => {
+          if (!e.date.startsWith(prefix)) return false;
           if (e.toAccount !== accountName) return false;
           if (e.type === "savings") return true;
           if (e.type !== "transfer") return false;
@@ -384,7 +390,7 @@ export function useFinance(userId?: string | null) {
         })
         .reduce((sum, e) => sum + e.amount, 0);
     },
-    [state.expenses]
+    [state.expenses, state.currentDate]
   );
 
   const stillNeedToSave = Math.max(0, plannedSavings - alreadySaved);
@@ -885,6 +891,7 @@ export function useFinance(userId?: string | null) {
 
   // ─── New month (auto-detect) ────────────────────────────────────
   useEffect(() => {
+    if (firestoreLoading) return;
     if (!state.monthStartBalances) {
       const balances: Record<string, number> = {};
       state.accounts
@@ -892,9 +899,12 @@ export function useFinance(userId?: string | null) {
         .forEach((a) => { balances[a.id] = a.balance; });
       setState((s) => ({ ...s, monthStartBalances: balances }));
     }
-  }, []);
+  }, [firestoreLoading]);
 
   useEffect(() => {
+    // Ждём пока данные загрузятся из Firestore
+    if (firestoreLoading) return;
+
     const now = new Date();
     const startDate = new Date(state.budgetPeriod.startDate);
 
@@ -917,7 +927,7 @@ export function useFinance(userId?: string | null) {
         };
       });
     }
-  }, []);
+  }, [firestoreLoading]);
 
   return {
     state,
