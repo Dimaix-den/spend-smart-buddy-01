@@ -384,38 +384,29 @@ export function useFinance(userId?: string | null) {
     (a) => a.type === "inactive" && !a.isSystem
   ), [state.accounts]);
 
-  const activeBalance = activeAccounts.reduce(
-    (sum, a) => sum + a.balance,
-    0
-  );
+  const activeBalance = useMemo(() => activeAccounts.reduce(
+    (sum, a) => sum + a.balance, 0
+  ), [activeAccounts]);
 
-  const remainingObligations = state.obligations
+  const remainingObligations = useMemo(() => state.obligations
     .filter((o) => !o.paid)
-    .reduce((sum, o) => sum + o.monthlyPayment, 0);
+    .reduce((sum, o) => sum + o.monthlyPayment, 0), [state.obligations]);
 
-  const totalObligations = state.obligations.reduce(
-    (sum, o) => sum + o.monthlyPayment,
-    0
-  );
+  const totalObligations = useMemo(() => state.obligations.reduce(
+    (sum, o) => sum + o.monthlyPayment, 0
+  ), [state.obligations]);
 
-  const totalDebt = state.obligations.reduce((sum, o) => {
+  const totalDebt = useMemo(() => state.obligations.reduce((sum, o) => {
     const isInstallment = o.totalAmount > o.monthlyPayment;
     if (isInstallment) {
-      return (
-        sum +
-        Math.max(
-          0,
-          o.totalAmount - o.monthlyPayment * o.paidMonths
-        )
-      );
+      return sum + Math.max(0, o.totalAmount - o.monthlyPayment * o.paidMonths);
     }
     return sum;
-  }, 0);
+  }, 0), [state.obligations]);
 
-  const plannedSavings = savingsAccounts.reduce(
-    (sum, a) => sum + (a.monthlyGoal || 0),
-    0
-  );
+  const plannedSavings = useMemo(() => savingsAccounts.reduce(
+    (sum, a) => sum + (a.monthlyGoal || 0), 0
+  ), [savingsAccounts]);
 
   const now = new Date(state.currentDate);
   const year = now.getFullYear();
