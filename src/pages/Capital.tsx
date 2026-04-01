@@ -556,8 +556,34 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
               </div>
               {autoMonths && (
                 <p className="text-xs text-muted-foreground px-1">
-                  Авто: {autoMonths} месяцев
+                  Срок: {autoMonths} месяцев
                 </p>
+              )}
+              {autoMonths && autoMonths > 1 && (
+                <div>
+                  <label className="text-xs text-muted-foreground px-1 mb-1 block">
+                    Уже оплачено месяцев
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    placeholder="0"
+                    value={newObligPaidMonths}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^\d]/g, "");
+                      const num = parseInt(val);
+                      if (val === "" || (num >= 0 && num < (autoMonths || 999))) {
+                        setNewObligPaidMonths(val);
+                      }
+                    }}
+                    className="w-full glass-input px-3 py-2.5 text-sm focus:outline-none"
+                  />
+                  {newObligPaidMonths && parseInt(newObligPaidMonths) > 0 && autoMonths && (
+                    <p className="text-xs text-muted-foreground px-1 mt-1">
+                      Осталось: {autoMonths - parseInt(newObligPaidMonths)} из {autoMonths} мес.
+                    </p>
+                  )}
+                </div>
               )}
               <div className="flex gap-2">
                 <button
