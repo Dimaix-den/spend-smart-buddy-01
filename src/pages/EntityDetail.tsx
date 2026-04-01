@@ -575,6 +575,49 @@ const handleTouchEnd = () => {
       toast({ description: "🗑 Обязательство удалено", duration: 2000 });
     };
 
+    const remainingMonths = totalMonths - paidMonths;
+    const activeAccounts = state.accounts.filter(
+      (a) => (a.type === "active" || a.type === "savings") && a.balance > 0
+    );
+
+    const earlyAmount = parseMoney(earlyRepaymentAmount);
+    const earlyMonthsCovered = obligation.monthlyPayment > 0
+      ? Math.min(Math.floor(earlyAmount / obligation.monthlyPayment), remainingMonths)
+      : 0;
+
+    const handleEarlyRepayment = () => {
+      if (earlyAmount <= 0 || earlyMonthsCovered <= 0) return;
+      if (!earlyRepaymentAccount) {
+        toast({ description: "⚠️ Выберите счёт", duration: 2000 });
+        return;
+      }
+
+      const selectedAccount = state.accounts.find(a => a.name === earlyRepaymentAccount);
+      if (selectedAccount && selectedAccount.balance < earlyAmount) {
+        toast({ description: "⚠️ Недостаточно средств", duration: 2000 });
+        return;
+      }
+
+      // Record expense
+      addExpense(earlyAmount, earlyRepaymentAccount, "obligation", {
+        obligationId: obligation.id,
+        note: `Досрочное погашение (${earlyMonthsCovered} мес.)`,
+      });
+
+      // Update paid months
+      updateObligation(entityId, {
+        paidMonths: paidMonths + earlyMonthsCovered,
+      });
+
+      setShowEarlyRepayment(false);
+      setEarlyRepaymentAmount("");
+      setEarlyRepaymentAccount("");
+      toast({
+        description: `✅ Досрочное погашение: ${earlyMonthsCovered} мес.`,
+        duration: 2000,
+      });
+    };
+
     return (
       <div
         className="flex flex-col min-h-screen pb-8"
