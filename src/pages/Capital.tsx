@@ -121,10 +121,12 @@ export default function Capital({ finance, onOpenAccount, onOpenObligation }: Ca
     const total = parseAmount(newObligTotal);
     const monthly = parseAmount(newObligMonthly);
     if (!monthly) return;
-    addObligation(newObligName.trim(), total || monthly, monthly);
+    const initialPaid = parseInt(newObligPaidMonths) || 0;
+    addObligation(newObligName.trim(), total || monthly, monthly, initialPaid > 0 ? initialPaid : undefined);
     setNewObligName("");
     setNewObligTotal("");
     setNewObligMonthly("");
+    setNewObligPaidMonths("");
     setShowAddOblig(false);
     toast({ description: "✅ Обязательство добавлено", duration: 2000 });
   };
