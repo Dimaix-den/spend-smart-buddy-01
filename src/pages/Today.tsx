@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo, memo } from "react";
 import {
   HelpCircle,
   Plus,
@@ -467,17 +467,19 @@ export default function Today({
       ? "text-alert-orange"
       : "text-safe-green";
 
-  const sortedByDateDesc = [...state.expenses].sort((a, b) =>
-    a.date < b.date ? 1 : a.date > b.date ? -1 : 0
-  );
-  const recentExpenses = sortedByDateDesc.slice(0, 6);
-
-  const groupedRecent = new Map<string, Expense[]>();
-  recentExpenses.forEach((e) => {
-    const arr = groupedRecent.get(e.date) || [];
-    arr.push(e);
-    groupedRecent.set(e.date, arr);
-  });
+  const { recentExpenses, groupedRecent } = useMemo(() => {
+    const sorted = [...state.expenses].sort((a, b) =>
+      a.date < b.date ? 1 : a.date > b.date ? -1 : 0
+    );
+    const recent = sorted.slice(0, 6);
+    const grouped = new Map<string, Expense[]>();
+    recent.forEach((e) => {
+      const arr = grouped.get(e.date) || [];
+      arr.push(e);
+      grouped.set(e.date, arr);
+    });
+    return { recentExpenses: recent, groupedRecent: grouped };
+  }, [state.expenses]);
 
   const displayAmount = Math.max(0, safeToSpend);
   const isOverspent = safeToSpend < 0;

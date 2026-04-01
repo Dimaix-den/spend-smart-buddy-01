@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { loadFromFirestore, saveToFirestore } from "@/lib/firestore";
 
 export type AccountType = "active" | "savings" | "inactive";
@@ -374,48 +374,39 @@ export function useFinance(userId?: string | null) {
   }, [firestoreLoading]);
 
   // ─── Derived ───────────────────────────────────────────────────
-  const activeAccounts = state.accounts.filter(
+  const activeAccounts = useMemo(() => state.accounts.filter(
     (a) => a.type === "active" && !a.isSystem
-  );
-  const savingsAccounts = state.accounts.filter(
+  ), [state.accounts]);
+  const savingsAccounts = useMemo(() => state.accounts.filter(
     (a) => a.type === "savings" && !a.isSystem
-  );
-  const inactiveAccounts = state.accounts.filter(
+  ), [state.accounts]);
+  const inactiveAccounts = useMemo(() => state.accounts.filter(
     (a) => a.type === "inactive" && !a.isSystem
-  );
+  ), [state.accounts]);
 
-  const activeBalance = activeAccounts.reduce(
-    (sum, a) => sum + a.balance,
-    0
-  );
+  const activeBalance = useMemo(() => activeAccounts.reduce(
+    (sum, a) => sum + a.balance, 0
+  ), [activeAccounts]);
 
-  const remainingObligations = state.obligations
+  const remainingObligations = useMemo(() => state.obligations
     .filter((o) => !o.paid)
-    .reduce((sum, o) => sum + o.monthlyPayment, 0);
+    .reduce((sum, o) => sum + o.monthlyPayment, 0), [state.obligations]);
 
-  const totalObligations = state.obligations.reduce(
-    (sum, o) => sum + o.monthlyPayment,
-    0
-  );
+  const totalObligations = useMemo(() => state.obligations.reduce(
+    (sum, o) => sum + o.monthlyPayment, 0
+  ), [state.obligations]);
 
-  const totalDebt = state.obligations.reduce((sum, o) => {
+  const totalDebt = useMemo(() => state.obligations.reduce((sum, o) => {
     const isInstallment = o.totalAmount > o.monthlyPayment;
     if (isInstallment) {
-      return (
-        sum +
-        Math.max(
-          0,
-          o.totalAmount - o.monthlyPayment * o.paidMonths
-        )
-      );
+      return sum + Math.max(0, o.totalAmount - o.monthlyPayment * o.paidMonths);
     }
     return sum;
-  }, 0);
+  }, 0), [state.obligations]);
 
-  const plannedSavings = savingsAccounts.reduce(
-    (sum, a) => sum + (a.monthlyGoal || 0),
-    0
-  );
+  const plannedSavings = useMemo(() => savingsAccounts.reduce(
+    (sum, a) => sum + (a.monthlyGoal || 0), 0
+  ), [savingsAccounts]);
 
   const now = new Date(state.currentDate);
   const year = now.getFullYear();
@@ -805,10 +796,9 @@ const plans = state.plannedExpenses || [];
     }));
   }, []);
 
-  const totalAssetsValue = (state.assets || []).reduce(
-    (sum, a) => sum + a.value,
-    0
-  );
+  const totalAssetsValue = useMemo(() => (state.assets || []).reduce(
+    (sum, a) => sum + a.value, 0
+  ), [state.assets]);
 
   // ─── Planned expense actions ───────────────────────────────────
   const addPlannedExpense = useCallback(

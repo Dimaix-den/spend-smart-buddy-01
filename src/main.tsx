@@ -21,4 +21,3 @@ document.addEventListener("touchmove", (e) => {
   }
 }, { passive: false });
 
-createRoot(document.getElementById("root")!).render(<App />);
