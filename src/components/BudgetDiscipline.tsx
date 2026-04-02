@@ -7,7 +7,11 @@ interface BudgetDisciplineProps {
   onWeekOffsetChange?: Dispatch<SetStateAction<number>>;
 }
 
-export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetChange }: BudgetDisciplineProps) {
+export default function BudgetDiscipline({
+  days,
+  weekOffset = 0,
+  onWeekOffsetChange,
+}: BudgetDisciplineProps) {
   const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
   const weekDaysShort = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
   const startDay = days[0];
@@ -23,6 +27,7 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
       return `${startDate.getDate()}–${endDate.getDate()} ${months[endDate.getMonth()]}`;
     }
 
+    return "";
   };
 
   const grayColor = "hsl(var(--muted))";
@@ -34,12 +39,20 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
     <div className="space-y-0">
       <div className="flex items-start justify-between gap-3">
         <div>
-
           <div className="mt-1 flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{formatWeekLabel()}</span>
           </div>
         </div>
 
+        {/* Кнопки перелистывания недели можно добавить тут, если нужны */}
+        {onWeekOffsetChange && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            {/* Пример (пока без иконок):
+            <button onClick={() => onWeekOffsetChange((w) => w + 1)}>←</button>
+            <button onClick={() => onWeekOffsetChange((w) => Math.max(0, w - 1))}>→</button>
+            */}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-7 gap-1.5">
@@ -49,11 +62,16 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
 
           const isFuture = d.status === "future";
           const isNoData = d.status === "no-data";
-          const dayTextColor = isFuture || isNoData ? mutedText : "hsl(var(--foreground))";
+          const isWithin = d.status === "within-budget";
+          const isExceeded = d.status === "exceeded";
+
+          const dayTextColor =
+            isFuture || isNoData ? mutedText : "hsl(var(--foreground))";
 
           let wrapperStyle: CSSProperties;
 
           if (isFuture) {
+            // будущее — пунктирный серый круг
             wrapperStyle = {
               width: 38,
               height: 38,
@@ -63,8 +81,21 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
               borderColor: grayColor,
               backgroundColor: "transparent",
             };
+          } else if (isNoData) {
+            // нет данных — сплошной серый
+            wrapperStyle = {
+              width: 38,
+              height: 38,
+              borderRadius: "999px",
+              borderWidth: 2,
+              borderStyle: "solid",
+              borderColor: "transparent",
+              backgroundImage: `conic-gradient(${grayColor} 0deg 360deg)`,
+            };
           } else {
-            const ratio = d.limit > 0 && !isNoData ? d.spent / d.limit : 0;
+            // within-budget / exceeded: показываем прогресс-кольцо
+            const ratio = d.limit > 0 ? d.spent / d.limit : 0;
+            const clampedRatio = Math.max(0, Math.min(ratio, 2)); // до 2x лимита
             const greenRatio = Math.max(0, Math.min(1 - ratio, 1));
             const greenDeg = greenRatio * 360;
             const overRatio = ratio > 1 ? Math.min(ratio - 1, 1) : 0;
@@ -72,17 +103,17 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
 
             let backgroundImage: string;
 
-            if (isNoData) {
-              backgroundImage = `conic-gradient(${grayColor} 0deg 360deg)`;
-            } else if (redDeg > 0) {
+            if (isExceeded) {
+              // красное кольцо + серый фон
               backgroundImage = `
                 conic-gradient(
-                  ${redColor} 0deg ${redDeg}deg,
-                  transparent ${redDeg}deg 360deg
+                  ${redColor} 0deg ${Math.max(redDeg, 60)}deg,
+                  transparent ${Math.max(redDeg, 60)}deg 360deg
                 ),
                 conic-gradient(${grayColor} 0deg 360deg)
               `;
             } else {
+              // within-budget: зелёный сектор, остальное серое
               backgroundImage = `
                 conic-gradient(
                   ${greenColor} 0deg ${greenDeg}deg,
@@ -113,7 +144,11 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
                   ? "flex flex-col items-center justify-center rounded-xl px-1 py-2"
                   : "flex flex-col items-center justify-center"
               }
-              style={d.isToday ? { backgroundColor: "hsl(var(--secondary) / 0.8)" } : {}}
+              style={
+                d.isToday
+                  ? { backgroundColor: "hsl(var(--secondary) / 0.8)" }
+                  : {}
+              }
             >
               <span
                 className="mb-2 text-[14px] leading-none"
@@ -123,7 +158,10 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
               </span>
 
               <div className="flex items-center justify-center">
-                <div className="flex items-center justify-center" style={wrapperStyle}>
+                <div
+                  className="flex items-center justify-center"
+                  style={wrapperStyle}
+                >
                   <div
                     className="flex items-center justify-center"
                     style={{
