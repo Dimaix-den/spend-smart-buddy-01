@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo, memo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import {
   HelpCircle,
   Plus,
@@ -97,15 +97,11 @@ function InfoPanel({
   const netPlans = upcomingPlannedIncome - upcomingPlannedExpenses;
 
   return (
-    <div
-      className="fixed inset-0 z-40 flex flex-col"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-40 flex flex-col" onClick={onClose}>
       <div className="absolute inset-0 glass-overlay" />
 
       <div
         className="relative mt-auto w-full max-w-app mx-auto glass-sheet rounded-t-[20px] modal-slide-up px-4 pt-4"
-        // больше «подушки» снизу, чтобы не упираться в навбар
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 140px)" }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -142,12 +138,11 @@ function InfoPanel({
             </span>
           </div>
 
-          {/* Блок с планами */}
           <div
             className="rounded-[12px] p-3 mt-1 space-y-3"
             style={{
               background: "hsl(0 0% 18%)",
-              opacity: includePlans ? 1 : 0.45, // серим весь блок, если выкл
+              opacity: includePlans ? 1 : 0.45,
             }}
           >
             <div className="flex items-center justify-between">
@@ -163,11 +158,7 @@ function InfoPanel({
               <button
                 onClick={onTogglePlans}
                 className="relative flex-shrink-0"
-                style={{
-                  width: 51,
-                  height: 31,
-                  borderRadius: 31,
-                }}
+                style={{ width: 51, height: 31, borderRadius: 31 }}
               >
                 <div
                   className="absolute inset-0 rounded-full transition-colors duration-300"
@@ -220,9 +211,7 @@ function InfoPanel({
 
           <div className="border-t border-white/5 pt-4 flex justify-between text-foreground">
             <span>÷ Дней осталось</span>
-            <span className="font-tabular font-semibold">
-              {daysLeft} дн.
-            </span>
+            <span className="font-tabular font-semibold">{daysLeft} дн.</span>
           </div>
 
           <div
@@ -263,7 +252,6 @@ function InfoPanel({
   );
 }
 
-
 function TransactionRow({
   expense,
   label,
@@ -278,7 +266,8 @@ function TransactionRow({
   const [swiped, setSwiped] = useState(false);
   const touchStartX = useRef(0);
   const isIncome = expense.type === "income";
-  const isTransfer = expense.type === "transfer" || expense.type === "savings";
+  const isTransfer =
+    expense.type === "transfer" || expense.type === "savings";
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -321,16 +310,12 @@ function TransactionRow({
         onTouchEnd={handleTouchEnd}
       >
         <div className="flex items-center gap-3">
-          <div
-            className={`w-8 h-8 rounded-full flex items-center justify-center ${bgColor}`}
-          >
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${bgColor}`}>
             <Icon size={14} className={color} />
           </div>
           <div>
             <p className="text-sm font-medium text-foreground">{label}</p>
-            <p className="text-xs text-muted-foreground">
-              {expense.account}
-            </p>
+            <p className="text-xs text-muted-foreground">{expense.account}</p>
           </div>
         </div>
         <span className={`font-bold font-tabular text-sm ${color}`}>
@@ -342,7 +327,13 @@ function TransactionRow({
   );
 }
 
-function StreakInfoPanel({ streakCount, onClose }: { streakCount: number; onClose: () => void }) {
+function StreakInfoPanel({
+  streakCount,
+  onClose,
+}: {
+  streakCount: number;
+  onClose: () => void;
+}) {
   useEffect(() => {
     document.body.classList.add("popup-open");
     return () => document.body.classList.remove("popup-open");
@@ -359,19 +350,28 @@ function StreakInfoPanel({ streakCount, onClose }: { streakCount: number; onClos
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-center mb-4">
-          <div className="w-10 h-1 rounded-full" style={{ background: "hsl(0 0% 30%)" }} />
+          <div
+            className="w-10 h-1 rounded-full"
+            style={{ background: "hsl(0 0% 30%)" }}
+          />
         </div>
 
         <div className="text-center mb-6">
           <div className="text-5xl mb-3">🔥</div>
           <div
             className="text-4xl font-bold font-tabular"
-            style={{ color: isOnTrack ? "hsl(162 100% 45%)" : "hsl(0 0% 50%)" }}
+            style={{
+              color: isOnTrack ? "hsl(162 100% 45%)" : "hsl(0 0% 50%)",
+            }}
           >
             {streakCount}
           </div>
           <div className="text-sm text-muted-foreground mt-1">
-            {streakCount === 1 ? "день подряд" : streakCount >= 2 && streakCount <= 4 ? "дня подряд" : "дней подряд"}
+            {streakCount === 1
+              ? "день подряд"
+              : streakCount >= 2 && streakCount <= 4
+              ? "дня подряд"
+              : "дней подряд"}
           </div>
         </div>
 
@@ -435,6 +435,7 @@ export default function Today({
     daysLeft,
     dailyBudget,
     effectiveDailyBudget,
+    todayLimit,
     spentToday,
     upcomingPlannedIncome,
     upcomingPlannedExpenses,
@@ -453,6 +454,7 @@ export default function Today({
     lastOpenedDates: state.lastOpenedDates ?? [],
     dayHistory: state.dayHistory ?? {},
     weekOffset,
+    todaySafeToSpend: safeToSpend,
   });
 
   const streakCount = streak;
@@ -485,18 +487,15 @@ export default function Today({
   const isOverspent = safeToSpend < 0;
   const overspendAmount = Math.abs(safeToSpend);
 
-  const heroLabel =
-    isOverspent
-      ? "Лимит исчерпан"
-      : safeToSpendStatus === "warning"
-      ? "Лимит почти исчерпан"
-      : "Можешь потратить";
+  const heroLabel = isOverspent
+    ? "Лимит исчерпан"
+    : safeToSpendStatus === "warning"
+    ? "Лимит почти исчерпан"
+    : "Можешь потратить";
 
   return (
     <div className="flex flex-col min-h-screen pb-40">
-      {/* Header + hero */}
       <div className="px-4 pt-5 pb-2">
-        {/* Header row */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <h1 className="text-4xl font-bold tracking-tight text-white px-2">
@@ -504,7 +503,6 @@ export default function Today({
             </h1>
           </div>
 
-          {/* Streak badge */}
           <button
             onClick={() => setShowStreakInfo(true)}
             className="flex items-center gap-1.5 px-2.5 py-3 rounded-full active:scale-95 transition-transform"
@@ -525,7 +523,9 @@ export default function Today({
                 fontSize: 14,
                 color:
                   streakCount > 0
-                    ? isOnTrack ? "#bbf7d0" : "#fecaca"
+                    ? isOnTrack
+                      ? "#bbf7d0"
+                      : "#fecaca"
                     : "#9ca3af",
               }}
             >
@@ -537,16 +537,21 @@ export default function Today({
                 fontSize: 11,
                 color:
                   streakCount > 0
-                    ? isOnTrack ? "#bbf7d0" : "#fecaca"
+                    ? isOnTrack
+                      ? "#bbf7d0"
+                      : "#fecaca"
                     : "#9ca3af",
               }}
             >
-              {streakCount === 1 ? "день" : streakCount >= 2 && streakCount <= 4 ? "дня" : "дней"}
+              {streakCount === 1
+                ? "день"
+                : streakCount >= 2 && streakCount <= 4
+                ? "дня"
+                : "дней"}
             </span>
           </button>
         </div>
 
-        {/* Hero: сначала дисциплина, потом карточка */}
         <div className="pt-4">
           <BudgetDiscipline
             days={disciplineDays}
@@ -554,7 +559,6 @@ export default function Today({
             onWeekOffsetChange={setWeekOffset}
           />
 
-          {/* Карточка hero */}
           <div className="mt-3 glass-card rounded-[20px] px-4 py-8">
             <div className="text-center">
               <button
@@ -587,7 +591,7 @@ export default function Today({
 
               {isOverspent && (
                 <p className="text-sm font-semibold text-alert-orange mt-1 animate-fade-in-up">
-                  Перерасход: {formatAmount(overspendAmount)} ₸
+                  Новый лимит: {formatAmount(Math.max(0, effectiveDailyBudget))} ₸
                 </p>
               )}
 
@@ -595,7 +599,7 @@ export default function Today({
                 <span>
                   Лимит:{" "}
                   <span className="text-foreground font-semibold">
-                    {formatAmount(effectiveDailyBudget)} ₸
+                    {formatAmount(todayLimit)} ₸
                   </span>
                 </span>
                 <span style={{ opacity: 0.3 }}>•</span>
@@ -611,7 +615,6 @@ export default function Today({
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 px-4 space-y-10 mt-2">
         {(savingsAccounts.length > 0 || state.obligations.length > 0) && (
           <SavingsCarousel
@@ -622,10 +625,7 @@ export default function Today({
         )}
 
         {recentExpenses.length > 0 && (
-          <div
-            className="animate-fade-in-up"
-            style={{ animationDelay: "0.12s" }}
-          >
+          <div className="animate-fade-in-up" style={{ animationDelay: "0.12s" }}>
             <h3 className="text-lg font-semibold tracking-wider text-white mb-4 px-1">
               Последние операции
             </h3>
