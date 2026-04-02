@@ -76,6 +76,7 @@ export default function EntityDetail({
 
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [swipedTxId, setSwipedTxId] = useState<string | null>(null);
   const [showEarlyRepayment, setShowEarlyRepayment] = useState(false);
   const [earlyRepaymentAmount, setEarlyRepaymentAmount] = useState("");
   const [earlyRepaymentAccount, setEarlyRepaymentAccount] = useState("");
@@ -425,33 +426,56 @@ const handleTouchEnd = () => {
                               ? `← ${t.account}`
                               : t.account;
 
+                            const isSwiped = swipedTxId === t.id;
+
                             return (
                               <div
                                 key={t.id}
-                                className={`px-4 py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition-opacity ${
-                                  i < txns.length - 1
-                                    ? "border-b border-white/5"
-                                    : ""
-                                }`}
-                                onClick={() => {
-                                  setEditingExpense(t);
-                                  setActionSheetOpen(true);
-                                }}
+                                className={`relative overflow-hidden ${i < txns.length - 1 ? "border-b border-white/5" : ""}`}
                               >
-                                <div>
-                                  <span className="text-sm text-foreground">{label}</span>
-                                  <p className="text-xs text-muted-foreground">{subtitle}</p>
-                                </div>
-                                <span
-                                  className={`font-bold font-tabular text-sm ${
-                                    isIncoming
-                                      ? "text-safe-green"
-                                      : "text-alert-orange"
-                                  }`}
+                                {isSwiped && (
+                                  <button
+                                    onClick={() => {
+                                      deleteExpense(t.id);
+                                      setSwipedTxId(null);
+                                      toast({ description: "🗑 Операция удалена", duration: 2000 });
+                                    }}
+                                    className="absolute right-0 top-0 bottom-0 w-20 flex items-center justify-center bg-destructive"
+                                  >
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                                  </button>
+                                )}
+                                <div
+                                  className="px-4 py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition-all"
+                                  style={{
+                                    transform: isSwiped ? "translateX(-80px)" : "translateX(0)",
+                                    transition: "transform 0.25s ease-out",
+                                  }}
+                                  onClick={() => {
+                                    if (isSwiped) { setSwipedTxId(null); return; }
+                                    setEditingExpense(t);
+                                    setActionSheetOpen(true);
+                                  }}
+                                  onTouchStart={(e) => { (e.currentTarget as any)._touchStartX = e.touches[0].clientX; }}
+                                  onTouchEnd={(e) => {
+                                    const dx = (e.currentTarget as any)._touchStartX - e.changedTouches[0].clientX;
+                                    if (dx > 50) setSwipedTxId(t.id);
+                                    else if (dx < -30) setSwipedTxId(null);
+                                  }}
                                 >
-                                  {isIncoming ? "+" : "−"}
-                                  {formatAmount(t.amount)} ₸
-                                </span>
+                                  <div>
+                                    <span className="text-sm text-foreground">{label}</span>
+                                    <p className="text-xs text-muted-foreground">{subtitle}</p>
+                                  </div>
+                                  <span
+                                    className={`font-bold font-tabular text-sm ${
+                                      isIncoming ? "text-safe-green" : "text-alert-orange"
+                                    }`}
+                                  >
+                                    {isIncoming ? "+" : "−"}
+                                    {formatAmount(t.amount)} ₸
+                                  </span>
+                                </div>
                               </div>
                             );
                           })}
@@ -864,32 +888,65 @@ const handleTouchEnd = () => {
                   </p>
                 ) : (
                   <div className="glass-card overflow-hidden">
-                    {obligationPayments.slice(0, 5).map((p, i) => (
-                      <div
-                        key={p.id}
-                        className={`px-4 py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition-opacity ${
-                          i < obligationPayments.length - 1
-                            ? "border-b border-white/5"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          setEditingExpense(p);
-                          setActionSheetOpen(true);
-                        }}
-                      >
-                        <div>
-                          <span className="text-sm text-foreground">
-                            {p.note || obligation.name}
-                          </span>
-                          <p className="text-xs text-muted-foreground">
-                            {p.account} · {p.date}
-                          </p>
+                    {obligationPayments.slice(0, 5).map((p, i) => {
+                      const isSwiped = swipedTxId === p.id;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`relative overflow-hidden ${i < obligationPayments.length - 1 ? "border-b border-white/5" : ""}`}
+                        >
+                          {isSwiped && (
+                            <button
+                              onClick={() => {
+                                // Уменьшаем paidMonths при удалении платежа по обязательству
+                                const monthsCovered = obligation.monthlyPayment > 0
+                                  ? Math.round(p.amount / obligation.monthlyPayment)
+                                  : 1;
+                                updateObligation(entityId, {
+                                  paidMonths: Math.max(0, (obligation.paidMonths || 0) - monthsCovered),
+                                });
+                                deleteExpense(p.id);
+                                setSwipedTxId(null);
+                                toast({ description: "🗑 Платёж удалён", duration: 2000 });
+                              }}
+                              className="absolute right-0 top-0 bottom-0 w-20 flex items-center justify-center bg-destructive"
+                            >
+                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                            </button>
+                          )}
+                          <div
+                            className="px-4 py-3 flex items-center justify-between cursor-pointer active:opacity-70 transition-all"
+                            style={{
+                              transform: isSwiped ? "translateX(-80px)" : "translateX(0)",
+                              transition: "transform 0.25s ease-out",
+                            }}
+                            onClick={() => {
+                              if (isSwiped) { setSwipedTxId(null); return; }
+                              setEditingExpense(p);
+                              setActionSheetOpen(true);
+                            }}
+                            onTouchStart={(e) => { (e.currentTarget as any)._touchStartX = e.touches[0].clientX; }}
+                            onTouchEnd={(e) => {
+                              const dx = (e.currentTarget as any)._touchStartX - e.changedTouches[0].clientX;
+                              if (dx > 50) setSwipedTxId(p.id);
+                              else if (dx < -30) setSwipedTxId(null);
+                            }}
+                          >
+                            <div>
+                              <span className="text-sm text-foreground">
+                                {p.note || obligation.name}
+                              </span>
+                              <p className="text-xs text-muted-foreground">
+                                {p.account} · {p.date}
+                              </p>
+                            </div>
+                            <span className="font-bold font-tabular text-sm text-alert-orange">
+                              −{formatAmount(p.amount)} ₸
+                            </span>
+                          </div>
                         </div>
-                        <span className="font-bold font-tabular text-sm text-alert-orange">
-                          −{formatAmount(p.amount)} ₸
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
