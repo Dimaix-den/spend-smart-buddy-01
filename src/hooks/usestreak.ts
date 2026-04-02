@@ -54,17 +54,29 @@ function startOfDay(date: Date) {
   return next;
 }
 
-function normalizeStatus(status?: string): DisciplineStatus {
-  if (
-    status === "within-budget" ||
-    status === "exceeded" ||
-    status === "future" ||
-    status === "no-data"
-  ) {
-    return status;
+// Статус по цифрам дня
+function resolveStatusFromNumbers({
+  spent,
+  limit,
+  isFuture,
+}: {
+  spent: number;
+  limit: number;
+  isFuture: boolean;
+}): DisciplineStatus {
+  if (isFuture) return "future";
+
+  // День без трат в пределах периода считается удачным
+  if (spent === 0 && limit >= 0) {
+    return "within-budget";
   }
 
-  return "no-data";
+  if (limit <= 0) {
+    // Есть траты, а лимит не задан / нулевой — считаем перерасходом
+    return "exceeded";
+  }
+
+  return spent <= limit ? "within-budget" : "exceeded";
 }
 
 function getMonday(baseDate: Date, weekOffset: number) {
@@ -80,30 +92,6 @@ function getMonday(baseDate: Date, weekOffset: number) {
   return monday;
 }
 
-function resolveStatus({
-  spent,
-  limit,
-  isOpened,
-  isToday,
-  snapshotStatus,
-}: {
-  spent: number;
-  limit: number;
-  isOpened: boolean;
-  isToday: boolean;
-  snapshotStatus?: string;
-}): DisciplineStatus {
-  if (isToday || spent > 0) {
-    return spent <= limit ? "within-budget" : "exceeded";
-  }
-
-  if (isOpened) {
-    return "within-budget";
-  }
-
-  return normalizeStatus(snapshotStatus);
-}
-
 export function buildDisciplineData({
   expenses,
   dailyBudget,
@@ -114,9 +102,9 @@ export function buildDisciplineData({
 }: BuildDisciplineDataParams) {
   const today = startOfDay(now);
   const todayStr = formatLocalDate(today);
-  const openedSet = new Set(lastOpenedDates);
   const history = dayHistory ?? {};
 
+  // Фактические траты по датам
   const spentByDate = new Map<string, number>();
   expenses.forEach((expense) => {
     if (expense.type !== "regular" || !expense.date) return;
@@ -126,9 +114,9 @@ export function buildDisciplineData({
     );
   });
 
+  // Минимальная известная дата: траты или снапшоты
   const allKnownDates = [
     ...spentByDate.keys(),
-    ...lastOpenedDates,
     ...Object.keys(history),
   ].sort();
 
@@ -145,34 +133,29 @@ export function buildDisciplineData({
     if (cached) return cached;
 
     const snapshot = history[dateStr];
-    const spent = spentByDate.get(dateStr) ?? snapshot?.spent ?? 0;
+    const spent = spentByDate.get(dateStr) ?? 0;
+
     const isToday = dateStr === todayStr;
     const dTime = normalizedDate.getTime();
     const todayTime = today.getTime();
 
+    // Лимит на день:
+    // 1) если есть snapshot.limit — фиксированный лимит того дня
+    // 2) иначе — текущий dailyBudget (для новых дней без истории)
+    const limit =
+      typeof snapshot?.limit === "number" ? snapshot.limit : dailyBudget;
+
     let status: DisciplineStatus;
-    let limit = isToday ? dailyBudget : snapshot?.limit ?? dailyBudget;
 
     if (dTime > todayTime) {
       status = "future";
     } else if (appStartDateMs === null || dTime < appStartDateMs) {
       status = "no-data";
-    } else if (!isToday && snapshot) {
-      limit = snapshot.limit;
-      status = resolveStatus({
-        spent,
-        limit,
-        isOpened: openedSet.has(dateStr),
-        isToday: false,
-        snapshotStatus: snapshot.status,
-      });
     } else {
-      status = resolveStatus({
+      status = resolveStatusFromNumbers({
         spent,
         limit,
-        isOpened: openedSet.has(dateStr),
-        isToday,
-        snapshotStatus: snapshot?.status,
+        isFuture: false,
       });
     }
 
