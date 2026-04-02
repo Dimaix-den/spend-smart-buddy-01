@@ -23,7 +23,6 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
       return `${startDate.getDate()}–${endDate.getDate()} ${months[endDate.getMonth()]}`;
     }
 
-    return `${startDate.getDate()} ${months[startDate.getMonth()]} – ${endDate.getDate()} ${months[endDate.getMonth()]}`;
   };
 
   const grayColor = "hsl(var(--muted))";
@@ -32,41 +31,15 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
   const mutedText = "hsl(var(--muted-foreground))";
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-0">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Budget discipline
-          </p>
+
           <div className="mt-1 flex items-center gap-2">
-            <p className="text-sm font-semibold text-foreground">
-              {weekOffset > 0 ? `${weekOffset} нед. назад` : "Текущая неделя"}
-            </p>
             <span className="text-xs text-muted-foreground">{formatWeekLabel()}</span>
           </div>
         </div>
 
-        {onWeekOffsetChange && (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              aria-label="Показать прошлую неделю"
-              onClick={() => onWeekOffsetChange((prev) => prev + 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-foreground active:scale-95"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              aria-label="Вернуться к текущей неделе"
-              disabled={weekOffset === 0}
-              onClick={() => onWeekOffsetChange((prev) => Math.max(0, prev - 1))}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-foreground active:scale-95 disabled:opacity-35"
-            >
-              →
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="grid grid-cols-7 gap-1.5">
@@ -172,21 +145,6 @@ export default function BudgetDiscipline({ days, weekOffset = 0, onWeekOffsetCha
             </div>
           );
         })}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-safe-green" />
-          <span>уложился</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
-          <span>превысил</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-secondary" />
-          <span>нет данных</span>
-        </div>
       </div>
     </div>
   );
