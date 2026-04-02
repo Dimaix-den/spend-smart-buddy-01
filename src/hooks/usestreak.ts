@@ -80,28 +80,28 @@ function getMonday(baseDate: Date, weekOffset: number) {
   return monday;
 }
 
-function resolveStatus({
+/**
+ * Новая логика: статус дня зависит только от spent/limit и того,
+ * будущее это или нет. lastOpened/dayHistory используются только
+ * для восстановления лимита/спента, а не для логики стрика.
+ */
+function resolveStatusFromNumbers({
   spent,
   limit,
-  isOpened,
-  isToday,
-  snapshotStatus,
+  isFuture,
 }: {
   spent: number;
   limit: number;
-  isOpened: boolean;
-  isToday: boolean;
-  snapshotStatus?: string;
+  isFuture: boolean;
 }): DisciplineStatus {
-  if (isToday || spent > 0) {
-    return spent <= limit ? "within-budget" : "exceeded";
+  if (isFuture) return "future";
+
+  if (limit <= 0) {
+    // нет лимита — считаем как "no-data"
+    return "no-data";
   }
 
-  if (isOpened) {
-    return "within-budget";
-  }
-
-  return normalizeStatus(snapshotStatus);
+  return spent <= limit ? "within-budget" : "exceeded";
 }
 
 export function buildDisciplineData({
@@ -114,9 +114,9 @@ export function buildDisciplineData({
 }: BuildDisciplineDataParams) {
   const today = startOfDay(now);
   const todayStr = formatLocalDate(today);
-  const openedSet = new Set(lastOpenedDates);
   const history = dayHistory ?? {};
 
+  // 1. Считаем траты по датам (regular)
   const spentByDate = new Map<string, number>();
   expenses.forEach((expense) => {
     if (expense.type !== "regular" || !expense.date) return;
@@ -126,9 +126,9 @@ export function buildDisciplineData({
     );
   });
 
+  // 2. Находим самую раннюю известную дату (по тратам или истории)
   const allKnownDates = [
     ...spentByDate.keys(),
-    ...lastOpenedDates,
     ...Object.keys(history),
   ].sort();
 
@@ -150,29 +150,20 @@ export function buildDisciplineData({
     const dTime = normalizedDate.getTime();
     const todayTime = today.getTime();
 
+    // лимит: если есть snapshot.limit — берём его, иначе текущий dailyBudget
+    let limit = snapshot?.limit ?? dailyBudget;
+
     let status: DisciplineStatus;
-    let limit = isToday ? dailyBudget : snapshot?.limit ?? dailyBudget;
 
     if (dTime > todayTime) {
       status = "future";
     } else if (appStartDateMs === null || dTime < appStartDateMs) {
       status = "no-data";
-    } else if (!isToday && snapshot) {
-      limit = snapshot.limit;
-      status = resolveStatus({
-        spent,
-        limit,
-        isOpened: openedSet.has(dateStr),
-        isToday: false,
-        snapshotStatus: snapshot.status,
-      });
     } else {
-      status = resolveStatus({
+      status = resolveStatusFromNumbers({
         spent,
         limit,
-        isOpened: openedSet.has(dateStr),
-        isToday,
-        snapshotStatus: snapshot?.status,
+        isFuture: dTime > todayTime,
       });
     }
 
@@ -191,12 +182,14 @@ export function buildDisciplineData({
     return resolved;
   };
 
+  // 3. Неделя для BudgetDiscipline
   const monday = getMonday(today, weekOffset);
   const days = Array.from({ length: 7 }, (_, index) => {
     const day = new Date(monday.getTime() + index * DAY_MS);
     return resolveDay(day);
   });
 
+  // 4. Стрик: подряд от сегодня назад только within-budget
   let streak = 0;
   if (appStartDateMs !== null) {
     const cursor = new Date(today);
