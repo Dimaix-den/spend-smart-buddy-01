@@ -14,6 +14,60 @@ interface SettingsProps {
 
 import ToggleSwitch from "@/components/ToggleSwitch";
 
+type ChangelogItemType = "new" | "fix" | "upd";
+interface ChangelogItem { type: ChangelogItemType; text: string; }
+interface ChangelogRelease { version: string; date: string; items: ChangelogItem[]; }
+
+const CHANGELOG: ChangelogRelease[] = [
+  {
+    version: "v2.1.0",
+    date: "Апрель 2026",
+    items: [
+      { type: "new", text: "Удаление операций свайпом влево в счетах и обязательствах" },
+      { type: "fix", text: "При удалении платежа по кредиту счётчик оплаченных месяцев уменьшается автоматически" },
+      { type: "fix", text: "Сброс обязательств и целей сбережений теперь корректно срабатывает с нового месяца" },
+      { type: "fix", text: "Цели сбережений в карусели считаются только за текущий месяц" },
+      { type: "new", text: "Досрочное погашение кредита — внесите сумму и закройте несколько месяцев сразу" },
+      { type: "new", text: "При добавлении обязательства можно указать уже погашенные месяцы" },
+    ],
+  },
+  {
+    version: "v2.0.0",
+    date: "Март 2026",
+    items: [
+      { type: "new", text: "Свайп по неделям в BudgetDiscipline — смотри историю за прошлые недели" },
+      { type: "new", text: "Стрик теперь считается по всей истории, а не только за текущую неделю" },
+      { type: "new", text: "Попап стрика с мотивацией и объяснением правил" },
+      { type: "fix", text: "Дневной лимит фиксируется на утро и не меняется в течение дня" },
+      { type: "upd", text: "Единый формат отображения операций во всех разделах" },
+      { type: "new", text: "Редактирование операций в счетах и обязательствах" },
+      { type: "fix", text: "Исправлен чёрный экран после обновления" },
+    ],
+  },
+  {
+    version: "v1.5.0",
+    date: "Февраль 2026",
+    items: [
+      { type: "new", text: "История операций с фильтрами по счёту и типу" },
+      { type: "new", text: "Плановые доходы и расходы с повторением (ежемесячно / ежегодно)" },
+      { type: "new", text: "Имущество в капитале — квартира, машина и другие активы" },
+      { type: "upd", text: "Карусель сбережений и обязательств на главном экране" },
+      { type: "fix", text: "Корректный расчёт дневного лимита при переходе между месяцами" },
+    ],
+  },
+  {
+    version: "v1.0.0",
+    date: "Январь 2026",
+    items: [
+      { type: "new", text: "Запуск приложения Sanda" },
+      { type: "new", text: "Дневной лимит «Можешь потратить» с объяснением расчёта" },
+      { type: "new", text: "Счета, сбережения, обязательства и капитал" },
+      { type: "new", text: "Синхронизация через Google аккаунт" },
+      { type: "new", text: "Работа в гостевом режиме без регистрации" },
+    ],
+  },
+];
+
 export default function Settings({ finance, user, isGuest, onLogout, onSignIn, onSwitchAccount }: SettingsProps) {
   const { state, updateSettings } = finance;
   const [signingIn, setSigningIn] = useState(false);
@@ -207,11 +261,50 @@ export default function Settings({ finance, user, isGuest, onLogout, onSignIn, o
           <div className="glass-card p-4 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground">SANDA</span>
-              <span className="text-xs text-muted-foreground">v2.0.0</span>
+              <span className="text-xs text-muted-foreground">v2.1.0</span>
             </div>
             <p className="text-xs text-muted-foreground">
               Личный финансовый помощник. Контролируй расходы, следи за бюджетом.
             </p>
+          </div>
+        </div>
+
+        {/* Changelog */}
+        <div>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 px-1">Последние обновления</h2>
+          <div className="space-y-3">
+            {CHANGELOG.map((release, ri) => (
+              <div key={ri} className="glass-card p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-foreground">{release.version}</span>
+                  <span className="text-xs text-muted-foreground">{release.date}</span>
+                </div>
+                <div className="space-y-2">
+                  {release.items.map((item, ii) => (
+                    <div key={ii} className="flex items-start gap-2.5">
+                      <span
+                        className="text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5"
+                        style={{
+                          background: item.type === "fix"
+                            ? "hsl(0 76% 61% / 0.15)"
+                            : item.type === "new"
+                            ? "hsl(162 100% 33% / 0.15)"
+                            : "hsl(211 100% 50% / 0.15)",
+                          color: item.type === "fix"
+                            ? "hsl(0 76% 61%)"
+                            : item.type === "new"
+                            ? "hsl(162 100% 45%)"
+                            : "hsl(211 100% 60%)",
+                        }}
+                      >
+                        {item.type === "fix" ? "FIX" : item.type === "new" ? "NEW" : "UPD"}
+                      </span>
+                      <p className="text-xs text-foreground/80 leading-relaxed">{item.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
