@@ -475,14 +475,15 @@ export function useFinance(userId?: string | null) {
     const diffMs = nextMonthStart.getTime() - now.getTime();
     daysLeft = Math.max(1, Math.ceil(diffMs / 86400000));
   }
-
-  const available = activeBalance - remainingObligations - stillNeedToSave;
-  const dailyBudget = Math.max(0, Math.round(available / daysLeft));
-
   const todayStr = state.currentDate;
   const spentToday = state.expenses
     .filter((e) => e.date === todayStr && e.type === "regular")
     .reduce((sum, e) => sum + e.amount, 0);
+    
+  const available = activeBalance + spentToday - remainingObligations - stillNeedToSave;
+  const dailyBudget = Math.max(0, Math.round(available / daysLeft));
+
+
 
   // ─── Plans impact (exclude paid plans) ─────────────────────────
 const plans = state.plannedExpenses || [];
