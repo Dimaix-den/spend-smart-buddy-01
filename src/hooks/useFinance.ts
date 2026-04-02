@@ -538,6 +538,94 @@ const plans = state.plannedExpenses || [];
   const safeToSpendStatus =
     safeToSpend < 0 ? "overspent" : percentSpent >= 80 ? "warning" : "ok";
 
+  useEffect(() => {
+    if (firestoreLoading) return;
+
+    const openedDates = state.lastOpenedDates ?? [];
+    const openedSet = new Set(openedDates);
+    const history = state.dayHistory ?? {};
+    const spentByDate = new Map<string, number>();
+
+    state.expenses.forEach((expense) => {
+      if (expense.type !== "regular" || !expense.date) return;
+      spentByDate.set(
+        expense.date,
+        (spentByDate.get(expense.date) ?? 0) + expense.amount
+      );
+    });
+
+    const trackedDates = [
+      ...spentByDate.keys(),
+      ...openedDates,
+      ...Object.keys(history),
+    ]
+      .filter((dateStr) => dateStr <= state.currentDate)
+      .sort();
+
+    if (trackedDates.length === 0) return;
+
+    let hasChanges = false;
+    const nextHistory = { ...history };
+
+    trackedDates.forEach((dateStr) => {
+      const existing = history[dateStr];
+      const spent = spentByDate.get(dateStr) ?? existing?.spent ?? 0;
+      const isToday = dateStr === state.currentDate;
+      const limit = isToday ? dailyBudget : existing?.limit ?? dailyBudget;
+
+      let status: string;
+      if (spent > 0 || isToday) {
+        status = spent <= limit ? "within-budget" : "exceeded";
+      } else if (openedSet.has(dateStr)) {
+        status = "within-budget";
+      } else {
+        status = existing?.status ?? "no-data";
+      }
+
+      if (
+        !existing ||
+        existing.spent !== spent ||
+        existing.limit !== limit ||
+        existing.status !== status
+      ) {
+        nextHistory[dateStr] = { spent, limit, status };
+        hasChanges = true;
+      }
+    });
+
+    if (!hasChanges) return;
+
+    setState((current) => {
+      const currentHistory = current.dayHistory ?? {};
+      let changed = false;
+      const mergedHistory = { ...currentHistory };
+
+      trackedDates.forEach((dateStr) => {
+        const nextEntry = nextHistory[dateStr];
+        const currentEntry = currentHistory[dateStr];
+
+        if (
+          !currentEntry ||
+          currentEntry.spent !== nextEntry.spent ||
+          currentEntry.limit !== nextEntry.limit ||
+          currentEntry.status !== nextEntry.status
+        ) {
+          mergedHistory[dateStr] = nextEntry;
+          changed = true;
+        }
+      });
+
+      return changed ? { ...current, dayHistory: mergedHistory } : current;
+    });
+  }, [
+    firestoreLoading,
+    state.currentDate,
+    state.expenses,
+    state.lastOpenedDates,
+    state.dayHistory,
+    dailyBudget,
+  ]);
+
   // ─── Monthly budget ────────────────────────────────────────────
   const monthStartBalance = Object.values(
     state.monthStartBalances || {}
