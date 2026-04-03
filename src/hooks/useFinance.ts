@@ -670,7 +670,10 @@ export function useFinance(userId?: string | null) {
       const spent = spentByDate.get(dateStr) ?? existing?.spent ?? 0;
       const isToday = dateStr === state.currentDate;
 
-      const limit = isToday ? todayLimit : existing?.limit ?? dailyBudget;
+      // Past days: never overwrite a frozen limit; only set if no snapshot exists
+      const limit = isToday
+        ? todayLimit
+        : existing?.limit ?? effectiveDailyBudget;
 
       let status: string;
       if (spent > 0 || isToday) {
@@ -681,13 +684,19 @@ export function useFinance(userId?: string | null) {
         status = existing?.status ?? "no-data";
       }
 
+      // For past days that already have a snapshot, only update spent & status, NOT the limit
+      const finalLimit = !isToday && existing?.limit != null ? existing.limit : limit;
+      const finalStatus = spent <= finalLimit
+        ? (spent > 0 || isToday || openedSet.has(dateStr) ? "within-budget" : existing?.status ?? "no-data")
+        : "exceeded";
+
       if (
         !existing ||
         existing.spent !== spent ||
-        existing.limit !== limit ||
-        existing.status !== status
+        existing.limit !== finalLimit ||
+        existing.status !== finalStatus
       ) {
-        nextHistory[dateStr] = { spent, limit, status };
+        nextHistory[dateStr] = { spent, limit: finalLimit, status: finalStatus };
         hasChanges = true;
       }
     });
