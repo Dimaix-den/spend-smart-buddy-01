@@ -694,7 +694,7 @@ export default function Today({
             </div>
             <button
               onClick={onShowHistory}
-              className="w-full flex items-center justify-center gap-2 py-3 mt-3 rounded-[12px] text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 mt-3 mb-6 rounded-[12px] text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
               style={{ background: "hsl(0 0% 6%)" }}
             >
               Показать всю историю <ChevronRight size={16} />
