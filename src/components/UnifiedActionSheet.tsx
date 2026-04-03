@@ -767,32 +767,63 @@ export default function UnifiedActionSheet({
               </div>
             )}
 
-            {/* Obligation selector */}
-            {tab === "expense" &&
-              expenseType === "obligation" &&
-              unpaidObligations.length > 0 && (
-                <div className="flex flex-wrap gap-2 animate-fade-in-up px-5">
-                  {unpaidObligations.map((o) => (
+          {/* Obligation selector (как radio + автоподстановка суммы) */}
+          {tab === "expense" &&
+            expenseType === "obligation" &&
+            unpaidObligations.length > 0 && (
+              <div className="space-y-2 animate-fade-in-up px-5">
+                {unpaidObligations.map((o) => {
+                  const isSelected = selectedObligId === o.id;
+                  const activeColor = "hsl(38 100% 52%)"; // тот же, что для расходов
+
+                  return (
                     <button
                       key={o.id}
-                      onClick={() => setSelectedObligId(o.id)}
-                      className="px-3 py-1.5 rounded-full text-sm font-medium transition-colors"
+                      onClick={() => {
+                        setSelectedObligId(o.id);
+                        // автоподстановка суммы в поле
+                        setAmount(o.monthlyPayment.toString());
+                        // при желании можно также подставлять имя в note:
+                        // setNote(o.name);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-[10px] text-left transition-all"
                       style={{
-                        background:
-                          selectedObligId === o.id
-                            ? "hsl(38 100% 52%)"
-                            : "hsl(0 0% 18%)",
-                        color:
-                          selectedObligId === o.id
-                            ? "black"
-                            : "hsl(0 0% 60%)",
+                        background: isSelected
+                          ? `${activeColor}26`
+                          : "hsl(0 0% 18%)",
+                        boxShadow: isSelected
+                          ? `inset 0 0 0 1.5px ${activeColor}`
+                          : "none",
                       }}
                     >
-                      {o.name} ({formatAmount(o.monthlyPayment)} ₸)
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                          style={{
+                            borderColor: isSelected
+                              ? activeColor
+                              : "hsl(0 0% 40%)",
+                          }}
+                        >
+                          {isSelected && (
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ background: activeColor }}
+                            />
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-foreground">
+                          {o.name}
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold font-tabular text-muted-foreground">
+                        {formatAmount(o.monthlyPayment)} ₸
+                      </span>
                     </button>
-                  ))}
-                </div>
-              )}
+                  );
+                })}
+              </div>
+            )}
 
             {/* Planned selector */}
             {expenseType === "planned" && relevantPlans.length > 0 && (
