@@ -40,12 +40,17 @@ interface PlanRowProps {
   onSetSwiped: (id: string | null) => void;
 }
 
+type PlansByDate = {
+  date: string;
+  items: (PlannedExpense & { virtualDate: string })[];
+};
+
 function PlanRow({
   plan,
   viewYear,
   viewMonth,
   todayStr,
-  monthNames,
+  monthNames, // не используется, но пусть остаётся для совместимости пропсов
   onEdit,
   onDelete,
   onTogglePaid,
@@ -55,15 +60,12 @@ function PlanRow({
   const touchStartX = useRef(0);
   const isPaid = isPlanPaidInMonth(plan, viewYear, viewMonth);
   const isIncome = plan.type === "income";
-  const isToday = plan.virtualDate === todayStr;
   const isOverdue = !isPaid && plan.virtualDate < todayStr;
-
-  const d = new Date(plan.virtualDate);
-  const dayLabel = `${d.getDate()} ${monthNames[d.getMonth()].toLowerCase().slice(0, 3)}`;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
   };
+
   const handleTouchEnd = (e: React.TouchEvent) => {
     const diff = touchStartX.current - e.changedTouches[0].clientX;
     if (diff > 60) onSetSwiped(plan.id);
@@ -84,93 +86,84 @@ function PlanRow({
         </button>
       )}
       <div
-        className={`px-4 py-3 flex items-center justify-between transition-all duration-200 ${
+        className={`px-4 flex items-center justify-between transition-all duration-200 ${
           isSwiped ? "-translate-x-20" : "translate-x-0"
         }`}
-        style={{ transition: "transform 0.25s ease-out" }}
+        style={{
+          transition: "transform 0.25s ease-out",
+          minHeight: 52, // фиксированная высота строки
+          height: 52,
+        }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onTogglePaid(plan.id);
-          }}
-          className="flex-shrink-0 mr-3"
-        >
-          <div
-            className="w-5 h-5 rounded border-2 flex items-center justify-center transition-all"
-            style={{
-              borderColor: isPaid
-                ? "hsl(162 100% 33%)"
-                : isOverdue
-                ? "hsl(0 76% 61%)"
-                : "hsl(0 0% 40%)",
-              background: isPaid ? "hsl(162 100% 33%)" : "transparent",
+        {/* Левая часть: чекбокс + текст (одна строка) */}
+        <div className="flex-1 flex items-center gap-3 min-w-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePaid(plan.id);
             }}
+            className="flex-shrink-0"
           >
-            {isPaid && <Check size={12} className="text-white" strokeWidth={3} />}
-          </div>
-        </button>
-
-        <div
-          className="flex-1 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-transform"
-          onClick={() => {
-            if (isSwiped) {
-              onSetSwiped(null);
-              return;
-            }
-            onEdit(plan);
-          }}
-        >
-          <div className="text-center min-w-[40px]">
-            <span
-              className="text-xs font-bold"
+            <div
+              className="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all"
               style={{
-                color: isOverdue
-                  ? "hsl(0 76% 61%)"
-                  : isToday
+                borderColor: isPaid
                   ? "hsl(162 100% 33%)"
-                  : "hsl(0 0% 50%)",
+                  : isOverdue
+                  ? "hsl(0 76% 61%)"
+                  : "hsl(0 0% 40%)",
+                background: isPaid ? "hsl(162 100% 33%)" : "transparent",
               }}
             >
-              {dayLabel}
-            </span>
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-1.5">
-              <p
-                className={`text-sm font-medium ${
-                  isPaid ? "line-through text-muted-foreground" : "text-foreground"
-                }`}
-              >
-                {plan.name}
-              </p>
-              {isOverdue && (
-                <AlertCircle
-                  size={12}
-                  style={{ color: "hsl(0 76% 61%)", flexShrink: 0 }}
-                />
+              {isPaid && (
+                <Check size={12} className="text-white" strokeWidth={3} />
               )}
             </div>
+          </button>
+
+          <button
+            className="flex-1 flex items-center gap-1.5 text-left active:scale-[0.98] transition-transform min-w-0"
+            onClick={() => {
+              if (isSwiped) {
+                onSetSwiped(null);
+                return;
+              }
+              onEdit(plan);
+            }}
+          >
+            {/* Имя + recurrence/overdue в одну строку, с обрезкой */}
+            <p
+              className={`text-sm font-medium truncate ${
+                isPaid ? "line-through text-muted-foreground" : "text-foreground"
+              }`}
+            >
+              {plan.name}
+            </p>
+
             {plan.recurrence && plan.recurrence !== "none" && (
-              <p className="text-[10px] text-muted-foreground">
-                {plan.recurrence === "monthly" ? "Ежемесячно" : "Ежегодно"}
-              </p>
+              <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                {plan.recurrence === "monthly"
+                  ? "· ежемесячно"
+                  : "· ежегодно"}
+              </span>
             )}
+
             {isOverdue && (
-              <p
-                className="text-[10px]"
-                style={{ color: "hsl(0 76% 61% / 0.8)" }}
+              <span
+                className="text-[10px] flex-shrink-0"
+                style={{ color: "hsl(0 76% 61%)" }}
               >
-                Просрочено — закройте или измените дату
-              </p>
+                · просрочено
+              </span>
             )}
-          </div>
+          </button>
         </div>
 
-        <div
-          className="flex items-center gap-2 cursor-pointer"
+        {/* Правая часть: сумма + стрелка */}
+        <button
+          className="flex items-center gap-2 cursor-pointer flex-shrink-0"
           onClick={() => {
             if (isSwiped) {
               onSetSwiped(null);
@@ -198,7 +191,7 @@ function PlanRow({
             size={14}
             className="text-muted-foreground flex-shrink-0"
           />
-        </div>
+        </button>
       </div>
     </div>
   );
@@ -281,6 +274,30 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
     onOverdueChange?.(overdueCount > 0);
   }, [overdueCount, onOverdueChange]);
 
+  const unpaidByDate: PlansByDate[] = useMemo(() => {
+    const map = new Map<string, (PlannedExpense & { virtualDate: string })[]>();
+    for (const p of unpaidPlans) {
+      const arr = map.get(p.virtualDate) || [];
+      arr.push(p);
+      map.set(p.virtualDate, arr);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, items]) => ({ date, items }));
+  }, [unpaidPlans]);
+
+  const paidByDate: PlansByDate[] = useMemo(() => {
+    const map = new Map<string, (PlannedExpense & { virtualDate: string })[]>();
+    for (const p of paidPlans) {
+      const arr = map.get(p.virtualDate) || [];
+      arr.push(p);
+      map.set(p.virtualDate, arr);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, items]) => ({ date, items }));
+  }, [paidPlans]);
+
   const [showAdd, setShowAdd] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PlannedExpense | null>(null);
   const [planType, setPlanType] = useState<"expense" | "income">("expense");
@@ -361,7 +378,7 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
         }}
         onClick={() => setShowAdd(false)}
       />
-      <div className="relative w-full max-w-app glass-sheet rounded-t-[20px] modal-slide-up pb-8 max-h-[85vh] overflow-y-auto">
+      <div className="relative w-full max-w-app glass-sheet rounded-t-[20px] modal-slide-up pb-8 maxHeight-[85vh] max-h-[85vh] overflow-y-auto">
         <div className="flex justify-center pt-3 pb-1">
           <div
             className="w-10 h-1 rounded-full"
@@ -451,7 +468,7 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
               </span>
             </div>
           </div>
-          <div className="space-y-1.5">
+                    <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Дата
             </label>
@@ -594,33 +611,70 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
           </div>
         )}
 
-        {/* Unpaid list sorted by date */}
-        {unpaidPlans.length > 0 && (
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider px-1 mb-2 text-muted-foreground">
-              Запланировано
-            </h3>
-            <div className="glass-card overflow-hidden divide-y divide-white/5">
-              {unpaidPlans.map((plan) => (
-                <PlanRow
-                  key={`${plan.id}-${plan.virtualDate}`}
-                  plan={plan}
-                  viewYear={viewYear}
-                  viewMonth={viewMonth}
-                  todayStr={todayStr}
-                  monthNames={monthNames}
-                  onEdit={openEdit}
-                  onDelete={handleDeletePlan}
-                  onTogglePaid={(id) =>
-                    togglePlanPaidInMonth(id, viewYear, viewMonth)
-                  }
-                  isSwiped={swipedId === plan.id}
-                  onSetSwiped={setSwipedId}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Unpaid list grouped by date */}
+      {unpaidByDate.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-semibold uppercase tracking-wider px-1 text-muted-foreground">
+            Запланировано
+          </h3>
+
+          {unpaidByDate.map(({ date, items }) => {
+            const d = new Date(date);
+            const dayLabel = `${d.getDate()} ${monthNames[d.getMonth()]
+              .toLowerCase()
+              .slice(0, 3)}`;
+            const isTodayGroup = date === todayStr;
+
+            return (
+              <div
+                key={date}
+                className="glass-card rounded-[16px] overflow-hidden"
+              >
+                <div className="flex">
+                  {/* Левая колонка с датой — как раньше, но внутри карточки */}
+                  <div className="w-[64px] flex items-center justify-center border-r border-white/5 py-3">
+                    <span
+                      className="text-xs font-bold text-center"
+                      style={{
+                        color: isTodayGroup
+                          ? "hsl(162 100% 33%)"
+                          : "hsl(0 0% 50%)",
+                      }}
+                    >
+                      {dayLabel}
+                    </span>
+                  </div>
+
+                  {/* Правая колонка — все планы этого дня */}
+                  <div className="flex-1">
+                    {items.map((plan, idx) => (
+                      <div
+                        key={`${plan.id}-${plan.virtualDate}-${idx}`}
+                        className={idx > 0 ? "border-t border-white/5" : ""}
+                      >
+                        <PlanRow
+                          plan={plan}
+                          viewYear={viewYear}
+                          viewMonth={viewMonth}
+                          todayStr={todayStr}
+                          monthNames={monthNames}
+                          onEdit={openEdit}
+                          onDelete={handleDeletePlan}
+                          onTogglePaid={(id) =>
+                            togglePlanPaidInMonth(id, viewYear, viewMonth)
+                          }
+                          isSwiped={swipedId === plan.id}
+                          onSetSwiped={setSwipedId}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
         {/* Add button */}
         <button
@@ -640,8 +694,8 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
           </div>
         )}
 
-        {/* Paid — collapsible */}
-        {paidPlans.length > 0 && (
+        {/* Paid — collapsible, тоже сгруппировано по дате */}
+        {paidByDate.length > 0 && (
           <div>
             <button
               onClick={() => setShowPaid((v) => !v)}
@@ -652,28 +706,63 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
               ) : (
                 <ChevronRightIcon size={14} />
               )}
-              Выполнено ({paidPlans.length})
+              Выполнено (
+              {paidPlans.length}
+              )
             </button>
             {showPaid && (
-              <div className="glass-card overflow-hidden divide-y divide-white/5">
-                {paidPlans.map((plan) => (
-                  <PlanRow
-                    key={`${plan.id}-${plan.virtualDate}`}
-                    plan={plan}
-                    viewYear={viewYear}
-                    viewMonth={viewMonth}
-                    todayStr={todayStr}
-                    monthNames={monthNames}
-                    onEdit={openEdit}
-                    onDelete={handleDeletePlan}
-                    onTogglePaid={(id) =>
-                      togglePlanPaidInMonth(id, viewYear, viewMonth)
-                    }
-                    isSwiped={swipedId === plan.id}
-                    onSetSwiped={setSwipedId}
-                  />
-                ))}
-              </div>
+              <div className="space-y-3">
+  {paidByDate.map(({ date, items }) => {
+    const d = new Date(date);
+    const dayLabel = `${d.getDate()} ${monthNames[d.getMonth()]
+      .toLowerCase()
+      .slice(0, 3)}`;
+    const isTodayGroup = date === todayStr;
+
+    return (
+      <div
+        key={date}
+                    className="glass-card rounded-[16px] overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between px-4 py-2 border-b border-white/5">
+                      <span
+                        className="text-xs font-bold"
+                        style={{
+                          color: isTodayGroup
+                            ? "hsl(162 100% 33%)"
+                            : "hsl(0 0% 70%)",
+                        }}
+                      >
+                        {dayLabel}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        Выполнено
+                      </span>
+                    </div>
+
+                    <div className="divide-y divide-white/5">
+                      {items.map((plan, idx) => (
+                        <PlanRow
+                          key={`${plan.id}-${plan.virtualDate}-${idx}`}
+                          plan={plan}
+                          viewYear={viewYear}
+                          viewMonth={viewMonth}
+                          todayStr={todayStr}
+                          monthNames={monthNames}
+                          onEdit={openEdit}
+                          onDelete={handleDeletePlan}
+                          onTogglePaid={(id) =>
+                            togglePlanPaidInMonth(id, viewYear, viewMonth)
+                          }
+                          isSwiped={swipedId === plan.id}
+                          onSetSwiped={setSwipedId}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
             )}
           </div>
         )}
