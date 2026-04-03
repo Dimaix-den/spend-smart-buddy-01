@@ -731,7 +731,7 @@ export function useFinance(userId?: string | null) {
     state.expenses,
     state.lastOpenedDates,
     state.dayHistory,
-    dailyBudget,
+    effectiveDailyBudget,
     todayLimit,
   ]);
 
