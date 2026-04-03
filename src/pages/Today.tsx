@@ -454,7 +454,7 @@ export default function Today({
     lastOpenedDates: state.lastOpenedDates ?? [],
     dayHistory: state.dayHistory ?? {},
     weekOffset,
-    todaySafeToSpend: safeToSpend,
+    
   });
 
   const streakCount = streak;

@@ -114,10 +114,11 @@ export function buildDisciplineData({
     );
   });
 
-  // Минимальная известная дата: траты или снапшоты
+  // Минимальная известная дата: траты, снапшоты или открытия приложения
   const allKnownDates = [
     ...spentByDate.keys(),
     ...Object.keys(history),
+    ...lastOpenedDates,
   ].sort();
 
   const appStartDateMs = allKnownDates[0]
