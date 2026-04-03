@@ -10,55 +10,62 @@ const regularExpense = (date: string, amount: number): Expense => ({
   type: "regular",
 });
 
-describe("buildDisciplineData", () => {
-  it("keeps past day status stable from saved history", () => {
+describe("buildDisciplineData – dynamic limits", () => {
+  it("computes rolling limits: underspending increases future limits", () => {
+    // Period: Apr 1-10 (10 days), budget = 10000
+    // Day 1: limit = 10000/10 = 1000, spent 500 → within-budget
+    // Day 2: remaining = 9500/9 ≈ 1056 → within-budget (spent 0)
     const result = buildDisciplineData({
-      expenses: [regularExpense("2026-04-01", 80)],
-      dailyBudget: 50,
-      activeBalance: 0,
-      remainingObligations: 0,
-      stillNeedToSave: 0,
-      lastOpenedDates: ["2026-04-01", "2026-04-02", "2026-04-03"],
-      dayHistory: {
-        "2026-04-01": { spent: 80, limit: 100, status: "within-budget" },
-      },
-      now: new Date("2026-04-03T10:00:00"),
+      expenses: [regularExpense("2026-04-01", 500)],
+      totalPeriodBudget: 10000,
+      periodStartStr: "2026-04-01",
+      totalDaysInPeriod: 10,
+      weekOffset: 0,
+      now: new Date("2026-04-03T12:00:00"),
     });
 
-    const aprilFirst = result.days.find((day) => day.dateStr === "2026-04-01");
+    const day1 = result.days.find((d) => d.dateStr === "2026-04-01");
+    expect(day1).toMatchObject({ limit: 1000, spent: 500, status: "within-budget" });
 
-    expect(aprilFirst).toMatchObject({
-      status: "within-budget",
-      spent: 80,
-      limit: 100,
-    });
+    const day2 = result.days.find((d) => d.dateStr === "2026-04-02");
+    expect(day2).toMatchObject({ limit: 1056, spent: 0, status: "within-budget" });
+
+    expect(result.streak).toBe(3);
   });
 
-  it("counts streak across multiple weeks instead of only visible week", () => {
-    const lastOpenedDates = [
-      "2026-04-05",
-      "2026-04-06",
-      "2026-04-07",
-      "2026-04-08",
-      "2026-04-09",
-      "2026-04-10",
-      "2026-04-11",
-      "2026-04-12",
-      "2026-04-13",
-      "2026-04-14",
-    ];
-
+  it("overspending reduces future limits and marks exceeded", () => {
     const result = buildDisciplineData({
-      expenses: [],
-      dailyBudget: 100,
-      activeBalance: 0,
-      remainingObligations: 0,
-      stillNeedToSave: 0,
-      lastOpenedDates,
-      dayHistory: {},
-      now: new Date("2026-04-14T10:00:00"),
+      expenses: [regularExpense("2026-04-01", 5000)],
+      totalPeriodBudget: 10000,
+      periodStartStr: "2026-04-01",
+      totalDaysInPeriod: 10,
+      weekOffset: 0,
+      now: new Date("2026-04-03T12:00:00"),
     });
 
-    expect(result.streak).toBe(10);
+    const day1 = result.days.find((d) => d.dateStr === "2026-04-01");
+    expect(day1!.status).toBe("exceeded");
+
+    // Day 2: (10000 - 5000) / 9 ≈ 556
+    const day2 = result.days.find((d) => d.dateStr === "2026-04-02");
+    expect(day2!.limit).toBe(556);
+  });
+
+  it("recalculates fully when backdated expenses are added", () => {
+    const base = {
+      totalPeriodBudget: 10000,
+      periodStartStr: "2026-04-01",
+      totalDaysInPeriod: 10,
+      now: new Date("2026-04-03T12:00:00"),
+    };
+
+    const before = buildDisciplineData({ ...base, expenses: [] });
+    expect(before.days.find((d) => d.dateStr === "2026-04-01")!.status).toBe("within-budget");
+
+    const after = buildDisciplineData({
+      ...base,
+      expenses: [regularExpense("2026-04-01", 2000)],
+    });
+    expect(after.days.find((d) => d.dateStr === "2026-04-01")!.status).toBe("exceeded");
   });
 });
