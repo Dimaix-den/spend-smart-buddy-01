@@ -511,7 +511,7 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
   ) : null;
 
   return (
-    <div className="flex flex-col min-h-screen pb-32">
+    <div className="flex flex-col min-h-screen pb-52">
       <div className="px-5 pt-10 pb-4">
         <h1 className="text-2xl font-bold text-foreground">Планы</h1>
       </div>
