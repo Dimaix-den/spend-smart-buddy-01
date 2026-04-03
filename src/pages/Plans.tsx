@@ -459,7 +459,12 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
               type="date"
               value={planDate}
               onChange={(e) => setPlanDate(e.target.value)}
-              className="w-full glass-input px-4 py-3 text-sm text-foreground focus:outline-none"
+              className="block w-full glass-input px-3 py-3 text-sm text-foreground focus:outline-none"
+              style={{
+                minWidth: 0,
+                boxSizing: "border-box",
+                WebkitAppearance: "none",
+              }}
             />
           </div>
           <div className="space-y-1.5">
