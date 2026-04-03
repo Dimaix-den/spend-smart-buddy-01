@@ -10,7 +10,13 @@ interface HistoryProps {
   onBack: () => void;
 }
 
-type FilterType = "all" | "regular" | "income" | "obligation" | "savings" | "transfer";
+type FilterType =
+  | "all"
+  | "regular"
+  | "income"
+  | "obligation"
+  | "savings"
+  | "transfer";
 
 export default function History({ finance, onBack }: HistoryProps) {
   const { state, deleteExpense, updateExpense, addExpense, addIncome } = finance;
@@ -24,11 +30,72 @@ export default function History({ finance, onBack }: HistoryProps) {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, []);
 
+  // свайп для закрытия History (с ЛЕВОГО края внутрь вправо)
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const isClosingSwipe = useRef(false);
+
+  useEffect(() => {
+    const handleTouchStartDoc = (e: TouchEvent) => {
+      const t = e.touches[0];
+      touchStartX.current = t.clientX;
+      touchStartY.current = t.clientY;
+      isClosingSwipe.current = false;
+
+      // стартуем жест, если палец у ЛЕВОГО края (например, 24px)
+      if (t.clientX < 24) {
+        isClosingSwipe.current = true;
+      }
+    };
+
+    const handleTouchMoveDoc = (e: TouchEvent) => {
+      if (!isClosingSwipe.current) return;
+
+      const t = e.touches[0];
+      const dx = t.clientX - touchStartX.current;
+      const dy = Math.abs(t.clientY - touchStartY.current);
+
+      // если пошёл вертикальный скролл — отменяем жест
+      if (dy > 30 && dy > Math.abs(dx)) {
+        isClosingSwipe.current = false;
+      }
+    };
+
+    const handleTouchEndDoc = (e: TouchEvent) => {
+      if (!isClosingSwipe.current) return;
+
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStartX.current;
+
+      // тянут ВПРАВО от левого края достаточно сильно — закрываем
+      if (dx > 80) {
+        setSwipedId(null);
+        onBack();
+      }
+
+      isClosingSwipe.current = false;
+    };
+
+    document.addEventListener("touchstart", handleTouchStartDoc, {
+      passive: true,
+    });
+    document.addEventListener("touchmove", handleTouchMoveDoc, {
+      passive: true,
+    });
+    document.addEventListener("touchend", handleTouchEndDoc);
+
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStartDoc);
+      document.removeEventListener("touchmove", handleTouchMoveDoc);
+      document.removeEventListener("touchend", handleTouchEndDoc);
+    };
+  }, [onBack]);
+
   const filtered = useMemo(() => {
     let list = [...state.expenses];
     if (filterAccount !== "all") {
       list = list.filter(
-        (e) => e.account === filterAccount || e.toAccount === filterAccount
+        (e) => e.account === filterAccount || e.toAccount === filterAccount,
       );
     }
     if (filterType !== "all") {
@@ -53,63 +120,10 @@ export default function History({ finance, onBack }: HistoryProps) {
     { value: "transfer", label: "Переводы" },
   ];
 
-  // свайп для закрытия History (с правого края внутрь)
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
-  const isClosingSwipe = useRef(false);
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const t = e.touches[0];
-    touchStartX.current = t.clientX;
-    touchStartY.current = t.clientY;
-    isClosingSwipe.current = false;
-
-    const width = window.innerWidth || document.documentElement.clientWidth;
-    // начинаем отслеживать жест только если палец стартует у правого края
-    if (width - t.clientX < 24) {
-      isClosingSwipe.current = true;
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!isClosingSwipe.current) return;
-
-    const t = e.touches[0];
-    const dx = t.clientX - touchStartX.current;
-    const dy = Math.abs(t.clientY - touchStartY.current);
-
-    // если пошёл вертикальный скролл — отменяем жест закрытия
-    if (dy > 30 && dy > Math.abs(dx)) {
-      isClosingSwipe.current = false;
-      return;
-    }
-
-    // здесь не вызываем preventDefault, чтобы не ломать системные жесты
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!isClosingSwipe.current) return;
-
-    const t = e.changedTouches[0];
-    const dx = t.clientX - touchStartX.current;
-
-    // тянут влево внутрь экрана достаточно сильно — закрываем
-    if (dx < -80) {
-      setSwipedId(null);
-      onBack();
-    }
-
-    isClosingSwipe.current = false;
-  };
-
   return (
     <div
       className="flex flex-col min-h-screen pb-24"
       onClick={() => swipedId && setSwipedId(null)}
-      onScroll={() => swipedId && setSwipedId(null)}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
     >
       <div className="px-5 pt-2 pb-4">
         <button
@@ -300,7 +314,7 @@ export default function History({ finance, onBack }: HistoryProps) {
               editingExpense.id,
               amount,
               account,
-              opts?.note ?? editingExpense.note ?? ""
+              opts?.note ?? editingExpense.note ?? "",
             );
           } else {
             addExpense(amount, account, type, opts);
@@ -314,7 +328,7 @@ export default function History({ finance, onBack }: HistoryProps) {
               editingExpense.id,
               amount,
               account,
-              note ?? editingExpense.note ?? ""
+              note ?? editingExpense.note ?? "",
             );
           } else {
             addIncome(amount, account, note, date, plannedExpenseId);
