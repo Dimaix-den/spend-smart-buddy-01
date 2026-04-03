@@ -621,9 +621,15 @@ export function useFinance(userId?: string | null) {
   const usePlans = state.includePlansInCalculation ?? true;
   const effectiveDailyBudget = usePlans ? adjustedDailyBudget : dailyBudget;
 
-  // ─── Today limit (фиксируем) ──────────────────────────────────
-  const existingTodayLimit = state.dayHistory?.[todayStr]?.limit;
-  const todayLimit = existingTodayLimit ?? effectiveDailyBudget;
+  // ─── Today limit (динамический) ─────────────────────────────────
+  // Лимит на сегодня = (доступные средства + уже потраченное сегодня) / дней осталось
+  // Это корректно, потому что activeBalance уже учитывает сегодняшние траты
+  const baseAvailable = usePlans ? adjustedAvailable : available;
+  const totalRegularSpentInPeriod = state.expenses
+    .filter((e) => e.type === "regular" && inCurrentPeriod(e.date))
+    .reduce((sum, e) => sum + e.amount, 0);
+  const totalPeriodBudget = Math.max(0, baseAvailable + totalRegularSpentInPeriod);
+  const todayLimit = Math.max(0, Math.round((baseAvailable + spentToday) / daysLeft));
 
   const safeToSpend = Math.round(todayLimit - spentToday);
 

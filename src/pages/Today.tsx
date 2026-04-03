@@ -447,14 +447,10 @@ export default function Today({
 
   const { streak, days: disciplineDays } = useStreak({
     expenses: state.expenses,
-    dailyBudget,
-    activeBalance,
-    remainingObligations,
-    stillNeedToSave,
-    lastOpenedDates: state.lastOpenedDates ?? [],
-    dayHistory: state.dayHistory ?? {},
+    totalPeriodBudget: finance.totalPeriodBudget,
+    periodStartStr: finance.periodStartStr,
+    totalDaysInPeriod: finance.totalDaysInPeriod,
     weekOffset,
-    
   });
 
   const streakCount = streak;
