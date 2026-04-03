@@ -396,13 +396,12 @@ export default function UnifiedActionSheet({
       />
 
       <div
-        ref={sheetRef}
-        className="relative mt-auto w-full glass-sheet rounded-none modal-slide-up flex flex-col max-w-app mx-auto"
-        style={{
-          height: "100dvh",
-          maxHeight: "90dvh",
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
+          ref={sheetRef}
+          className="relative mt-auto w-full glass-sheet rounded-none modal-slide-up flex flex-col max-w-app mx-auto"
+          style={{
+            maxHeight: "90dvh",
+            paddingBottom: "env(safe-area-inset-bottom)",
+          }}
       >
         {/* Handle + header */}
         <div className="pt-3 pb-3 px-5">
@@ -427,17 +426,17 @@ export default function UnifiedActionSheet({
           </div>
         </div>
 
-        {/* Content + bottom button */}
-        <div className="flex-1 flex flex-col pb-4">
-          <div
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto space-y-4"
-            style={{
-              paddingBottom: isKeyboardOpen ? 24 : 0,
-              overscrollBehavior: "contain",
-              WebkitOverflowScrolling: "touch",
-            }}
-          >
+          {/* Content + bottom button */}
+          <div className="flex-1 flex flex-col pb-4 min-h-0">
+            <div
+              ref={scrollRef}
+              className="flex-1 overflow-y-auto space-y-4"
+              style={{
+                paddingBottom: isKeyboardOpen ? 24 : 0,
+                overscrollBehavior: "contain",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
             {/* Tabs */}
             <div className="mb-4 px-5">
               <div
@@ -611,10 +610,6 @@ export default function UnifiedActionSheet({
                           </div>
                         </div>
                       </div>
-
-                      {/* серые градиенты */}
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-0 bg-gradient-to-b from-[#1C1C1E] to-transparent" />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-0 bg-gradient-to-t from-[#1C1C1E] to-transparent" />
                     </div>
                   </div>
                 </>
