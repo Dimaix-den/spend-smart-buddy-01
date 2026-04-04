@@ -212,7 +212,9 @@ const Index = () => {
         onClose={() => {
           setSheetOpen(false);
           setEditingExpense(null);
+          planPrefillRef.current = null;
         }}
+        prefill={planPrefillRef.current}
         onSaveExpense={(amount, account, type, opts) => {
           finance.addExpense(amount, account, type, opts);
           const label =
