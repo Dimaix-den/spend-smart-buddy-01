@@ -807,9 +807,10 @@ export default function Plans({ finance, onOverdueChange, onOpenActionSheet }: P
                           monthNames={monthNames}
                           onEdit={openEdit}
                           onDelete={handleDeletePlan}
-                          onTogglePaid={(id) =>
-                            togglePlanPaidInMonth(id, viewYear, viewMonth)
-                          }
+                          onTogglePaid={(id) => {
+                            // Already paid — just untoggle
+                            togglePlanPaidInMonth(id, viewYear, viewMonth);
+                          }}
                           isSwiped={swipedId === plan.id}
                           onSetSwiped={setSwipedId}
                         />
