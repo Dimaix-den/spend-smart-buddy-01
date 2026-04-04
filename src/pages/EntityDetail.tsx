@@ -726,6 +726,7 @@ const handleTouchEnd = () => {
                     </div>
                   );
                 })()}
+              </div>
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={handleDelete}
