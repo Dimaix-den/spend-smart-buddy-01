@@ -909,6 +909,9 @@ export function useFinance(userId?: string | null) {
     setState((s) => ({
       ...s,
       obligations: s.obligations.filter((o) => o.id !== id),
+      plannedExpenses: (s.plannedExpenses || []).filter(
+        (p) => p.linkedEntityId !== id
+      ),
     }));
   }, []);
 
