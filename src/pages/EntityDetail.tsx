@@ -646,6 +646,7 @@ const handleTouchEnd = () => {
               setEditMonthlyPayment(
                 obligation.monthlyPayment.toLocaleString("ru-RU")
               );
+              setEditPaidMonths((obligation.paidMonths || 0).toString());
             }}
             className="text-safe-green text-sm font-medium flex items-center gap-1"
           >
