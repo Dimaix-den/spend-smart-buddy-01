@@ -42,6 +42,7 @@ interface UnifiedActionSheetProps {
   editingExpense?: Expense | null;
   plannedExpenses?: PlannedExpense[];
   preselectedAccount?: string;
+  prefill?: { amount: number; note: string; planId: string; type: "expense" | "income" } | null;
 }
 
 function sortByUsage(accounts: Account[]): Account[] {
