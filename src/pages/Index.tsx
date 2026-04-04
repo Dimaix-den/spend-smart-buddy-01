@@ -159,7 +159,16 @@ const Index = () => {
               />
             )}
             {activeTab === "plans" && (
-              <Plans finance={finance} onOverdueChange={setHasOverduePlans} />
+              <Plans
+                finance={finance}
+                onOverdueChange={setHasOverduePlans}
+                onOpenActionSheet={(prefill) => {
+                  setEditingExpense(null);
+                  setSheetOpen(true);
+                  // The sheet will open; we store prefill in a ref to apply
+                  planPrefillRef.current = prefill;
+                }}
+              />
             )}
             {activeTab === "capital" && (
               <Capital
