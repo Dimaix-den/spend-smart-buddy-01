@@ -42,6 +42,7 @@ const Index = () => {
   const [tabKey, setTabKey] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const planPrefillRef = useRef<{ amount: number; note: string; planId: string; type: "expense" | "income" } | null>(null);
 
   const handleTabChange = (newTab: Tab) => {
     if (newTab === activeTab) return;
@@ -159,7 +160,16 @@ const Index = () => {
               />
             )}
             {activeTab === "plans" && (
-              <Plans finance={finance} onOverdueChange={setHasOverduePlans} />
+              <Plans
+                finance={finance}
+                onOverdueChange={setHasOverduePlans}
+                onOpenActionSheet={(prefill) => {
+                  setEditingExpense(null);
+                  setSheetOpen(true);
+                  // The sheet will open; we store prefill in a ref to apply
+                  planPrefillRef.current = prefill;
+                }}
+              />
             )}
             {activeTab === "capital" && (
               <Capital
@@ -202,7 +212,9 @@ const Index = () => {
         onClose={() => {
           setSheetOpen(false);
           setEditingExpense(null);
+          planPrefillRef.current = null;
         }}
+        prefill={planPrefillRef.current}
         onSaveExpense={(amount, account, type, opts) => {
           finance.addExpense(amount, account, type, opts);
           const label =

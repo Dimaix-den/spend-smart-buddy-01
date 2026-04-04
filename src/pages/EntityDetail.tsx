@@ -73,6 +73,9 @@ export default function EntityDetail({
   const [editMonthlyPayment, setEditMonthlyPayment] = useState(
     obligation?.monthlyPayment.toString() ?? ""
   );
+  const [editPaidMonths, setEditPaidMonths] = useState(
+    obligation?.paidMonths?.toString() ?? "0"
+  );
 
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -559,10 +562,12 @@ const handleTouchEnd = () => {
       .sort((a, b) => b.date.localeCompare(a.date));
 
     const handleSave = () => {
+      const pm = parseInt(editPaidMonths, 10) || 0;
       updateObligation(entityId, {
         name: editName.trim(),
         totalAmount: parseMoney(editTotalAmount),
         monthlyPayment: parseMoney(editMonthlyPayment),
+        paidMonths: Math.max(0, pm),
       });
       setEditing(false);
       toast({ description: "✅ Обязательство обновлено", duration: 2000 });
@@ -641,6 +646,7 @@ const handleTouchEnd = () => {
               setEditMonthlyPayment(
                 obligation.monthlyPayment.toLocaleString("ru-RU")
               );
+              setEditPaidMonths((obligation.paidMonths || 0).toString());
             }}
             className="text-safe-green text-sm font-medium flex items-center gap-1"
           >
@@ -690,6 +696,36 @@ const handleTouchEnd = () => {
                     ₸/мес
                   </span>
                 </div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">
+                  Оплачено месяцев
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    value={editPaidMonths}
+                    onChange={(e) => setEditPaidMonths(e.target.value)}
+                    className="w-full glass-input px-4 py-3 text-foreground font-bold font-tabular focus:outline-none pr-12"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                    мес
+                  </span>
+                </div>
+                {(() => {
+                  const pm = parseInt(editPaidMonths, 10) || 0;
+                  const mp = parseMoney(editMonthlyPayment);
+                  const total = parseMoney(editTotalAmount);
+                  const paidAmount = pm * mp;
+                  const remaining = Math.max(0, total - paidAmount);
+                  return (
+                    <div className="mt-1.5 text-xs text-muted-foreground space-y-0.5">
+                      <p>Выплачено: <span className="text-foreground font-semibold">{formatAmount(paidAmount)} ₸</span></p>
+                      <p>Остаток: <span className="text-alert-orange font-semibold">{formatAmount(remaining)} ₸</span></p>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="flex gap-3 pt-2">
                 <button

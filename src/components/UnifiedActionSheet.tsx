@@ -42,6 +42,7 @@ interface UnifiedActionSheetProps {
   editingExpense?: Expense | null;
   plannedExpenses?: PlannedExpense[];
   preselectedAccount?: string;
+  prefill?: { amount: number; note: string; planId: string; type: "expense" | "income" } | null;
 }
 
 function sortByUsage(accounts: Account[]): Account[] {
@@ -66,6 +67,7 @@ export default function UnifiedActionSheet({
   editingExpense,
   plannedExpenses = [],
   preselectedAccount,
+  prefill,
 }: UnifiedActionSheetProps) {
   const isEditing = !!editingExpense;
 
@@ -227,12 +229,12 @@ export default function UnifiedActionSheet({
       }
       setSelectedPlanId("");
     } else {
-      setTab("expense");
-      setAmount("");
-      setNote("");
-      setExpenseType("regular");
+      setTab(prefill?.type === "income" ? "income" : "expense");
+      setAmount(prefill ? prefill.amount.toString() : "");
+      setNote(prefill?.note ?? "");
+      setExpenseType(prefill?.planId ? "planned" : "regular");
       setSelectedObligId("");
-      setSelectedPlanId("");
+      setSelectedPlanId(prefill?.planId ?? "");
       setToAccount("");
 
       if (preselectedAccount) {
@@ -314,7 +316,11 @@ export default function UnifiedActionSheet({
     setSelectedPlanId(planId);
     const plan = currentMonthPlans.find((p) => p.id === planId);
     if (plan) {
-      setAmount(plan.amount.toString());
+      // Only pre-fill amount if empty or zero
+      const currentAmount = parseInt(amount.replace(/[\s\u00A0\u202F\D]/g, ""), 10) || 0;
+      if (currentAmount === 0) {
+        setAmount(plan.amount.toString());
+      }
       setNote(plan.name);
     }
   };
@@ -774,12 +780,13 @@ export default function UnifiedActionSheet({
                   return (
                     <button
                       key={o.id}
-                      onClick={() => {
+                    onClick={() => {
                         setSelectedObligId(o.id);
-                        // автоподстановка суммы в поле
-                        setAmount(o.monthlyPayment.toString());
-                        // при желании можно также подставлять имя в note:
-                        // setNote(o.name);
+                        // Only pre-fill amount if empty or zero
+                        const currentAmount = parseInt(amount.replace(/[\s\u00A0\u202F\D]/g, ""), 10) || 0;
+                        if (currentAmount === 0) {
+                          setAmount(o.monthlyPayment.toString());
+                        }
                       }}
                       className="w-full flex items-center justify-between px-4 py-3 rounded-[10px] text-left transition-all"
                       style={{

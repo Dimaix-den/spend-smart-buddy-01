@@ -41,6 +41,7 @@ export interface PlannedExpense {
   recurring: boolean; // kept for backward compat migration
   recurrence: RecurrenceType;
   paidInMonths?: string[]; // ["2026-03", "2026-04"]
+  linkedEntityId?: string | null; // links to savings account or obligation id
 }
 
 export type ExpenseType =
@@ -767,20 +768,43 @@ export function useFinance(userId?: string | null) {
       type: AccountType = "active",
       monthlyGoal?: number
     ) => {
-      setState((s) => ({
-        ...s,
-        accounts: [
-          ...s.accounts,
-          {
-            id: Date.now().toString(),
-            name,
-            balance,
-            isActive: type === "active",
-            type,
-            monthlyGoal: monthlyGoal ?? null,
-          },
-        ],
-      }));
+      setState((s) => {
+        const accountId = Date.now().toString();
+        const newAccount = {
+          id: accountId,
+          name,
+          balance,
+          isActive: type === "active",
+          type,
+          monthlyGoal: monthlyGoal ?? null,
+        };
+
+        // Auto-create linked planned expense for savings accounts
+        let newPlans = s.plannedExpenses || [];
+        if (type === "savings" && monthlyGoal && monthlyGoal > 0) {
+          const planId = (Date.now() + 1).toString();
+          newPlans = [
+            ...newPlans,
+            {
+              id: planId,
+              type: "expense" as const,
+              name: `${name} (сбережения)`,
+              amount: monthlyGoal,
+              date: s.currentDate,
+              recurring: true,
+              recurrence: "monthly" as RecurrenceType,
+              paidInMonths: [],
+              linkedEntityId: accountId,
+            },
+          ];
+        }
+
+        return {
+          ...s,
+          accounts: [...s.accounts, newAccount],
+          plannedExpenses: newPlans,
+        };
+      });
     },
     []
   );
@@ -789,6 +813,9 @@ export function useFinance(userId?: string | null) {
     setState((s) => ({
       ...s,
       accounts: s.accounts.filter((a) => a.id !== id),
+      plannedExpenses: (s.plannedExpenses || []).filter(
+        (p) => p.linkedEntityId !== id
+      ),
     }));
   }, []);
 
@@ -800,20 +827,43 @@ export function useFinance(userId?: string | null) {
       monthlyPayment: number,
       initialPaidMonths?: number
     ) => {
-      setState((s) => ({
-        ...s,
-        obligations: [
-          ...s.obligations,
-          {
-            id: Date.now().toString(),
-            name,
-            totalAmount,
-            monthlyPayment,
-            paidMonths: initialPaidMonths || 0,
-            paid: false,
-          },
-        ],
-      }));
+      setState((s) => {
+        const obligationId = Date.now().toString();
+        const newObligation = {
+          id: obligationId,
+          name,
+          totalAmount,
+          monthlyPayment,
+          paidMonths: initialPaidMonths || 0,
+          paid: false,
+        };
+
+        // Auto-create linked planned expense for obligation
+        let newPlans = s.plannedExpenses || [];
+        if (monthlyPayment > 0) {
+          const planId = (Date.now() + 1).toString();
+          newPlans = [
+            ...newPlans,
+            {
+              id: planId,
+              type: "expense" as const,
+              name: `${name} (обязательство)`,
+              amount: monthlyPayment,
+              date: s.currentDate,
+              recurring: true,
+              recurrence: "monthly" as RecurrenceType,
+              paidInMonths: [],
+              linkedEntityId: obligationId,
+            },
+          ];
+        }
+
+        return {
+          ...s,
+          obligations: [...s.obligations, newObligation],
+          plannedExpenses: newPlans,
+        };
+      });
     },
     []
   );
@@ -859,6 +909,9 @@ export function useFinance(userId?: string | null) {
     setState((s) => ({
       ...s,
       obligations: s.obligations.filter((o) => o.id !== id),
+      plannedExpenses: (s.plannedExpenses || []).filter(
+        (p) => p.linkedEntityId !== id
+      ),
     }));
   }, []);
 
