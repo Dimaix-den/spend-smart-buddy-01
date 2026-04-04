@@ -198,7 +198,7 @@ function PlanRow({
   );
 }
 
-export default function Plans({ finance, onOverdueChange }: PlansProps) {
+export default function Plans({ finance, onOverdueChange, onOpenActionSheet }: PlansProps) {
   const {
     state,
     addPlannedExpense,
@@ -206,6 +206,8 @@ export default function Plans({ finance, onOverdueChange }: PlansProps) {
     deletePlannedExpense,
     togglePlanPaidInMonth,
   } = finance;
+
+  const [confirmPlan, setConfirmPlan] = useState<(PlannedExpense & { virtualDate: string }) | null>(null);
 
   const plans = state.plannedExpenses || [];
   const todayStr = state.currentDate;
