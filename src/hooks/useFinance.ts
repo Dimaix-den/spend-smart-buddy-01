@@ -813,6 +813,9 @@ export function useFinance(userId?: string | null) {
     setState((s) => ({
       ...s,
       accounts: s.accounts.filter((a) => a.id !== id),
+      plannedExpenses: (s.plannedExpenses || []).filter(
+        (p) => p.linkedEntityId !== id
+      ),
     }));
   }, []);
 
