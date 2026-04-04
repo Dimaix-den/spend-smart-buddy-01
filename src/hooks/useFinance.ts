@@ -827,20 +827,43 @@ export function useFinance(userId?: string | null) {
       monthlyPayment: number,
       initialPaidMonths?: number
     ) => {
-      setState((s) => ({
-        ...s,
-        obligations: [
-          ...s.obligations,
-          {
-            id: Date.now().toString(),
-            name,
-            totalAmount,
-            monthlyPayment,
-            paidMonths: initialPaidMonths || 0,
-            paid: false,
-          },
-        ],
-      }));
+      setState((s) => {
+        const obligationId = Date.now().toString();
+        const newObligation = {
+          id: obligationId,
+          name,
+          totalAmount,
+          monthlyPayment,
+          paidMonths: initialPaidMonths || 0,
+          paid: false,
+        };
+
+        // Auto-create linked planned expense for obligation
+        let newPlans = s.plannedExpenses || [];
+        if (monthlyPayment > 0) {
+          const planId = (Date.now() + 1).toString();
+          newPlans = [
+            ...newPlans,
+            {
+              id: planId,
+              type: "expense" as const,
+              name: `${name} (обязательство)`,
+              amount: monthlyPayment,
+              date: s.currentDate,
+              recurring: true,
+              recurrence: "monthly" as RecurrenceType,
+              paidInMonths: [],
+              linkedEntityId: obligationId,
+            },
+          ];
+        }
+
+        return {
+          ...s,
+          obligations: [...s.obligations, newObligation],
+          plannedExpenses: newPlans,
+        };
+      });
     },
     []
   );
