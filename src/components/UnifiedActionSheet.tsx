@@ -314,7 +314,11 @@ export default function UnifiedActionSheet({
     setSelectedPlanId(planId);
     const plan = currentMonthPlans.find((p) => p.id === planId);
     if (plan) {
-      setAmount(plan.amount.toString());
+      // Only pre-fill amount if empty or zero
+      const currentAmount = parseInt(amount.replace(/[\s\u00A0\u202F\D]/g, ""), 10) || 0;
+      if (currentAmount === 0) {
+        setAmount(plan.amount.toString());
+      }
       setNote(plan.name);
     }
   };
