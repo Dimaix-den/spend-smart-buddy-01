@@ -768,20 +768,43 @@ export function useFinance(userId?: string | null) {
       type: AccountType = "active",
       monthlyGoal?: number
     ) => {
-      setState((s) => ({
-        ...s,
-        accounts: [
-          ...s.accounts,
-          {
-            id: Date.now().toString(),
-            name,
-            balance,
-            isActive: type === "active",
-            type,
-            monthlyGoal: monthlyGoal ?? null,
-          },
-        ],
-      }));
+      setState((s) => {
+        const accountId = Date.now().toString();
+        const newAccount = {
+          id: accountId,
+          name,
+          balance,
+          isActive: type === "active",
+          type,
+          monthlyGoal: monthlyGoal ?? null,
+        };
+
+        // Auto-create linked planned expense for savings accounts
+        let newPlans = s.plannedExpenses || [];
+        if (type === "savings" && monthlyGoal && monthlyGoal > 0) {
+          const planId = (Date.now() + 1).toString();
+          newPlans = [
+            ...newPlans,
+            {
+              id: planId,
+              type: "expense" as const,
+              name: `${name} (сбережения)`,
+              amount: monthlyGoal,
+              date: s.currentDate,
+              recurring: true,
+              recurrence: "monthly" as RecurrenceType,
+              paidInMonths: [],
+              linkedEntityId: accountId,
+            },
+          ];
+        }
+
+        return {
+          ...s,
+          accounts: [...s.accounts, newAccount],
+          plannedExpenses: newPlans,
+        };
+      });
     },
     []
   );
