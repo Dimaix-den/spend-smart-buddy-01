@@ -25,6 +25,7 @@ import MoneyInput from "@/components/MoneyInput";
 interface PlansProps {
   finance: ReturnType<typeof useFinance>;
   onOverdueChange?: (hasOverdue: boolean) => void;
+  onOpenActionSheet?: (prefill: { amount: number; note: string; planId: string; type: "expense" | "income" }) => void;
 }
 
 interface PlanRowProps {
