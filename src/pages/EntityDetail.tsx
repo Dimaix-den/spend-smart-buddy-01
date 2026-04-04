@@ -562,10 +562,12 @@ const handleTouchEnd = () => {
       .sort((a, b) => b.date.localeCompare(a.date));
 
     const handleSave = () => {
+      const pm = parseInt(editPaidMonths, 10) || 0;
       updateObligation(entityId, {
         name: editName.trim(),
         totalAmount: parseMoney(editTotalAmount),
         monthlyPayment: parseMoney(editMonthlyPayment),
+        paidMonths: Math.max(0, pm),
       });
       setEditing(false);
       toast({ description: "✅ Обязательство обновлено", duration: 2000 });
