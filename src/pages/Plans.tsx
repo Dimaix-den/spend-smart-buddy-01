@@ -550,7 +550,7 @@ export default function Plans({ finance, onOverdueChange, onOpenActionSheet }: P
         <div className="flex gap-3">
           <button
             onClick={() => {
-              // Just mark as paid without transaction
+              // "Нет" — просто закрываем план без транзакции
               togglePlanPaidInMonth(confirmPlan.id, viewYear, viewMonth);
               setConfirmPlan(null);
             }}
@@ -561,8 +561,8 @@ export default function Plans({ finance, onOverdueChange, onOpenActionSheet }: P
           </button>
           <button
             onClick={() => {
-              // Mark as paid and open action sheet with prefill
-              togglePlanPaidInMonth(confirmPlan.id, viewYear, viewMonth);
+              // "Да" — открываем шит с предзаполнением, но НЕ закрываем план сразу.
+              // План закроется автоматически когда транзакция сохранится с plannedExpenseId.
               if (onOpenActionSheet) {
                 onOpenActionSheet({
                   amount: confirmPlan.amount,
