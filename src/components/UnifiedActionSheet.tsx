@@ -229,12 +229,12 @@ export default function UnifiedActionSheet({
       }
       setSelectedPlanId("");
     } else {
-      setTab("expense");
-      setAmount("");
-      setNote("");
-      setExpenseType("regular");
+      setTab(prefill?.type === "income" ? "income" : "expense");
+      setAmount(prefill ? prefill.amount.toString() : "");
+      setNote(prefill?.note ?? "");
+      setExpenseType(prefill?.planId ? "planned" : "regular");
       setSelectedObligId("");
-      setSelectedPlanId("");
+      setSelectedPlanId(prefill?.planId ?? "");
       setToAccount("");
 
       if (preselectedAccount) {
