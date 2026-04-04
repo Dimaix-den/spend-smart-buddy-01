@@ -535,6 +535,54 @@ export default function Plans({ finance, onOverdueChange, onOpenActionSheet }: P
     </div>
   ) : null;
 
+  const confirmDialog = confirmPlan ? (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center">
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+        onClick={() => setConfirmPlan(null)}
+      />
+      <div className="relative w-[300px] rounded-[16px] p-5 space-y-4" style={{ background: "hsl(0 0% 12%)" }}>
+        <h3 className="text-base font-bold text-foreground text-center">Внести операцию?</h3>
+        <p className="text-sm text-muted-foreground text-center">
+          {confirmPlan.name} — {formatAmount(confirmPlan.amount)} ₸
+        </p>
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              // Just mark as paid without transaction
+              togglePlanPaidInMonth(confirmPlan.id, viewYear, viewMonth);
+              setConfirmPlan(null);
+            }}
+            className="flex-1 py-2.5 rounded-[10px] text-sm font-semibold text-foreground"
+            style={{ background: "hsl(0 0% 23%)" }}
+          >
+            Нет
+          </button>
+          <button
+            onClick={() => {
+              // Mark as paid and open action sheet with prefill
+              togglePlanPaidInMonth(confirmPlan.id, viewYear, viewMonth);
+              if (onOpenActionSheet) {
+                onOpenActionSheet({
+                  amount: confirmPlan.amount,
+                  note: confirmPlan.name,
+                  planId: confirmPlan.id,
+                  type: confirmPlan.type,
+                });
+              }
+              setConfirmPlan(null);
+            }}
+            className="flex-1 py-2.5 rounded-[10px] text-sm font-bold text-white"
+            style={{ background: "hsl(162 100% 33%)" }}
+          >
+            Да
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <div className="flex flex-col min-h-screen pb-52">
       <div className="px-5 pt-10 pb-4">
