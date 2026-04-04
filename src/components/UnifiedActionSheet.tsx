@@ -778,12 +778,13 @@ export default function UnifiedActionSheet({
                   return (
                     <button
                       key={o.id}
-                      onClick={() => {
+                    onClick={() => {
                         setSelectedObligId(o.id);
-                        // автоподстановка суммы в поле
-                        setAmount(o.monthlyPayment.toString());
-                        // при желании можно также подставлять имя в note:
-                        // setNote(o.name);
+                        // Only pre-fill amount if empty or zero
+                        const currentAmount = parseInt(amount.replace(/[\s\u00A0\u202F\D]/g, ""), 10) || 0;
+                        if (currentAmount === 0) {
+                          setAmount(o.monthlyPayment.toString());
+                        }
                       }}
                       className="w-full flex items-center justify-between px-4 py-3 rounded-[10px] text-left transition-all"
                       style={{
