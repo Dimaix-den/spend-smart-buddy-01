@@ -73,6 +73,9 @@ export default function EntityDetail({
   const [editMonthlyPayment, setEditMonthlyPayment] = useState(
     obligation?.monthlyPayment.toString() ?? ""
   );
+  const [editPaidMonths, setEditPaidMonths] = useState(
+    obligation?.paidMonths?.toString() ?? "0"
+  );
 
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
