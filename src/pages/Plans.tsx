@@ -847,6 +847,7 @@ export default function Plans({ finance, onOverdueChange, onOpenActionSheet }: P
       </div>
 
       {createPortal(modal, document.body)}
+      {createPortal(confirmDialog, document.body)}
     </div>
   );
 }
