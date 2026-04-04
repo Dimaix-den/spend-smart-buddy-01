@@ -67,6 +67,7 @@ export default function UnifiedActionSheet({
   editingExpense,
   plannedExpenses = [],
   preselectedAccount,
+  prefill,
 }: UnifiedActionSheetProps) {
   const isEditing = !!editingExpense;
 
