@@ -41,6 +41,7 @@ export interface PlannedExpense {
   recurring: boolean; // kept for backward compat migration
   recurrence: RecurrenceType;
   paidInMonths?: string[]; // ["2026-03", "2026-04"]
+  linkedEntityId?: string | null; // links to savings account or obligation id
 }
 
 export type ExpenseType =
