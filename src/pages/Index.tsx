@@ -42,6 +42,7 @@ const Index = () => {
   const [tabKey, setTabKey] = useState(0);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const planPrefillRef = useRef<{ amount: number; note: string; planId: string; type: "expense" | "income" } | null>(null);
 
   const handleTabChange = (newTab: Tab) => {
     if (newTab === activeTab) return;
